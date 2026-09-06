@@ -16,6 +16,7 @@ import { queryKeys } from '@/lib/api/query-keys';
 import { formatShortDate } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
+import { HomeError, HomeSkeleton } from './components/home-states';
 import { HeroCard } from './components/hero-card';
 import { AllDoneCard, HomeHeader, HomeSummaryLine } from './components/home-header';
 import { LaterRow, MoreRow, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
@@ -106,13 +107,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   };
 
   if (feed.isPending) return <HomeSkeleton />;
-  if (feed.isError) {
-    return (
-      <p className="px-4 pt-20 text-center text-[15px] text-ink-secondary">
-        불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-      </p>
-    );
-  }
+  if (feed.isError) return <HomeError onRetry={() => feed.refetch()} />;
 
   const { summary, due, upcoming, later } = feed.data;
   const isEmpty = due.length + upcoming.length + later.length === 0;
@@ -265,16 +260,3 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   );
 }
 
-function HomeSkeleton() {
-  return (
-    <div className="safe-top px-4 pt-6" aria-busy>
-      <div className="h-4 w-32 rounded bg-surface-alt" />
-      <div className="mt-4 h-6 w-56 rounded bg-surface-alt" />
-      <div className="mt-8 flex flex-col gap-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-20 rounded-lg bg-surface-alt" />
-        ))}
-      </div>
-    </div>
-  );
-}

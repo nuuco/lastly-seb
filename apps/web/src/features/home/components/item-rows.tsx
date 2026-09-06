@@ -27,7 +27,7 @@ export function UpcomingRow({ item, last }: { item: Item; last: boolean }) {
   return (
     <Link
       href={`/items/${item.id}`}
-      className={cn('block px-0.5 py-3.5', !last && 'border-b border-line')}
+      className={cn('block px-0.5 py-3.5 transition-colors active:bg-surface-alt', !last && 'border-b border-line')}
     >
       <div className="flex items-center gap-2.5">
         <span className="min-w-0 flex-1 truncate text-16 font-semibold tracking-t25 text-ink">
@@ -67,7 +67,7 @@ export function LaterRow({ item, last }: { item: Item; last: boolean }) {
     <Link
       href={`/items/${item.id}`}
       className={cn(
-        'flex items-center gap-2.5 px-0.5 py-[15px]',
+        'flex items-center gap-2.5 px-0.5 py-[15px] transition-colors active:bg-surface-alt',
         !last && 'border-b border-line',
       )}
     >

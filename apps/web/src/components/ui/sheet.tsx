@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -14,36 +14,66 @@ interface SheetProps {
 }
 
 /**
+ * 열려 있는 시트 수. 확인 시트 위에 주기 시트가 겹치는 경우가 있어서,
+ * 각자 이전 값을 기억했다 되돌리면 마지막 하나가 'hidden'을 되돌려 놓는다.
+ * 마지막 시트가 닫힐 때만 잠금을 푼다.
+ */
+let openSheets = 0;
+
+function lockBodyScroll(): () => void {
+  if (openSheets === 0) document.body.style.overflow = 'hidden';
+  openSheets += 1;
+
+  return () => {
+    openSheets = Math.max(0, openSheets - 1);
+    if (openSheets === 0) document.body.style.overflow = '';
+  };
+}
+
+/**
  * 하단 바텀시트 — 설계 08/09/10/11-B/13-B 공통.
  *
  * 배경을 어둡게 덮고, 시트 자체는 반투명 지면색에 blur를 걸어
  * 뒤에 있는 목록이 비쳐 보이게 한다. 맥락을 잃지 않게 하려는 장치다.
  */
 export function Sheet({ open, onClose, children, dismissible = true, label }: SheetProps) {
+  // onClose는 렌더마다 새 함수라 의존성에 넣으면 매 렌더 잠금이 풀렸다 걸린다.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissible) onClose();
+      if (e.key === 'Escape' && dismissible) closeRef.current();
     };
 
     document.addEventListener('keydown', onKey);
-    // 시트가 열린 동안 뒤 배경이 스크롤되지 않게 한다.
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockBodyScroll();
 
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
+      unlock();
     };
-  }, [open, dismissible, onClose]);
+  }, [open, dismissible]);
+
+  // 아래에서 올라오는 전환. 갑자기 나타나면 화면이 바뀐 걸 놓친다.
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!open) return setShown(false);
+    const raf = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
-        className="absolute inset-0 bg-[rgba(45,38,34,.26)]"
+        className={cn(
+          'absolute inset-0 bg-[rgba(45,38,34,.26)] transition-opacity duration-200',
+          shown ? 'opacity-100' : 'opacity-0',
+        )}
         onClick={dismissible ? onClose : undefined}
         aria-hidden
       />
@@ -56,6 +86,8 @@ export function Sheet({ open, onClose, children, dismissible = true, label }: Sh
           'safe-bottom relative mx-auto max-h-[88dvh] w-full max-w-[430px] overflow-y-auto',
           'rounded-t-sheet bg-[rgba(251,249,244,.97)] px-[26px] pb-[26px] pt-3 shadow-topline',
           'backdrop-blur-[30px]',
+          'transition-transform duration-250 ease-out motion-reduce:transition-none',
+          shown ? 'translate-y-0' : 'translate-y-full',
         )}
       >
         <div className="mx-auto mb-5 h-[5px] w-11 rounded-[3px] bg-line-muted" aria-hidden />
