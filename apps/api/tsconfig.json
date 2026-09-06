@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // package.json에 "type": "module"이 없으므로 node16은 CommonJS로 emit한다 — NestJS가 요구하는 형태.
+    // 예전의 "moduleResolution": "Node"(=node10)는 TypeScript 7에서 제거되므로 쓰지 않는다.
+    // 베이스가 Bundler를 지정하므로 여기서 짝을 맞춰 함께 덮어쓴다.
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "ES2022",
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    // NestJS는 프로퍼티를 DI로 주입받으므로 생성자 초기화를 강제하지 않는다.
+    "strictPropertyInitialization": false
+  },
+  "include": ["src"]
+}

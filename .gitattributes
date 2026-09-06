@@ -1,0 +1,12 @@
+# 저장소 안에서는 LF로 통일한다.
+# 윈도우·맥이 섞여도 diff에 줄바꿈만 바뀐 변경이 쌓이지 않게 하려는 것이다.
+* text=auto eol=lf
+
+# 바이너리는 건드리지 않는다.
+*.png binary
+*.woff2 binary
+*.pdf binary
+
+# 설계 원본은 생성물이라 diff·언어 통계에서 뺀다.
+docs/Lastly*.html linguist-generated=true -diff
+docs/design-reference/*.html linguist-generated=true -diff

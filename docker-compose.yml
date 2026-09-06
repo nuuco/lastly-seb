@@ -1,0 +1,37 @@
+# 로컬 통합 실행용. Postgres/Auth는 `supabase start`가 띄우므로 여기에는 없다.
+services:
+  ai:
+    build: ./apps/ai
+    ports: ['8000:8000']
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5}
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports: ['4000:4000']
+    depends_on:
+      ai:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_TOKEN: ${INTERNAL_TOKEN}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:team@lastly.app}
+      DRAFT_TOKEN_SECRET: ${DRAFT_TOKEN_SECRET}

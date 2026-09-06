@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  // extends 전용 베이스 — compilerOptions만 담는다.
+  // files/include는 각 패키지의 tsconfig.json이 자기 범위로 정의한다.
+  // 여기에 include를 두면 패키지가 덮어쓰지 못하는 경우가 생기고,
+  // files: []를 두면 이 파일 자체가 TS18002를 낸다.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true
+  }
+}

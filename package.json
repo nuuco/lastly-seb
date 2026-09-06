@@ -1,0 +1,33 @@
+{
+  "name": "lastly",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
+    "db:types": "supabase gen types typescript --linked > packages/contracts/src/database.types.ts",
+    "db:link": "supabase link",
+    "db:push": "supabase db push",
+    "db:seed": "supabase db push --include-seed",
+    "db:reset": "supabase db reset",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
+    "prettier": "^3.3.3",
+    "supabase": "^2.116.0",
+    "turbo": "^2.1.3",
+    "typescript": "^5.6.2"
+  }
+}

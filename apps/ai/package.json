@@ -1,0 +1,12 @@
+{
+  "name": "@lastly/ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uvicorn lastly_ai.main:app --reload --port 8000 --app-dir src",
+    "build": "python -c \"import compileall,sys; sys.exit(0 if compileall.compile_dir('src', quiet=1) else 1)\"",
+    "lint": "ruff check src tests",
+    "typecheck": "mypy src",
+    "test": "pytest"
+  }
+}

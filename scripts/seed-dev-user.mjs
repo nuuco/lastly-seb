@@ -1,0 +1,157 @@
+/**
+ * 개발용 테스트 계정과 샘플 항목을 만든다.
+ *
+ * 카카오·구글 OAuth를 등록하지 않아도 앱이 도는 걸 확인할 수 있게 하기 위한 것이다.
+ * 운영 환경에서는 절대 돌리지 않는다.
+ *
+ *   node scripts/seed-dev-user.mjs
+ */
+import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+import { addDays, format, subDays } from 'date-fns';
+
+config({ path: new URL('../.env', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
+
+const EMAIL = 'dev@lastly.local';
+const PASSWORD = 'lastly-dev-1234';
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceKey || url.includes('placeholder')) {
+  console.error('.env의 Supabase 설정이 비어 있습니다.');
+  process.exit(1);
+}
+
+const admin = createClient(url, serviceKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+const iso = (d) => format(d, 'yyyy-MM-dd');
+const today = new Date();
+
+/** 설계 화면 05에 나오는 항목들을 그대로 재현한다. */
+const SAMPLES = [
+  {
+    name: '에어컨 필터 청소',
+    cadence: { unit: 'day', interval: 45, weekdays: [] },
+    source: 'community',
+    // 45일 전에 했으니 오늘이 예정일 → "오늘 챙길 것"
+    doneDaysAgo: [45, 92, 136],
+  },
+  {
+    name: '이불 빨래',
+    cadence: { unit: 'week', interval: 2, weekdays: [] },
+    source: 'personal',
+    // 12일 전 → D-2, "다가오는 항목"
+    doneDaysAgo: [12, 28, 42],
+  },
+  {
+    name: '칫솔 교체',
+    cadence: { unit: 'month', interval: 3, weekdays: [] },
+    source: 'community',
+    doneDaysAgo: [78],
+  },
+  {
+    name: '정수기 필터 교체',
+    cadence: { unit: 'month', interval: 3, weekdays: [] },
+    source: 'community',
+    // 20일 전 → 여유 있는 항목
+    doneDaysAgo: [20, 112],
+  },
+  {
+    name: '화분 물 주기',
+    cadence: { unit: 'week', interval: 1, weekdays: [] },
+    source: 'personal',
+    doneDaysAgo: [3, 10, 18, 24],
+  },
+];
+
+async function findOrCreateUser() {
+  const { data: list } = await admin.auth.admin.listUsers();
+  const existing = list?.users.find((u) => u.email === EMAIL);
+
+  if (existing) {
+    console.log(`기존 테스트 계정 사용: ${EMAIL}`);
+    return existing.id;
+  }
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email: EMAIL,
+    password: PASSWORD,
+    email_confirm: true,
+    user_metadata: { name: '지현' },
+  });
+
+  if (error) throw error;
+  console.log(`테스트 계정 생성: ${EMAIL}`);
+  return data.user.id;
+}
+
+async function main() {
+  const userId = await findOrCreateUser();
+
+  // 트리거가 프로필을 만들지만, 이름이 비어 있으면 채워준다.
+  await admin
+    .from('profiles')
+    .upsert({ id: userId, display_name: '지현', timezone: 'Asia/Seoul' }, { onConflict: 'id' });
+
+  // 여러 번 돌려도 같은 상태가 되도록 먼저 지운다.
+  await admin.from('items').delete().eq('user_id', userId);
+
+  for (const sample of SAMPLES) {
+    const { data: item, error } = await admin
+      .from('items')
+      .insert({
+        user_id: userId,
+        name: sample.name,
+        cadence_unit: sample.cadence.unit,
+        cadence_interval: sample.cadence.interval,
+        cadence_weekdays: sample.cadence.weekdays,
+        cadence_source: sample.source,
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    // 오래된 기록부터 넣어야 gap 계산이 자연스럽다.
+    const logs = [...sample.doneDaysAgo]
+      .sort((a, b) => b - a)
+      .map((days) => ({
+        user_id: userId,
+        item_id: item.id,
+        done_on: iso(subDays(today, days)),
+        source: 'manual',
+      }));
+
+    const { error: logError } = await admin.from('item_logs').insert(logs);
+    if (logError) throw logError;
+
+    console.log(`  ${sample.name} — 기록 ${logs.length}건`);
+  }
+
+  const { data: check } = await admin
+    .from('items')
+    .select('name, last_done_on, next_due_on, average_interval_days')
+    .eq('user_id', userId)
+    .order('next_due_on');
+
+  console.log('\n트리거가 계산한 값:');
+  for (const row of check ?? []) {
+    const due = row.next_due_on ?? '—';
+    const badge = due !== '—' && due <= iso(today) ? ' ← 오늘 챙길 것' : '';
+    console.log(
+      `  ${row.name.padEnd(18)} 마지막 ${row.last_done_on} → 다음 ${due}` +
+        `  (평균 ${row.average_interval_days ?? '—'}일)${badge}`,
+    );
+  }
+
+  console.log(`\n로그인 정보:  ${EMAIL}  /  ${PASSWORD}`);
+  console.log(`다음 알림 기준일: ${iso(addDays(today, 1))} 이후`);
+}
+
+main().catch((err) => {
+  console.error('실패:', err.message ?? err);
+  process.exit(1);
+});

@@ -1,0 +1,54 @@
+@import '@lastly/design-tokens/css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* 모바일 웹앱이므로 브라우저 확대/축소로 레이아웃이 깨지지 않게 한다. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    /* 설계는 기기 바깥을 조금 더 어둡게 깐다. 앱 지면은 --lastly-paper. */
+    background: #eae5da;
+    color: var(--lastly-ink);
+    font-family: var(--lastly-font);
+    /* 홈 화면에 추가된 PWA에서 바운스 스크롤을 막는다. */
+    overscroll-behavior-y: none;
+  }
+
+  /* 터치 기기에서 탭 하이라이트가 종이 질감을 해친다. */
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* 설계의 안전영역 — 노치와 홈 인디케이터를 피한다. */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer utilities {
+  /* 하단 입력 바에 가리지 않도록 스크롤 영역 아래에 여백을 준다. */
+  .pb-capture-bar {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,88 @@
+/**
+ * docs/design-reference/ 의 :root 변수를 그대로 옮긴 것.
+ * 이름과 값을 설계와 1:1로 맞춰 두었으니, 설계가 바뀌면 여기부터 고친다.
+ */
+:root {
+  --lastly-font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+
+  /* 강조 — accent는 웜 그레이다. 주황이 아니다.
+     주황(#B0552F)은 주 액션 버튼과 D-n 배지에만 쓰는 별도 색이다. */
+  --lastly-accent: #4a433f;
+  --lastly-accent-soft: #f7eeda;
+  --lastly-accent-ink: #8a5a12;
+
+  /* 세이지 — "백업됨" 같은 안심 신호에 쓴다. */
+  --lastly-sage: #5a6347;
+  --lastly-sage-soft: #e9ede1;
+  --lastly-sage-ink: #4a5439;
+
+  /* 주 액션 (오늘 했어요 / 시작하기)과 임박 표시 */
+  --lastly-action: #b0552f;
+  --lastly-action-pressed: #9c4a26;
+  --lastly-action-glow: rgba(176, 85, 47, 0.26);
+
+  /* 텍스트 3단계 */
+  --lastly-ink: #2d2622;
+  --lastly-ink-2: #5a534c;
+  --lastly-ink-3: #6e665d;
+
+  /* 지면 */
+  --lastly-paper: #f5f2ec;
+  --lastly-card: #fbf9f4;
+  --lastly-line: #e6e0d4;
+  --lastly-line-2: #e4dccb;
+  --lastly-rule: #e1d9cb;
+
+  /* 강조 카드의 세로 그라디언트 (오늘 챙길 것) */
+  --lastly-card-hi-from: #f6f1e6;
+  --lastly-card-hi-to: #fcfbf8;
+  --lastly-dot-warn: #e09f3e;
+
+  /* 경과 진행 막대 — 남은 날짜에 따라 채움 색이 바뀐다 */
+  --lastly-bar-track: #efeae0;
+  --lastly-bar-near: #c68b59;
+  --lastly-bar-far: #5a6347;
+
+  /* 음성 파형 막대 3색 */
+  --lastly-wave-1: #eadfc6;
+  --lastly-wave-2: #ddbb7c;
+  --lastly-wave-3: #4a433f;
+
+  /* 눌림·가라앉은 면, 흐린 글자 */
+  --lastly-surface-alt: #f3efe6;
+  --lastly-surface-sunken: #efeae0;
+  --lastly-ink-4: #b7ae9c;
+
+  --lastly-danger: #b3402c;
+
+  /* 곡률 — 설계가 쓰는 실제 값 */
+  --lastly-r-row: 18px;
+  --lastly-r-card: 24px;
+  --lastly-r-hero: 26px;
+  --lastly-r-phone: 46px;
+  /* 바텀시트 상단 곡률 */
+  --lastly-r-sheet: 30px;
+
+  /* 그림자 — 설계에서 쓰인 값 그대로 */
+  --lastly-shadow-hero: 0 10px 28px rgba(44, 38, 35, 0.1);
+  --lastly-shadow-card: 0 4px 16px rgba(70, 58, 44, 0.04);
+  --lastly-shadow-action: 0 8px 18px rgba(176, 85, 47, 0.26);
+  --lastly-shadow-action-lg: 0 10px 24px rgba(176, 85, 47, 0.28);
+  /* 하단 고정 바 — 위로 퍼지는 그림자에 주황 기운을 살짝 섞는다 */
+  --lastly-shadow-dock: 0 -4px 26px rgba(70, 58, 44, 0.06), 0 12px 30px rgba(176, 85, 47, 0.14);
+  --lastly-shadow-toast: 0 6px 16px rgba(44, 38, 35, 0.3);
+  --lastly-shadow-sheet: 0 12px 26px rgba(45, 38, 34, 0.22);
+  --lastly-shadow-raise: 0 8px 20px rgba(70, 58, 44, 0.08);
+  --lastly-shadow-soft: 0 10px 30px rgba(70, 58, 44, 0.06);
+  --lastly-shadow-hair: 0 1px 2px rgba(70, 58, 44, 0.08);
+  /* 키보드 키의 아래 한 줄 */
+  --lastly-shadow-key: 0 1px 0 rgba(70, 58, 44, 0.2);
+  /* 위쪽 경계선 역할 */
+  --lastly-shadow-topline: 0 -1px 0 var(--lastly-line);
+  /* 듣고 있음을 알리는 점의 후광 */
+  --lastly-ring-listen: 0 0 0 5px rgba(176, 85, 47, 0.12);
+
+  /* 설계가 라이트 단일 테마이므로 다크 대응은 하지 않는다. */
+  color-scheme: light;
+}

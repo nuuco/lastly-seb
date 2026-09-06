@@ -1,0 +1,16 @@
+{
+  // @tailwind / @apply 는 Tailwind가 빌드 때 처리하는 지시자다.
+  // VS Code 기본 CSS 서버는 이걸 몰라 "Unknown at rule" 경고를 낸다 — 실제 오류가 아니다.
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+
+  // 워크스페이스에 설치된 TypeScript를 쓴다.
+  // 에디터 번들 버전과 프로젝트 버전이 다르면 없는 오류가 보인다.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" }
+}
