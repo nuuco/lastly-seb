@@ -1,0 +1,67 @@
+# Render 배포 정의.
+#
+# 대시보드에서 Blueprint 로 이 파일을 가리키면 두 서비스가 한 번에 만들어진다.
+# 값이 비어 있는(sync: false) 환경변수는 대시보드에서 직접 채운다 — 비밀이라 여기 적지 않는다.
+#
+# 무료 플랜은 접속이 없으면 서비스를 재운다. 첫 요청이 30초쯤 걸릴 수 있고,
+# 서버 안의 시계도 멈춘다. 그래서 알림 배치는 GitHub Actions가 밖에서 두드린다.
+
+services:
+  # ── AI: 문장 해석과 주기 추론 ─────────────────────────────────
+  - type: web
+    name: lastly-ai
+    runtime: docker
+    plan: free
+    region: singapore # 무료 플랜에서 서울과 가장 가까운 곳
+    rootDir: apps/ai
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: AI_MODEL
+        value: claude-opus-5
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: INTERNAL_TOKEN
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
+
+  # ── API: REST와 알림 발송 ────────────────────────────────────
+  - type: web
+    name: lastly-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: . # 모노레포 루트가 컨텍스트여야 contracts를 함께 빌드한다
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # 서버 안의 시계는 끈다. 무료 플랜은 자는 동안 그 시간을 흘려보낸다.
+      - key: ENABLE_CRON
+        value: 'false'
+      # lastly-ai 가 먼저 배포된 뒤 그 주소를 여기에 붙여넣는다.
+      # 예: https://lastly-ai.onrender.com
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false # Vercel 도메인이 나오면 채운다
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false # apps/ai 의 INTERNAL_TOKEN 과 같은 값
+      - key: CRON_SECRET
+        sync: false # GitHub Actions 시크릿과 같은 값
+      - key: DRAFT_TOKEN_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false

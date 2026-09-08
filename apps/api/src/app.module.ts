@@ -9,6 +9,7 @@ import { PushModule } from './infra/push/push.module';
 import { SupabaseModule } from './infra/supabase/supabase.module';
 import { CadenceModule } from './modules/cadence/cadence.module';
 import { CaptureModule } from './modules/capture/capture.module';
+import { HealthModule } from './modules/health/health.module';
 import { ItemsModule } from './modules/items/items.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ProfileModule } from './modules/profile/profile.module';
@@ -26,6 +27,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     AiModule,
     PushModule,
     CadenceModule,
+    HealthModule,
     ItemsModule,
     CaptureModule,
     NotificationsModule,

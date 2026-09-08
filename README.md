@@ -230,6 +230,9 @@ PostgREST API 스키마에 노출된다.
 
 ## 시작하기
 
+**Node 22 이상**이 필요하다. `@supabase/supabase-js` 가 네이티브 WebSocket 을 쓰는데
+Node 22 부터 들어갔다. 20 에서는 Supabase 클라이언트를 만드는 순간 죽는다.
+
 Supabase는 **Lastly 전용 프로젝트를 새로 만든다.** 절차는 [docs/SETUP.md](docs/SETUP.md)에 있다.
 
 ```bash
@@ -309,12 +312,27 @@ pnpm --filter @lastly/api test
 cd apps/ai && pytest
 ```
 
-## 배포 시 확인할 것
+## 배포
+
+Vercel · Render · GitHub Actions · Supabase 무료 플랜으로 올린다.
+클릭 단위 절차는 **[docs/DEPLOY.md](docs/DEPLOY.md)** 에 있다.
+
+```
+web   → Vercel          무료
+api   → Render          무료 (15분 미접속 시 잠듦)
+ai    → Render          무료
+알림  → GitHub Actions   매시 정각에 api를 두드린다
+```
+
+무료 플랜은 접속이 없으면 서버를 재우므로 서버 안의 시계를 믿을 수 없다.
+그래서 `ENABLE_CRON=false`로 두고 밖에서 `/v1/internal/dispatch-digests`를 부른다.
+인스턴스를 여러 대로 늘려도 중복 발송이 생기지 않는 이점도 있다.
+
+### 확인할 것
 
 - `SUPABASE_SERVICE_ROLE_KEY`는 RLS를 우회한다. `apps/api`에서만 쓰고 프론트에 절대 노출하지 않는다.
 - `apps/ai`는 공개 주소를 갖지 않아야 한다. `INTERNAL_TOKEN`은 최소한의 방어선일 뿐이다.
 - iOS 사파리는 홈 화면에 추가된 PWA에서만 푸시를 허용한다 (설계 02-A가 이 제약 때문에 존재한다).
-- `dispatchDigests`는 단일 인스턴스 배치다. API를 여러 대로 늘리면 중복 발송을 막을 잠금이 필요하다.
 - 개발용 로그인과 시드 스크립트를 제거하거나, 프로덕션 가드가 충분한지 확인한다.
 
 ## 아직 안 된 것

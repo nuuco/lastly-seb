@@ -36,7 +36,8 @@ async function bootstrap() {
   }
 
   const port = config.get<number>('PORT') ?? 4000;
-  await app.listen(port);
+  // 컨테이너 안에서는 0.0.0.0 에 붙어야 밖에서 닿는다. localhost로 두면 접속이 안 된다.
+  await app.listen(port, '0.0.0.0');
   new Logger('Bootstrap').log(`API listening on :${port}`);
 }
 

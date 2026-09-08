@@ -1,10 +1,14 @@
 /**
- * 개발용 테스트 계정과 샘플 항목을 만든다.
+ * 테스트 계정과 샘플 항목을 만든다.
  *
  * 카카오·구글 OAuth를 등록하지 않아도 앱이 도는 걸 확인할 수 있게 하기 위한 것이다.
- * 운영 환경에서는 절대 돌리지 않는다.
+ * 여러 번 돌려도 같은 상태가 된다.
  *
  *   node scripts/seed-dev-user.mjs
+ *
+ * 공개 배포에 쓸 거면 비밀번호를 정해서 돌린다 — 기본값은 저장소에 적혀 있다.
+ *
+ *   LASTLY_DEV_PASSWORD=... node scripts/seed-dev-user.mjs
  */
 import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
@@ -12,8 +16,13 @@ import { addDays, format, subDays } from 'date-fns';
 
 config({ path: new URL('../.env', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
 
-const EMAIL = 'dev@lastly.local';
-const PASSWORD = 'lastly-dev-1234';
+const EMAIL = process.env.LASTLY_DEV_EMAIL ?? 'dev@lastly.local';
+
+/**
+ * 공개 저장소라 기본값은 누구나 안다.
+ * 공개 배포에 쓸 거면 LASTLY_DEV_PASSWORD 로 다른 값을 정한다.
+ */
+const PASSWORD = process.env.LASTLY_DEV_PASSWORD ?? 'lastly-dev-1234';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -72,6 +81,8 @@ async function findOrCreateUser() {
   const existing = list?.users.find((u) => u.email === EMAIL);
 
   if (existing) {
+    // 비밀번호를 바꿔 다시 돌렸을 수 있으므로 현재 값으로 맞춰 둔다.
+    await admin.auth.admin.updateUserById(existing.id, { password: PASSWORD });
     console.log(`기존 테스트 계정 사용: ${EMAIL}`);
     return existing.id;
   }
@@ -149,6 +160,11 @@ async function main() {
 
   console.log(`\n로그인 정보:  ${EMAIL}  /  ${PASSWORD}`);
   console.log(`다음 알림 기준일: ${iso(addDays(today, 1))} 이후`);
+
+  if (!process.env.LASTLY_DEV_PASSWORD) {
+    console.log('\n주의: 기본 비밀번호를 쓰고 있습니다. 저장소가 공개라 누구나 아는 값입니다.');
+    console.log('      공개 배포에 쓸 거면 LASTLY_DEV_PASSWORD 를 정해 다시 실행하세요.');
+  }
 }
 
 main().catch((err) => {
