@@ -49,6 +49,17 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * 설계 06의 "자주 쓰는 문장" 칩.
+   * 곧 할 차례인 것부터 세 개만 — 지금 누를 만한 것이어야 의미가 있다.
+   */
+  const quickPhrases = [
+    ...(feed.data?.due ?? []),
+    ...(feed.data?.upcoming ?? []),
+  ]
+    .slice(0, 3)
+    .map((item) => item.name);
+
   const complete = useMutation({
     mutationFn: (item: Item) => itemsApi.complete(item.id),
     onSuccess: async () => {
@@ -189,6 +200,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
         listening={speech.listening}
         liveTranscript={speech.transcript}
         interpreting={capture.interpreting}
+        quickPhrases={quickPhrases}
       />
 
       {capture.step === 'confirm' && capture.result ? (

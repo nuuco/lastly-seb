@@ -1,9 +1,10 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
+import { QuickPhrases } from './quick-phrases';
 import { Waveform } from './waveform';
 
 interface CaptureBarProps {
@@ -17,6 +18,8 @@ interface CaptureBarProps {
   liveTranscript: string;
   /** 서버가 문장을 해석하는 중. 몇 초 걸리므로 반드시 티를 내야 한다. */
   interpreting: boolean;
+  /** 설계 06 — 입력창이 비어 있고 포커스가 있을 때 위에 뜨는 칩. */
+  quickPhrases?: string[];
 }
 
 /**
@@ -27,11 +30,18 @@ interface CaptureBarProps {
  * 상태는 안쪽 내용과 오른쪽 버튼으로만 알린다.
  */
 export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function CaptureBar(
-  { value, onChange, onSubmit, onMic, listening, liveTranscript, interpreting },
+  { value, onChange, onSubmit, onMic, listening, liveTranscript, interpreting, quickPhrases = [] },
   ref,
 ) {
+  const [focused, setFocused] = useState(false);
+
+  // 빈 입력창에 포커스가 있을 때만. 뭔가 적기 시작하면 방해가 된다.
+  const showPhrases = focused && !value && !listening && !interpreting;
+
   return (
     <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] bg-[linear-gradient(180deg,rgba(245,242,236,0),var(--lastly-paper)_34%)] px-[22px] pb-[26px] pt-3.5">
+      {showPhrases ? <QuickPhrases phrases={quickPhrases} onPick={onChange} /> : null}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -55,6 +65,8 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
             ref={ref}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             placeholder="말하거나 적어보세요"
             /* 해석 중에는 보낸 문장을 그대로 두되 고치지 못하게 한다. */
             readOnly={interpreting}

@@ -202,6 +202,8 @@ AI를 먼저 올린다. API가 AI 주소를 알아야 하기 때문이다.
    https://lastly-xxxx.vercel.app
    ```
 
+   주소가 여럿이면 쉼표로 잇는다 (`a.vercel.app,b.vercel.app`). 공백은 넣지 않는다.
+
 2. **Save** 하면 자동으로 다시 배포된다.
 
 3. **Supabase** → **Authentication** → **URL Configuration**
