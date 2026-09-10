@@ -17,17 +17,14 @@ import { formatShortDate } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
 import { HomeError, HomeSkeleton } from './components/home-states';
-import { HeroCard } from './components/hero-card';
-import { AllDoneCard, HomeHeader, HomeSummaryLine } from './components/home-header';
-import { LaterRow, MoreRow, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
+import { HeroCarousel } from './components/hero-carousel';
+import { AllDoneCard, HomeHeader } from './components/home-header';
+import { LaterSummaryRow, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
 
 interface HomeScreenProps {
   /** 서버에서 미리 가져온 피드. 없으면(비로그인 등) 클라이언트가 다시 가져온다. */
   initialFeed: HomeFeed | null;
 }
-
-/** 여유 있는 항목은 설계처럼 1개만 보이고 나머지는 접어 둔다. */
-const LATER_PREVIEW = 1;
 
 /** 화면 04 / 05 / 05-B / 07 / 07-B / 08 / 09 / 10 — 단일 홈 구조의 전부. */
 export function HomeScreen({ initialFeed }: HomeScreenProps) {
@@ -45,7 +42,6 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   const capture = useCapture({ onInterpreted: () => setDraft('') });
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
-  const [showAllLater, setShowAllLater] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -138,21 +134,14 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
         ) : (
           <div>
             {due.length > 0 ? (
-              <div className="mt-3 flex flex-col gap-2">
-                {due.map((item) => (
-                  <HeroCard
-                    key={item.id}
-                    item={item}
-                    onComplete={complete.mutate}
-                    completing={complete.isPending && complete.variables?.id === item.id}
-                  />
-                ))}
-              </div>
+              <HeroCarousel
+                items={due}
+                onComplete={complete.mutate}
+                completingId={complete.isPending ? (complete.variables?.id ?? null) : null}
+              />
             ) : (
               <AllDoneCard summary={summary} />
             )}
-
-            <HomeSummaryLine summary={summary} />
 
             {upcoming.length > 0 ? (
               <>
@@ -169,12 +158,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
               <>
                 <SectionHeader label="여유 있는 항목" count={later.length} dim />
                 <RowGroup>
-                  {(showAllLater ? later : later.slice(0, LATER_PREVIEW)).map((item, i, arr) => (
-                    <LaterRow key={item.id} item={item} last={i === arr.length - 1 && showAllLater} />
-                  ))}
-                  {!showAllLater && later.length > LATER_PREVIEW ? (
-                    <MoreRow count={later.length - LATER_PREVIEW} onClick={() => setShowAllLater(true)} />
-                  ) : null}
+                  <LaterSummaryRow items={later} />
                 </RowGroup>
               </>
             ) : null}

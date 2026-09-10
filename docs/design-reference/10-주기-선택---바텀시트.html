@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>10 · 주기 선택 — 바텀시트</title>
+<style>
+  :root{
+    --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --accent:#4A433F; --accent-soft:#F7EDE6; --accent-ink:#9A4F31;
+    --sage:#D4836A; --sage-soft:#FAF0EA;
+    --ink:#2D2622; --ink-2:#5A534C; --ink-3:#6A6259;
+    --paper:#F5F2EC; --card:#FBF9F4; --line:#E6E0D4;
+    --label-display:block; --paper-tex:none;
+  }
+  @keyframes wv{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+  @keyframes caret{50%{opacity:0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes glow{
+    0%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    18%{box-shadow:0 0 0 2px rgba(168,95,68,.85),0 0 26px 7px rgba(168,95,68,.30),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    34%{box-shadow:0 0 0 1.5px rgba(168,95,68,.55),0 0 14px 2px rgba(168,95,68,.18),0 12px 26px rgba(70,58,44,.08);border-color:#D9A87F;}
+    52%{box-shadow:0 0 0 2.5px rgba(168,95,68,.95),0 0 34px 10px rgba(168,95,68,.36),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    68%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 12px 2px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    84%{box-shadow:0 0 0 2px rgba(168,95,68,.8),0 0 24px 6px rgba(168,95,68,.26),0 12px 26px rgba(70,58,44,.08);border-color:#C98A54;}
+    100%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+  }
+  @keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+  html,body{margin:0;padding:0;}
+  body{background:#EAE5DA;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-ink);text-decoration:none;}
+  a:hover{color:#0062CC;}
+</style>
+<body style="margin:0;padding:40px;background:#EDE8DF;font-family:'Pretendard',-apple-system,system-ui,sans-serif;">
+<div style="--label-display:block;">
+<!-- 10 주기 바텀시트 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">10 · 주기 선택 — 바텀시트</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;color:#6E665D;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid #6E665D;border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 28px 34px;box-sizing:border-box;opacity:.4;">
+          <div style="font-size:14px;color:var(--ink-3);">이렇게 들었어요</div>
+          <div style="margin-top:10px;font-size:19px;font-weight:600;color:var(--ink-2);">“화분 물 주고 영양제 꽂았어”</div>
+          <div style="margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:26px 24px;box-shadow:0 8px 28px rgba(70,58,44,.06);text-align:center;">
+            <div style="font-size:24px;font-weight:700;letter-spacing:-.03em;">화분 물주기</div>
+          </div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(70,58,44,.28);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.96);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 24px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#E1D9CB;margin:0 auto 20px;"></div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;">얼마마다 알려드릴까요?</div>
+          <div style="font-size:13.5px;color:var(--ink-3);margin-top:6px;">화분 물주기</div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1.5px solid #4A433F;background:#F7EDE6;border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:700;">2주마다</span>
+              <span style="display:flex;align-items:center;gap:10px;font-size:13px;color:#9A4F31;">9월 20일<span style="width:20px;height:20px;border-radius:50%;background:#4A433F;display:flex;align-items:center;justify-content:center;"><span style="width:8px;height:4px;border-left:1.8px solid #FFFFFF;border-bottom:1.8px solid #FFFFFF;transform:rotate(-45deg);margin-top:-2px;display:block;"></span></span></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">1달마다</span><span style="font-size:13px;color:var(--ink-3);">10월 6일</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">3달마다</span><span style="font-size:13px;color:var(--ink-3);">12월 6일</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">직접 입력</span><span style="width:7px;height:7px;border-right:1.8px solid var(--ink-3);border-top:1.8px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+            </div>
+          </div>
+          <div style="margin-top:20px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:56px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">이 주기로 저장</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+</div>
+</body>

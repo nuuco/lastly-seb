@@ -26,18 +26,25 @@ const config: Config = {
 
         sage: 'var(--lastly-sage)',
         'sage-soft': 'var(--lastly-sage-soft)',
-        'sage-ink': 'var(--lastly-sage-ink)',
 
         action: 'var(--lastly-action)',
         'action-pressed': 'var(--lastly-action-pressed)',
-        'dot-warn': 'var(--lastly-dot-warn)',
+        // 카드 안 "오늘 했어요" — 꽉 찬 버튼이 아니라 옅게 깔린 면이다.
+        'action-soft': 'var(--lastly-action-soft)',
+        'action-soft-ink': 'var(--lastly-action-soft-ink)',
 
         'bar-track': 'var(--lastly-bar-track)',
         'bar-near': 'var(--lastly-bar-near)',
         'bar-far': 'var(--lastly-bar-far)',
-        'wave-1': 'var(--lastly-wave-1)',
-        'wave-2': 'var(--lastly-wave-2)',
-        'wave-3': 'var(--lastly-wave-3)',
+
+        'dot-on': 'var(--lastly-dot-on)',
+        'dot-off': 'var(--lastly-dot-off)',
+        'dot-mute': 'var(--lastly-dot-mute)',
+
+        'listen-edge': 'var(--lastly-listen-edge)',
+        'ink-mute': 'var(--lastly-ink-mute)',
+        'ink-faint': 'var(--lastly-ink-faint)',
+        backdrop: 'var(--lastly-backdrop)',
 
         danger: 'var(--lastly-danger)',
 
@@ -51,7 +58,7 @@ const config: Config = {
         'ink-secondary': 'var(--lastly-ink-2)',
         'ink-muted': 'var(--lastly-ink-3)',
         'ink-disabled': 'var(--lastly-ink-4)',
-        success: 'var(--lastly-sage-ink)',
+        success: 'var(--lastly-accent-ink)',
         warning: 'var(--lastly-accent-ink)',
         'warning-soft': 'var(--lastly-accent-soft)',
       },
@@ -79,6 +86,8 @@ const config: Config = {
         wide2: '.02em',
         wide4: '.04em',
         t1: '-.01em',
+        t2: '-.02em',
+        t3: '-.03em',
         t25: '-.025em',
         t35: '-.035em',
         t4: '-.04em',
@@ -96,6 +105,9 @@ const config: Config = {
         hero: 'var(--lastly-r-hero)',
         phone: 'var(--lastly-r-phone)',
         sheet: 'var(--lastly-r-sheet)',
+        btn: 'var(--lastly-r-btn)',
+        pill: 'var(--lastly-r-pill)',
+        soft: 'var(--lastly-r-soft)',
       },
 
       boxShadow: {
@@ -112,6 +124,8 @@ const config: Config = {
         key: 'var(--lastly-shadow-key)',
         topline: 'var(--lastly-shadow-topline)',
         listen: 'var(--lastly-ring-listen)',
+        input: 'var(--lastly-shadow-input)',
+        'hero-card': 'var(--lastly-shadow-hero-card)',
       },
 
       backgroundImage: {
@@ -120,14 +134,57 @@ const config: Config = {
       },
 
       keyframes: {
-        // 음성 파형 막대 — 세로로 눌렸다 펴진다.
-        wv: { from: { transform: 'scaleY(.3)' }, to: { transform: 'scaleY(1)' } },
         // 입력 커서 깜빡임.
         caret: { '50%': { opacity: '0' } },
+        /**
+         * 듣는 중인 입력 바가 숨쉬는 테두리 — 설계 07.
+         * 일정한 맥박이 아니라 불규칙한 마디로 되어 있다. 말소리에 반응하는 것처럼
+         * 보이게 하려는 것이므로 균등하게 다듬지 않는다.
+         */
+        glow: {
+          '0%,100%': {
+            boxShadow:
+              '0 0 0 1.5px rgba(168,95,68,.5), 0 0 10px 1px rgba(168,95,68,.16), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#E0BFA6',
+          },
+          '18%': {
+            boxShadow:
+              '0 0 0 2px rgba(168,95,68,.85), 0 0 26px 7px rgba(168,95,68,.30), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#A85F44',
+          },
+          '34%': {
+            boxShadow:
+              '0 0 0 1.5px rgba(168,95,68,.55), 0 0 14px 2px rgba(168,95,68,.18), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#D9A87F',
+          },
+          '52%': {
+            boxShadow:
+              '0 0 0 2.5px rgba(168,95,68,.95), 0 0 34px 10px rgba(168,95,68,.36), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#A85F44',
+          },
+          '68%': {
+            boxShadow:
+              '0 0 0 1.5px rgba(168,95,68,.5), 0 0 12px 2px rgba(168,95,68,.16), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#E0BFA6',
+          },
+          '84%': {
+            boxShadow:
+              '0 0 0 2px rgba(168,95,68,.8), 0 0 24px 6px rgba(168,95,68,.26), 0 12px 26px rgba(70,58,44,.08)',
+            borderColor: '#C98A54',
+          },
+        },
+        // 듣는 중을 알리는 점.
+        halo: {
+          '0%,100%': { opacity: '.5', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.25)' },
+        },
+        spin: { to: { transform: 'rotate(360deg)' } },
       },
       animation: {
-        wv: 'wv .8s ease-in-out infinite alternate',
         caret: 'caret 1s step-end infinite',
+        glow: 'glow 2.4s ease-in-out infinite',
+        halo: 'halo 1.1s ease-in-out infinite',
+        spin: 'spin .8s linear infinite',
       },
 
       fontFamily: { sans: ['var(--lastly-font)'] },

@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>05-D · 홈 — 검색 (항목 · 메모)</title>
+<style>
+  :root{
+    --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --accent:#4A433F; --accent-soft:#F7EDE6; --accent-ink:#9A4F31;
+    --sage:#D4836A; --sage-soft:#FAF0EA;
+    --ink:#2D2622; --ink-2:#5A534C; --ink-3:#6A6259;
+    --paper:#F5F2EC; --card:#FBF9F4; --line:#E6E0D4;
+    --label-display:block; --paper-tex:none;
+  }
+  @keyframes wv{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+  @keyframes caret{50%{opacity:0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes glow{
+    0%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    18%{box-shadow:0 0 0 2px rgba(168,95,68,.85),0 0 26px 7px rgba(168,95,68,.30),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    34%{box-shadow:0 0 0 1.5px rgba(168,95,68,.55),0 0 14px 2px rgba(168,95,68,.18),0 12px 26px rgba(70,58,44,.08);border-color:#D9A87F;}
+    52%{box-shadow:0 0 0 2.5px rgba(168,95,68,.95),0 0 34px 10px rgba(168,95,68,.36),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    68%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 12px 2px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    84%{box-shadow:0 0 0 2px rgba(168,95,68,.8),0 0 24px 6px rgba(168,95,68,.26),0 12px 26px rgba(70,58,44,.08);border-color:#C98A54;}
+    100%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+  }
+  @keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+  html,body{margin:0;padding:0;}
+  body{background:#EAE5DA;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-ink);text-decoration:none;}
+  a:hover{color:#0062CC;}
+</style>
+<body style="margin:0;padding:40px;background:#EDE8DF;font-family:'Pretendard',-apple-system,system-ui,sans-serif;">
+<div style="--label-display:block;">
+<!-- 05-D 검색 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05-D · 홈 — 검색 (항목 · 메모)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid #A85F44;border-radius:16px;padding:12px 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A4F31" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
+              <span style="flex:1;display:flex;align-items:center;font-size:16px;font-weight:600;letter-spacing:-.02em;">필터<span style="width:2px;height:18px;background:#A85F44;margin-left:3px;display:block;animation:caret 1s step-end infinite;"></span></span>
+            </div>
+            <span style="font-size:14.5px;color:var(--ink-2);">취소</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;font-size:12.5px;color:var(--ink-3);padding:0 2px;">항목 이름과 메모에서 찾아요</div>
+
+          <div style="flex:0 0 auto;margin-top:20px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;color:var(--ink);">항목</span><span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15.5px;font-weight:600;">에어컨 <mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 청소</div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:4px;">45일 전 · 45일마다</div>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#A85F44;">오늘</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15.5px;font-weight:600;">정수기 <mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 교체</div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:4px;">20일 전 · 3달마다</div>
+              </div>
+              <span style="font-size:13px;font-weight:600;color:var(--ink-3);">D-70</span>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:20px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;color:var(--ink-2);">메모</span><span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="font-size:14.5px;line-height:1.5;color:var(--ink-2);">“<mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 두 장 남음, 다음엔 주문하기”</div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:5px;">에어컨 필터 청소 · 7월 23일</div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="font-size:14.5px;line-height:1.5;color:var(--ink-2);">“<mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 색이 많이 어두웠음”</div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:5px;">정수기 필터 교체 · 8월 17일</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+</div>
+</body>

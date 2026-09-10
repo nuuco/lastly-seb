@@ -1,4 +1,38 @@
-<div style="flex:0 0 auto;width:390px;">
+<!doctype html>
+<meta charset="utf-8">
+<title>11 · 항목 상세</title>
+<style>
+  :root{
+    --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --accent:#4A433F; --accent-soft:#F7EDE6; --accent-ink:#9A4F31;
+    --sage:#D4836A; --sage-soft:#FAF0EA;
+    --ink:#2D2622; --ink-2:#5A534C; --ink-3:#6A6259;
+    --paper:#F5F2EC; --card:#FBF9F4; --line:#E6E0D4;
+    --label-display:block; --paper-tex:none;
+  }
+  @keyframes wv{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+  @keyframes caret{50%{opacity:0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes glow{
+    0%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    18%{box-shadow:0 0 0 2px rgba(168,95,68,.85),0 0 26px 7px rgba(168,95,68,.30),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    34%{box-shadow:0 0 0 1.5px rgba(168,95,68,.55),0 0 14px 2px rgba(168,95,68,.18),0 12px 26px rgba(70,58,44,.08);border-color:#D9A87F;}
+    52%{box-shadow:0 0 0 2.5px rgba(168,95,68,.95),0 0 34px 10px rgba(168,95,68,.36),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    68%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 12px 2px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    84%{box-shadow:0 0 0 2px rgba(168,95,68,.8),0 0 24px 6px rgba(168,95,68,.26),0 12px 26px rgba(70,58,44,.08);border-color:#C98A54;}
+    100%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+  }
+  @keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+  html,body{margin:0;padding:0;}
+  body{background:#EAE5DA;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-ink);text-decoration:none;}
+  a:hover{color:#0062CC;}
+</style>
+<body style="margin:0;padding:40px;background:#EDE8DF;font-family:'Pretendard',-apple-system,system-ui,sans-serif;">
+<div style="--label-display:block;">
+<!-- 11 항목 상세 -->
+    <div style="flex:0 0 auto;width:390px;">
       <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">11 · 항목 상세</div>
       <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
         <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
@@ -19,7 +53,7 @@
           <div style="margin-top:18px;display:flex;gap:8px;">
             <div style="flex:1;background:var(--sage-soft);border-radius:18px;padding:14px 16px;">
               <div style="font-size:12px;color:#6E665D;">다음 예정일</div>
-              <div style="font-size:16px;font-weight:700;color:#4A5439;margin-top:4px;">2일 후 · 9월 8일</div>
+              <div style="font-size:16px;font-weight:700;color:#96543A;margin-top:4px;">2일 후 · 9월 8일</div>
             </div>
             <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;">
               <div style="font-size:12px;color:var(--ink-3);">관리 주기</div>
@@ -30,17 +64,38 @@
           <div style="margin-top:20px;flex:1;min-height:0;">
             <div style="font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:8px;padding:0 4px;">지난 기록</div>
             <div style="display:flex;flex-direction:column;">
-              <div style="display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line);">
-                <span style="width:7px;height:7px;border-radius:50%;background:var(--sage);display:block;flex:0 0 auto;"></span>
-                <span style="flex:1;font-size:15px;">8월 25일 (화)</span><span style="font-size:13px;color:var(--ink-3);">16일 만에</span><span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-left:10px;display:block;flex:0 0 auto;"></span>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--sage);display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">8월 25일 (화)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">16일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“섬유유연제 새로 개봉”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
               </div>
-              <div style="display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line);">
-                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;"></span>
-                <span style="flex:1;font-size:15px;">8월 9일 (일)</span><span style="font-size:13px;color:var(--ink-3);">14일 만에</span><span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-left:10px;display:block;flex:0 0 auto;"></span>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">8월 9일 (일)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">14일 만에</span>
+                  </div>
+                  <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">메모 없음</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
               </div>
-              <div style="display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line);">
-                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;"></span>
-                <span style="flex:1;font-size:15px;">7월 26일 (일)</span><span style="font-size:13px;color:var(--ink-3);">20일 만에</span><span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-left:10px;display:block;flex:0 0 auto;"></span>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">7월 26일 (일)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">20일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“커버까지 같이 세탁”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:14px;">
@@ -51,12 +106,10 @@
           </div>
         </div>
         <div style="flex:0 0 auto;padding:10px 24px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
-          <div style="background:#B0552F;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(176,85,47,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">오늘 했어요</div>
+          <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">오늘 했어요</div>
           <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
         </div>
       </div>
     </div>
-
-    <!-- 11-B 기록 수정 -->
-    <div style="flex:0 0 auto;width:390px;">
-      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;"
+</div>
+</body>

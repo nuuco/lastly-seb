@@ -15,50 +15,42 @@ export function HomeHeader({
   empty?: boolean;
 }) {
   return (
-    <header className="safe-top flex items-start justify-between px-1 pt-2">
-      <div className="min-w-0">
-        <div className="flex items-center gap-[7px] text-13 text-ink-3">
-          <span className="truncate">
-            {formatHeaderDate(today)}
-            {!empty && summary.greetingName ? ` · ${summary.greetingName}님` : ''}
-          </span>
-          <span className="flex shrink-0 items-center gap-1 font-semibold text-sage-ink">
-            <span className="block h-[5px] w-[5px] rounded-full bg-sage" />
-            백업됨
-          </span>
+    <header className="safe-top px-1 pt-2">
+      {/* 첫 줄은 날짜와 이름. 작고 흐리게 두어 아래 헤드라인이 먼저 읽히게 한다. */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 truncate text-13 text-ink-3">
+          {formatHeaderDate(today)}
+          {!empty && summary.greetingName ? ` · ${summary.greetingName}님` : ''}
         </div>
 
+        <Link href="/settings" aria-label="설정" className="shrink-0">
+          <GearIcon />
+        </Link>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-3">
         {empty ? (
-          <h1 className="mt-1 text-[22px] font-bold tracking-[-.03em] text-ink">
+          <h1 className="min-w-0 text-[22px] font-bold tracking-t3 text-ink">
             안녕하세요{summary.greetingName ? `, ${summary.greetingName}님` : ''}
           </h1>
         ) : (
-          <h1 className="mt-[5px] text-23 font-bold tracking-t35 text-ink">{headline(summary)}</h1>
+          <h1 className="min-w-0 text-23 font-bold tracking-t35 text-ink">{headline(summary)}</h1>
         )}
       </div>
-
-      <Link href="/settings" aria-label="설정" className="shrink-0 pl-3 pt-1">
-        <GearIcon />
-      </Link>
     </header>
   );
 }
 
+/**
+ * 설계 05 는 "오늘 챙길 가사 2개" 처럼 셈만 말한다.
+ *
+ * dueTodayCount 는 이미 밀린 항목까지 세고 있다(서버의 due 버킷 크기 그대로).
+ * 여기에 overdueCount 를 더하면 밀린 것이 두 번 세어져 카드 수와 어긋난다.
+ */
 function headline(summary: HomeSummary): string {
-  if (summary.overdueCount > 0) return `밀린 가사 ${summary.overdueCount}개가 있어요`;
-  if (summary.dueTodayCount > 0) return `오늘 챙길 가사 ${summary.dueTodayCount}개가 있어요`;
-  return '오늘 챙길 가사는 없어요';
-}
-
-/** "이번 주 3개 완료 · 평균 주기 18일 · 밀린 항목 없음" */
-export function HomeSummaryLine({ summary }: { summary: HomeSummary }) {
-  const parts = [
-    `이번 주 ${summary.completedThisWeek}개 완료`,
-    summary.averageIntervalDays ? `평균 주기 ${summary.averageIntervalDays}일` : null,
-    summary.overdueCount > 0 ? `밀린 항목 ${summary.overdueCount}개` : '밀린 항목 없음',
-  ].filter(Boolean);
-
-  return <p className="mt-2.5 px-1.5 text-12.5 text-ink-3">{parts.join(' · ')}</p>;
+  return summary.dueTodayCount > 0
+    ? `오늘 챙길 가사 ${summary.dueTodayCount}개`
+    : '오늘 챙길 가사가 없어요';
 }
 
 /** 오늘 할 게 없을 때 (설계 05-B). */

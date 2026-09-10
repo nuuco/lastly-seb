@@ -57,7 +57,7 @@ export function ConfirmSheet({
           <span
             className={cn(
               'shrink-0 rounded-[9px] px-[11px] py-1.5 text-12.5 font-bold',
-              isNew ? 'bg-accent-soft text-accent-ink' : 'bg-sage-soft text-sage-ink',
+              isNew ? 'bg-action text-white' : 'border border-line text-ink-2',
             )}
           >
             {isNew ? '새 항목' : '기존 항목'}

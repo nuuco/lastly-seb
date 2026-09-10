@@ -9,7 +9,7 @@ import { cycleProgress, describeCadence, formatDueBadge, formatShortDate } from 
 /**
  * 설계 05는 버킷마다 행 모양이 다르다. 하나로 합치면 화면이 평평해진다.
  *  - 다가오는 항목: 이름 + D-n 크게, 아래에 경과 진행 막대
- *  - 여유 있는 항목: 이름·메타를 왼쪽에 쌓고 D-n은 작고 흐리게
+ *  - 여유 있는 항목: 목록이 아니라 "가장 가까운 건 ○○" 한 줄
  */
 
 /** 항목들을 묶는 둥근 카드. 행 사이는 구분선으로만 나눈다. */
@@ -21,7 +21,7 @@ export function RowGroup({ children }: { children: React.ReactNode }) {
 
 export function UpcomingRow({ item, last }: { item: Item; last: boolean }) {
   const progress = cycleProgress(item);
-  // 곧 다가온 항목은 따뜻한 색으로, 아직 여유가 있으면 세이지로 칠한다.
+  // 곧 다가온 항목은 진하게, 아직 여유가 있으면 옅게 칠한다.
   const near = (item.daysUntilDue ?? 99) <= 7;
 
   return (
@@ -62,41 +62,41 @@ export function UpcomingRow({ item, last }: { item: Item; last: boolean }) {
   );
 }
 
-export function LaterRow({ item, last }: { item: Item; last: boolean }) {
+/**
+ * 여유 있는 항목 — 설계 05 는 이걸 목록으로 펼치지 않는다.
+ * "가장 가까운 건 ○○" 한 줄로 접어두고 전체는 눌러서 본다.
+ * 아직 한참 남은 일이 화면을 차지하면 오늘 할 일이 묻히기 때문이다.
+ */
+export function LaterSummaryRow({ items }: { items: Item[] }) {
+  const nearest = items[0];
+  if (!nearest) return null;
+
   return (
     <Link
-      href={`/items/${item.id}`}
-      className={cn(
-        'flex items-center gap-2.5 px-0.5 py-[15px] transition-colors active:bg-surface-alt',
-        !last && 'border-b border-line',
-      )}
+      href={`/items/${nearest.id}`}
+      className="flex items-center gap-2.5 px-0.5 py-3.5 transition-colors active:bg-surface-alt"
     >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-15.5 font-semibold tracking-[-.02em] text-ink-2">{item.name}</p>
-        <p className="mt-1 text-12 text-ink-3">
-          {/* 쉬는 중이면 언제 돌아오는지 말한다 — 숨겨두고 잊게 두지 않는다. */}
-          {item.snoozedUntil
-            ? `쉬는 중 · ${formatShortDate(item.snoozedUntil)}에 다시`
-            : `${item.daysSinceLastDone !== null ? `${item.daysSinceLastDone}일 전` : '기록 없음'} · ${describeCadence(item.cadence)}`}
-        </p>
-      </div>
-      <span className="shrink-0 text-12.5 font-semibold tracking-[-.02em] text-ink-3">
-        {item.snoozedUntil ? '휴식' : formatDueBadge(item.daysUntilDue)}
+      <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-2">
+        {/* 쉬는 중이면 언제 돌아오는지 말한다 — 숨겨두고 잊게 두지 않는다. */}
+        {nearest.snoozedUntil
+          ? `${nearest.name}은 ${formatShortDate(nearest.snoozedUntil)}까지 쉬는 중`
+          : `가장 가까운 건 ${nearest.name}`}
       </span>
+      <span className="shrink-0 text-12.5 font-semibold tracking-[-.02em] text-ink-3">
+        {nearest.snoozedUntil ? '휴식' : formatDueBadge(nearest.daysUntilDue)}
+      </span>
+      <Chevron />
     </Link>
   );
 }
 
-/** "나머지 N개 보기" — 카드 안 마지막 행. */
-export function MoreRow({ count, onClick }: { count: number; onClick: () => void }) {
+/** 오른쪽 끝 꺾쇠. 설계가 SVG 대신 테두리 두 개를 돌려서 그렸다. */
+function Chevron() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center justify-center px-0.5 py-3 text-13 font-semibold text-accent-ink"
-    >
-      나머지 {count}개 보기
-    </button>
+    <span
+      className="block h-1.5 w-1.5 shrink-0 rotate-45 border-r-[1.5px] border-t-[1.5px] border-ink-4"
+      aria-hidden
+    />
   );
 }
 

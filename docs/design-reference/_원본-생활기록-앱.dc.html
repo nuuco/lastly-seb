@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root{
+    --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --accent:#4A433F; --accent-soft:#F7EDE6; --accent-ink:#9A4F31;
+    --sage:#D4836A; --sage-soft:#FAF0EA;
+    --ink:#2D2622; --ink-2:#5A534C; --ink-3:#6A6259;
+    --paper:#F5F2EC; --card:#FBF9F4; --line:#E6E0D4;
+    --label-display:block; --paper-tex:none;
+  }
+  @keyframes wv{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+  @keyframes caret{50%{opacity:0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes glow{
+    0%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    18%{box-shadow:0 0 0 2px rgba(168,95,68,.85),0 0 26px 7px rgba(168,95,68,.30),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    34%{box-shadow:0 0 0 1.5px rgba(168,95,68,.55),0 0 14px 2px rgba(168,95,68,.18),0 12px 26px rgba(70,58,44,.08);border-color:#D9A87F;}
+    52%{box-shadow:0 0 0 2.5px rgba(168,95,68,.95),0 0 34px 10px rgba(168,95,68,.36),0 12px 26px rgba(70,58,44,.08);border-color:#A85F44;}
+    68%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 12px 2px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+    84%{box-shadow:0 0 0 2px rgba(168,95,68,.8),0 0 24px 6px rgba(168,95,68,.26),0 12px 26px rgba(70,58,44,.08);border-color:#C98A54;}
+    100%{box-shadow:0 0 0 1.5px rgba(168,95,68,.5),0 0 10px 1px rgba(168,95,68,.16),0 12px 26px rgba(70,58,44,.08);border-color:#E0BFA6;}
+  }
+  @keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+  html,body{margin:0;padding:0;}
+  body{background:#EAE5DA;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-ink);text-decoration:none;}
+  a:hover{color:#0062CC;}
+</style>
+</helmet>
+<div style="min-height:100%;padding:56px 32px 90px;background:#EAE5DA;background-image:var(--paper-tex);font-family:var(--font);color:var(--ink);box-sizing:border-box;">
+
+  <div style="max-width:1240px;margin:0 auto 52px;">
+    <div style="font-size:13px;letter-spacing:.16em;font-weight:700;color:var(--accent-ink);">LASTLY</div>
+    <h1 style="font-size:36px;font-weight:700;letter-spacing:-.035em;line-height:1.35;margin:14px 0 10px;max-width:24ch;">Lastly — 말 한마디면 기록 끝.<br />마지막으로 언제 했는지 대신 기억해요.</h1>
+    <p style="margin:0;font-size:15px;color:var(--ink-2);font-weight:400;">모바일 웹앱 화면 26종 (02·05·07·10·12·14 분기 포함) · 390 × 844 · 하단 탭바 없는 단일 홈 구조</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:56px 44px;justify-content:center;align-items:flex-start;">
+
+    <!-- 01 온보딩 소개 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">01 · 온보딩 — 소개</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:52px 32px 40px;box-sizing:border-box;">
+          <div style="font-size:13px;letter-spacing:.16em;font-weight:700;color:var(--accent-ink);">LASTLY</div>
+          <h2 style="font-size:31px;font-weight:700;letter-spacing:-.04em;line-height:1.42;margin:26px 0 0;">마지막으로 언제 했는지<br />기억해주는 앱</h2>
+          <p style="margin:18px 0 0;font-size:15.5px;line-height:1.8;color:var(--ink-2);">“오늘 이불 빨았어”처럼 한 줄만 적으면,<br />다음 알림일까지 알아서 척척 계산해드려요.</p>
+
+          <div style="margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:4px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+            <div style="display:flex;gap:14px;align-items:flex-start;padding:16px 2px;border-bottom:1px solid var(--line);">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:600;letter-spacing:-.025em;">한 문장으로 기록</div>
+                <div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-top:5px;word-break:keep-all;">말하거나 적으면 항목과 날짜를 알아서 정리해요.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start;padding:16px 2px;border-bottom:1px solid var(--line);">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:600;letter-spacing:-.025em;">주기는 자동 계산</div>
+                <div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-top:5px;word-break:keep-all;">지금까지 해온 간격을 보고 다음 시점을 잡아드려요.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start;padding:16px 2px;">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">3</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:600;letter-spacing:-.025em;">때가 되면 조용히 알림</div>
+                <div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-top:5px;word-break:keep-all;">재촉하지 않고 알맞은 때에 한 번만 알려드려요.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;">
+            <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.22);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">시작하기</div>
+            <div style="text-align:center;margin-top:18px;font-size:14px;color:var(--ink-3);">이미 쓰고 있어요</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 홈 화면에 추가 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">02-A · 홈 화면에 추가 — 아이폰 · 사파리</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:34px 32px 38px;box-sizing:border-box;">
+          <div style="display:flex;gap:6px;margin-bottom:24px;">
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--accent);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+          </div>
+          <h2 style="font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.45;margin:0;">알림을 받으려면<br />홈 화면에 추가해 주세요</h2>
+          <p style="margin:12px 0 0;font-size:14.5px;line-height:1.75;color:var(--ink-2);">아이폰 사파리는 홈 화면에 추가한 뒤에만<br />알림을 보낼 수 있어요. 10초면 끝나요.</p>
+
+          <div style="margin-top:18px;display:flex;gap:5px;background:#E6E0D4;border-radius:14px;padding:4px;">
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;background:#FFFFFF;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(70,58,44,.08);">아이폰 · 사파리</span>
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;font-size:13.5px;font-weight:600;color:#5A534C;">안드로이드 · 크롬</span>
+          </div>
+
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:18px;">
+            <div style="display:flex;gap:13px;align-items:flex-start;">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</span>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:600;margin-bottom:11px;">아래쪽 <span style="color:var(--accent-ink);">공유 버튼</span>을 눌러요</div>
+                <div style="background:var(--card);border:1px solid var(--line);border-radius:22px;padding:13px 14px;box-shadow:0 4px 16px rgba(70,58,44,.04);display:flex;align-items:center;gap:12px;">
+                  <span style="flex:1;height:32px;border-radius:10px;background:#F3EFE6;display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--ink-3);box-sizing:border-box;">majimak.app</span>
+                  <span style="position:relative;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+                    <span style="width:12px;height:13px;border:1.6px solid var(--accent-ink);border-top:none;border-radius:0 0 3px 3px;display:block;"></span>
+                    <span style="position:absolute;top:9px;left:50%;margin-left:-1px;width:2px;height:11px;background:var(--accent-ink);display:block;"></span>
+                    <span style="position:absolute;top:10px;left:50%;margin-left:-4px;width:8px;height:8px;border-left:1.8px solid var(--accent-ink);border-top:1.8px solid var(--accent-ink);transform:rotate(45deg);display:block;"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:13px;align-items:flex-start;">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</span>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:600;margin-bottom:11px;">목록에서 <span style="color:var(--accent-ink);">홈 화면에 추가</span>를 골라요</div>
+                <div style="background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:14px;color:var(--ink-3);border-bottom:1px solid var(--line);">
+                    <span>즐겨찾기에 추가</span><span style="width:17px;height:17px;border:1.5px solid #E1D9CB;border-radius:5px;display:block;"></span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;font-size:15px;font-weight:600;background:var(--accent-soft);color:var(--accent-ink);">
+                    <span>홈 화면에 추가</span>
+                    <span style="position:relative;width:19px;height:19px;border:1.6px solid var(--accent-ink);border-radius:6px;display:block;">
+                      <span style="position:absolute;top:8px;left:3.5px;width:10px;height:1.6px;background:var(--accent-ink);display:block;"></span>
+                      <span style="position:absolute;left:8px;top:3.5px;height:10px;width:1.6px;background:var(--accent-ink);display:block;"></span>
+                    </span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:14px;color:var(--ink-3);border-top:1px solid var(--line);">
+                    <span>복사</span><span style="width:17px;height:17px;border:1.5px solid #E1D9CB;border-radius:5px;display:block;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;">
+            <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">추가했어요</div>
+            <div style="text-align:center;margin-top:18px;font-size:14px;color:var(--ink-3);">나중에 하기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02-B 안드로이드 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">02-B · 홈 화면에 추가 — 안드로이드 · 크롬</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:34px 32px 38px;box-sizing:border-box;">
+          <div style="display:flex;gap:6px;margin-bottom:24px;">
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--accent);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+          </div>
+          <h2 style="font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.45;margin:0;">알림을 받으려면<br />홈 화면에 추가해 주세요</h2>
+          <p style="margin:12px 0 0;font-size:14.5px;line-height:1.75;color:var(--ink-2);">크롬 메뉴에서 한 번만 추가해두면<br />앱처럼 바로 열리고 알림도 받을 수 있어요.</p>
+
+          <div style="margin-top:18px;display:flex;gap:5px;background:#E6E0D4;border-radius:14px;padding:4px;">
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;font-size:13.5px;font-weight:600;color:#5A534C;">아이폰 · 사파리</span>
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;background:#FFFFFF;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(70,58,44,.08);">안드로이드 · 크롬</span>
+          </div>
+
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:18px;">
+            <div style="display:flex;gap:13px;align-items:flex-start;">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</span>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:600;margin-bottom:11px;">주소창 오른쪽 <span style="color:var(--accent-ink);">메뉴 버튼</span>을 눌러요</div>
+                <div style="background:var(--card);border:1px solid var(--line);border-radius:22px;padding:13px 14px;box-shadow:0 4px 16px rgba(70,58,44,.04);display:flex;align-items:center;gap:12px;">
+                  <span style="flex:1;height:32px;border-radius:16px;background:#F3EFE6;display:flex;align-items:center;padding:0 14px;font-size:12px;color:var(--ink-3);box-sizing:border-box;">majimak.app</span>
+                  <span style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:0 0 auto;">
+                    <span style="width:3.5px;height:3.5px;border-radius:50%;background:var(--accent-ink);display:block;"></span>
+                    <span style="width:3.5px;height:3.5px;border-radius:50%;background:var(--accent-ink);display:block;"></span>
+                    <span style="width:3.5px;height:3.5px;border-radius:50%;background:var(--accent-ink);display:block;"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:13px;align-items:flex-start;">
+              <span style="flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</span>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:600;margin-bottom:11px;">메뉴에서 <span style="color:var(--accent-ink);">홈 화면에 추가</span>를 골라요</div>
+                <div style="background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:14px;color:var(--ink-3);border-bottom:1px solid var(--line);">
+                    <span>새 탭</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;font-size:15px;font-weight:600;background:var(--accent-soft);color:var(--accent-ink);">
+                    <span>홈 화면에 추가</span>
+                    <span style="position:relative;width:19px;height:19px;border:1.6px solid var(--accent-ink);border-radius:6px;display:block;">
+                      <span style="position:absolute;top:8px;left:3.5px;width:10px;height:1.6px;background:var(--accent-ink);display:block;"></span>
+                      <span style="position:absolute;left:8px;top:3.5px;height:10px;width:1.6px;background:var(--accent-ink);display:block;"></span>
+                    </span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:14px;color:var(--ink-3);border-top:1px solid var(--line);">
+                    <span>북마크</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:9px;align-items:flex-start;padding:0 2px;">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--sage);margin-top:7px;display:block;flex:0 0 auto;"></span>
+              <span style="font-size:13.5px;line-height:1.7;color:var(--ink-2);">“앱 설치” 안내가 바로 뜨면 그것만 눌러도 돼요.</span>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;">
+            <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">추가했어요</div>
+            <div style="text-align:center;margin-top:18px;font-size:14px;color:var(--ink-3);">나중에 하기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 알림 권한 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">03 · 온보딩 — 알림 권한</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:34px 32px 38px;box-sizing:border-box;">
+          <div style="display:flex;gap:6px;margin-bottom:24px;">
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--line);display:block;"></span>
+            <span style="width:26px;height:4px;border-radius:2px;background:var(--accent);display:block;"></span>
+          </div>
+          <h2 style="font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.45;margin:0;">잔소리 없이,<br />알맞은 때에 조용히 짚어드릴게요</h2>
+          <p style="margin:12px 0 0;font-size:14.5px;line-height:1.75;color:var(--ink-2);">재촉하지 않아요. 지금 안 해도 괜찮고,<br />놓치지 않게 다음 타이밍에 다시 챙겨드릴게요.</p>
+
+          <div style="margin-top:40px;background:linear-gradient(180deg,#F2EEE5,#E7E1D5);border-radius:28px;padding:26px 18px 28px;">
+            <div style="text-align:center;font-size:13px;color:#6E665D;letter-spacing:.06em;">9월 6일 일요일</div>
+            <div style="text-align:center;font-size:56px;font-weight:600;letter-spacing:-.04em;line-height:1.1;margin-top:2px;color:#2D2622;">9:41</div>
+            <div style="margin-top:22px;background:rgba(255,255,255,.86);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-radius:20px;padding:16px 18px;box-shadow:0 8px 20px rgba(70,58,44,.08);">
+              <div style="display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-3);margin-bottom:8px;">
+                <span style="width:16px;height:16px;border-radius:5px;background:var(--accent);display:block;"></span>
+                <span style="font-weight:600;color:var(--ink-2);">Lastly</span><span style="margin-left:auto;">지금</span>
+              </div>
+              <div style="font-size:15px;font-weight:600;margin-bottom:5px;">에어컨 필터 청소할 때가 됐어요</div>
+              <div style="font-size:13.5px;color:var(--ink-2);">마지막 청소 45일 전 · 이번 주말 어때요?</div>
+            </div>
+            <div style="margin-top:10px;background:rgba(255,255,255,.6);border-radius:16px;height:32px;"></div>
+          </div>
+
+          <div style="margin-top:auto;">
+            <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">알림 켜기</div>
+            <div style="text-align:center;margin-top:18px;font-size:14px;color:var(--ink-3);">나중에 하기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 홈 빈 상태 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">04 · 홈 — 빈 상태</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 4px;">
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일</div>
+              <div style="font-size:22px;font-weight:700;letter-spacing:-.03em;margin-top:4px;">안녕하세요, 지현님</div>
+            </div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+
+          <div style="margin-top:40px;border:1px solid var(--line);border-radius:28px;padding:34px 26px;background:var(--card);box-shadow:0 6px 20px rgba(70,58,44,.04);">
+            <div style="font-size:21px;font-weight:700;letter-spacing:-.03em;word-break:keep-all;">첫 기록을 남겨볼까요?</div>
+            <div style="font-size:14.5px;line-height:1.8;color:var(--ink-2);margin-top:12px;word-break:keep-all;">오늘 한 집안일을 한 문장으로 남겨두면,<br />다음에 챙길 때가 됐을 때 알려드릴게요.</div>
+          </div>
+
+          <div style="margin-top:28px;padding:0 4px;">
+            <div style="font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:12px;">이렇게 말해보세요</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 18px;font-size:15px;color:var(--ink-2);">“오늘 이불 빨았어”</div>
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 18px;font-size:15px;color:var(--ink-2);">“어제 정수기 필터 갈았어”</div>
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 18px;font-size:15px;color:var(--ink-2);">“지난주에 화분에 물 줬어”</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 홈 목록 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05 · 홈 — 항목 목록 ★</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 2개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;margin-right:-24px;display:flex;gap:10px;overflow:hidden;">
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">욕실 배수구 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#B3402C;flex:0 0 auto;">D+2</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">32</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">한 달마다 · 8월 5일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">에어컨 필터 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#9A4F31;flex:0 0 auto;">오늘</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">45</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">45일마다 · 7월 23일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;display:flex;justify-content:center;gap:5px;">
+            <span style="width:16px;height:6px;border-radius:3px;background:#A85F44;display:block;"></span><span style="width:6px;height:6px;border-radius:3px;background:#DDD5C6;display:block;"></span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05-B 완료 토스트 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05-B · 기록 직후 — 완료 토스트 · 되돌리기</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 0개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;border:1px solid #E4DCCB;border-radius:24px;padding:26px 20px;background-image:linear-gradient(180deg,#F6F1E6,#FCFBF8);text-align:center;">
+            <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;">오늘 할 건 다 하셨어요 🎉</div>
+            <div style="font-size:13.5px;color:var(--ink-2);margin-top:8px;">다음은 9월 8일 · 이불 빨래예요</div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;margin:0 22px 8px;display:flex;align-items:center;gap:12px;background:#2D2622;border-radius:18px;padding:14px 16px;box-shadow:0 12px 26px rgba(45,38,34,.22);animation:toastIn .34s cubic-bezier(.22,1,.36,1) both;">
+          <div style="flex:1;font-size:13.5px;line-height:1.55;color:#F5F2EC;">에어컨 필터 청소 완료 · 다음 알림 <strong style="font-weight:700;">10월 21일</strong></div>
+          <span style="flex:0 0 auto;font-size:13.5px;font-weight:700;color:#E9B79E;border:1px solid rgba(233,183,158,.45);border-radius:12px;padding:12px 14px;">되돌리기</span>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05-E 할 일 없는 날 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05-E · 홈 — 오늘 챙길 게 없는 날</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 0개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;border:1px solid #E4DCCB;border-radius:24px;padding:26px 20px;background-image:linear-gradient(180deg,#F6F1E6,#FCFBF8);text-align:center;">
+            <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;">오늘 챙길 가사가 없어요 🌿</div>
+            <div style="font-size:13.5px;color:var(--ink-2);margin-top:8px;">편안한 하루 보내세요. 다음은 9월 8일 · 이불 빨래예요</div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05-C 달력 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05-C · 홈 — 달력 뷰 (월별)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">2026년 9월</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          
+
+          <div style="flex:0 0 auto;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px 12px 12px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px 12px;">
+              <span style="width:8px;height:8px;border-left:1.7px solid var(--ink-3);border-bottom:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+              <span style="font-size:15px;font-weight:700;letter-spacing:-.02em;">9월</span>
+              <span style="width:8px;height:8px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+            </div>
+            <div style="display:flex;padding-bottom:6px;">
+              <span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:#B3402C;">일</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">월</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">화</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">수</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">목</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">금</span><span style="flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-3);">토</span>
+            </div>
+            <div style="display:flex;">
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:#8F8577;">30</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:#8F8577;">31</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">1</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">2</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">3</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#C6BDAE;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">4</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#B3402C;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">5</span><span style="height:7px;display:block;"></span>
+              </span>
+            </div>
+            <div style="display:flex;">
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:700;background:#A85F44;color:#FFFFFF;">6</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#A85F44;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">7</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">8</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#A85F44;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">9</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">10</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">11</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#C6BDAE;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">12</span><span style="height:7px;display:block;"></span>
+              </span>
+            </div>
+            <div style="display:flex;">
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">13</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">14</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">15</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">16</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">17</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">18</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#A85F44;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">19</span><span style="height:7px;display:block;"></span>
+              </span>
+            </div>
+            <div style="display:flex;">
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">20</span><span style="display:flex;gap:3px;margin-top:3px;"><span style="width:4px;height:4px;border-radius:50%;background:#C6BDAE;display:block;"></span></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">21</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">22</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">23</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">24</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">25</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">26</span><span style="height:7px;display:block;"></span>
+              </span>
+            </div>
+            <div style="display:flex;">
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">27</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">28</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">29</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:var(--ink);">30</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:#8F8577;">1</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:#8F8577;">2</span><span style="height:7px;display:block;"></span>
+              </span>
+<span style="flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                <span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:500;color:#8F8577;">3</span><span style="height:7px;display:block;"></span>
+              </span>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:12px;display:flex;align-items:center;gap:14px;padding:0 6px;font-size:12px;color:var(--ink-3);">
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#A85F44;display:block;"></span>예정일</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#C6BDAE;display:block;"></span>완료 이력</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#B3402C;display:block;"></span>밀린 항목</span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:14px;padding:0 4px;font-size:13px;font-weight:700;color:var(--ink);">9월 6일 · 오늘</div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1px solid var(--line);">
+              <span style="flex:1;font-size:15px;font-weight:600;">에어컨 필터 청소</span>
+              <span style="font-size:12.5px;font-weight:700;color:#A85F44;">오늘 예정</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 2px;">
+              <span style="flex:1;font-size:15px;font-weight:600;color:var(--ink-2);">욕실 배수구 청소</span>
+              <span style="font-size:12.5px;font-weight:700;color:#B3402C;">2일 밀림</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05-D 검색 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">05-D · 홈 — 검색 (항목 · 메모)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid #A85F44;border-radius:16px;padding:12px 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A4F31" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
+              <span style="flex:1;display:flex;align-items:center;font-size:16px;font-weight:600;letter-spacing:-.02em;">필터<span style="width:2px;height:18px;background:#A85F44;margin-left:3px;display:block;animation:caret 1s step-end infinite;"></span></span>
+            </div>
+            <span style="font-size:14.5px;color:var(--ink-2);">취소</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;font-size:12.5px;color:var(--ink-3);padding:0 2px;">항목 이름과 메모에서 찾아요</div>
+
+          <div style="flex:0 0 auto;margin-top:20px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;color:var(--ink);">항목</span><span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15.5px;font-weight:600;">에어컨 <mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 청소</div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:4px;">45일 전 · 45일마다</div>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#A85F44;">오늘</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15.5px;font-weight:600;">정수기 <mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 교체</div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:4px;">20일 전 · 3달마다</div>
+              </div>
+              <span style="font-size:13px;font-weight:600;color:var(--ink-3);">D-70</span>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:20px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;color:var(--ink-2);">메모</span><span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="font-size:14.5px;line-height:1.5;color:var(--ink-2);">“<mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 두 장 남음, 다음엔 주문하기”</div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:5px;">에어컨 필터 청소 · 7월 23일</div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="font-size:14.5px;line-height:1.5;color:var(--ink-2);">“<mark style="background:#F7EDE6;color:inherit;border-radius:4px;padding:0 2px;">필터</mark> 색이 많이 어두웠음”</div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:5px;">정수기 필터 교체 · 8월 17일</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;box-shadow:0 -1px 0 rgba(70,58,44,.04);">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 한 문장 입력 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">06 · 키보드 입력 — 화면 이동 없이 칩 + 키보드</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 2개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;margin-right:-24px;display:flex;gap:10px;overflow:hidden;">
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">욕실 배수구 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#B3402C;flex:0 0 auto;">D+2</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">32</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">한 달마다 · 8월 5일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">에어컨 필터 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#9A4F31;flex:0 0 auto;">오늘</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">45</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">45일마다 · 7월 23일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;display:flex;justify-content:center;gap:5px;">
+            <span style="width:16px;height:6px;border-radius:3px;background:#A85F44;display:block;"></span><span style="width:6px;height:6px;border-radius:3px;background:#DDD5C6;display:block;"></span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;">
+          <div style="padding:0 20px 12px;display:flex;gap:8px;overflow:hidden;">
+            <span style="flex:0 0 auto;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:500;color:var(--ink-2);box-shadow:0 4px 12px rgba(70,58,44,.06);">이불 빨았어</span>
+            <span style="flex:0 0 auto;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:500;color:var(--ink-2);box-shadow:0 4px 12px rgba(70,58,44,.06);">칫솔 바꿨어</span>
+            <span style="flex:0 0 auto;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:500;color:var(--ink-2);box-shadow:0 4px 12px rgba(70,58,44,.06);">필터 갈았어</span>
+          </div>
+          <div style="padding:0 20px 12px;background:var(--paper);">
+            <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--accent);border-radius:22px;padding:8px 8px 8px 18px;">
+              <span style="flex:1;display:flex;align-items:center;font-size:15.5px;color:var(--ink);">오늘 이불 빨<span style="width:2px;height:19px;background:var(--accent);margin-left:2px;display:block;animation:caret 1s step-end infinite;"></span></span>
+              <span style="position:relative;width:34px;height:34px;border-radius:11px;background:#F3EFE6;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+                <span style="width:8px;height:13px;border-radius:5px;background:var(--ink-2);display:block;"></span>
+                <span style="position:absolute;bottom:8px;width:14px;height:6px;border:1.6px solid var(--ink-2);border-top:none;border-radius:0 0 8px 8px;display:block;"></span>
+              </span>
+              <span style="width:40px;height:40px;border-radius:13px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+                <span style="width:9px;height:9px;border-right:2px solid #FFFFFF;border-top:2px solid #FFFFFF;transform:rotate(-45deg);margin-left:-3px;display:block;"></span>
+              </span>
+            </div>
+          </div>
+          <div style="background:#E4DDD1;padding:8px 5px 10px;">
+            <div style="display:flex;gap:5px;margin-bottom:8px;">
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅂ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅈ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㄷ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㄱ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅅ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅛ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅕ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅑ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅐ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅔ</span>
+            </div>
+            <div style="display:flex;gap:5px;margin-bottom:8px;padding:0 18px;">
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅁ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㄴ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅇ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㄹ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅎ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅗ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅓ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅏ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅣ</span>
+            </div>
+            <div style="display:flex;gap:5px;margin-bottom:8px;">
+              <span style="flex:1.4;height:42px;background:#CBC2B2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#2D2622;">쉬프트</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅋ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅌ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅊ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅍ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅠ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅜ</span>
+              <span style="flex:1;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">ㅡ</span>
+              <span style="flex:1.4;height:42px;background:#CBC2B2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#2D2622;">지움</span>
+            </div>
+            <div style="display:flex;gap:5px;">
+              <span style="flex:1.2;height:42px;background:#CBC2B2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#2D2622;">123</span>
+              <span style="flex:1.2;height:42px;background:#CBC2B2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#2D2622;">🌐</span>
+              <span style="flex:4;height:42px;background:#FFFFFF;border-radius:6px;box-shadow:0 1px 0 rgba(70,58,44,.2);display:block;"></span>
+              <span style="flex:1.8;height:42px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#FFFFFF;font-weight:600;">기록</span>
+            </div>
+            <div style="height:5px;width:130px;border-radius:3px;background:#B7AE9C;margin:12px auto 2px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07 인라인 음성 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">07 · 인라인 음성 인식 — 홈에서 바로</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 2개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;margin-right:-24px;display:flex;gap:10px;overflow:hidden;">
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">욕실 배수구 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#B3402C;flex:0 0 auto;">D+2</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">32</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">한 달마다 · 8월 5일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">에어컨 필터 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#9A4F31;flex:0 0 auto;">오늘</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">45</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">45일마다 · 7월 23일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;display:flex;justify-content:center;gap:5px;">
+            <span style="width:16px;height:6px;border-radius:3px;background:#A85F44;display:block;"></span><span style="width:6px;height:6px;border-radius:3px;background:#DDD5C6;display:block;"></span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 22px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1.5px solid #E0BFA6;border-radius:24px;padding:8px 8px 8px 18px;animation:glow 2.4s ease-in-out infinite;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#A85F44;display:block;flex:0 0 auto;animation:halo 1.1s ease-in-out infinite;"></span>
+            <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:15.5px;font-weight:500;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;">지난주 일요일에 이불 빨<span style="width:2px;height:17px;background:#A85F44;margin-left:3px;display:block;flex:0 0 auto;animation:caret 1s step-end infinite;"></span></span>
+            <span style="width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(44,38,35,.3);">
+              <span style="width:13px;height:13px;border-radius:4px;background:#FFFFFF;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07-C 음성 조회 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">07-C · 음성 조회 — 화면 이동 없이 바로 답변</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;overflow:hidden;opacity:.5;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:16px;"><span style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg></span><span style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A534C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.72h.08A1.6 1.6 0 0 0 10 3.25V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.28 9v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97Z"></path></svg></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:0 4px;">
+            <div style="min-width:0;font-size:23px;font-weight:700;letter-spacing:-.035em;">오늘 챙길 가사 2개</div>
+            <span style="flex:0 0 auto;display:flex;align-items:center;gap:2px;background:#EFEAE0;border-radius:12px;padding:3px;">
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:0 1px 2px rgba(70,58,44,.1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2D2622" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+              </span>
+              <span style="width:34px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M8 3v3M16 3v3"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;margin-right:-24px;display:flex;gap:10px;overflow:hidden;">
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">욕실 배수구 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#B3402C;flex:0 0 auto;">D+2</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">32</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">한 달마다 · 8월 5일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+            <div style="flex:0 0 auto;width:300px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:0 6px 20px rgba(70,58,44,.05);">
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">에어컨 필터 청소</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:-.03em;color:#9A4F31;flex:0 0 auto;">오늘</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:9px;">
+                <span style="font-size:26px;font-weight:700;letter-spacing:-.055em;line-height:1;">45</span>
+                <span style="font-size:13.5px;font-weight:600;color:var(--ink-2);">일 전에 했어요</span>
+              </div>
+              <div style="font-size:12px;color:var(--ink-3);margin-top:6px;">45일마다 · 7월 23일</div>
+              <div style="margin-top:14px;background:#F7EDE6;color:#9A4F31;border-radius:14px;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;">오늘 했어요</div>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;margin-top:10px;display:flex;justify-content:center;gap:5px;">
+            <span style="width:16px;height:6px;border-radius:3px;background:#A85F44;display:block;"></span><span style="width:6px;height:6px;border-radius:3px;background:#DDD5C6;display:block;"></span>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink);">다가오는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">2</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="padding:14px 2px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">이불 빨래</span>
+                <span style="font-size:16px;font-weight:700;letter-spacing:-.04em;line-height:1;color:#A85F44;">D-2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:2px;background:#A85F44;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">12일 전 · 2주마다</span>
+              </div>
+            </div>
+            <div style="padding:14px 2px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.025em;">칫솔 교체</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink-2);">D-12</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                <span style="flex:1;height:4px;border-radius:2px;background:#EFEAE0;position:relative;overflow:hidden;display:block;">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:#E4BCA9;display:block;"></span>
+                </span>
+                <span style="font-size:12px;color:var(--ink-3);flex:0 0 auto;">78일 전 · 3달마다</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;margin-top:16px;display:flex;align-items:baseline;gap:6px;padding:0 4px;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2);">여유 있는 항목</span>
+            <span style="font-size:12.5px;color:var(--ink-3);">5</span>
+          </div>
+          <div style="flex:0 0 auto;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:0 16px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 2px;">
+              <span style="flex:1;min-width:0;font-size:14.5px;color:var(--ink-2);">가장 가까운 건 정수기 필터 교체</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink-3);flex:0 0 auto;">D-70</span>
+              <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);display:block;flex:0 0 auto;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 20px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 22%);">
+          <div style="background:#2D2622;border-radius:22px;padding:16px 18px;box-shadow:0 14px 30px rgba(45,38,34,.24);">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.02em;color:#C9BEA8;">물어보신 것</div>
+            <div style="font-size:14px;color:#EFE9DD;margin-top:6px;">“마지막으로 이불 언제 빨았어?”</div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(245,242,236,.16);font-size:16px;font-weight:600;line-height:1.55;color:#FBF9F4;">12일 전인 <strong style="font-weight:700;">8월 25일</strong>에 빨았어요</div>
+            <div style="font-size:13px;color:#C9BEA8;margin-top:6px;">다음 예정일은 모레 9월 8일이에요</div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <span style="flex:1;text-align:center;padding:14px 0;border-radius:13px;background:#A85F44;color:#FFFFFF;font-size:14px;font-weight:600;">오늘 했어요</span>
+              <span style="flex:1;text-align:center;padding:14px 0;border-radius:13px;background:rgba(245,242,236,.12);color:#EFE9DD;font-size:14px;font-weight:600;">기록 보기</span>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.86);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 20px;">
+            <span style="flex:1;font-size:15.5px;color:var(--ink-3);">말하거나 적어보세요</span>
+            <span style="position:relative;width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#5A534E,#4A433F);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+              <span style="width:11px;height:18px;border-radius:6px;background:#FFFFFF;display:block;"></span>
+              <span style="position:absolute;bottom:11px;width:19px;height:9px;border:2px solid #FFFFFF;border-top:none;border-radius:0 0 10px 10px;display:block;"></span>
+            </span>
+          </div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 확인 A -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">08 · 확인 — 기존 항목 (통합 바텀시트)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:5px;">오늘 챙길 가사 2개</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:26px;height:150px;"></div>
+          <div style="margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:130px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 20px;"></div>
+          <div style="font-size:13px;color:var(--ink-3);">이렇게 들었어요</div>
+          <div style="font-size:18px;font-weight:600;letter-spacing:-.02em;color:var(--ink-2);margin-top:8px;">“오늘 이불 빨았어, 섬유유연제 새로 뜯었어”</div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:13px 16px;">
+            <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:22px;font-weight:700;letter-spacing:-.03em;">이불 빨래</span>
+            <span style="background:transparent;border:1px solid var(--line);color:var(--ink-2);font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:9px;">기존 항목</span>
+          </div>
+          <div style="margin-top:12px;border-top:1px solid var(--line);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">한 날짜</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.025em;color:var(--ink);">오늘 · 9월 6일<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">관리 주기</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.025em;color:var(--ink);">2주마다 · 다음 9월 20일<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+          <div style="padding:14px 0;">
+            <div style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">메모 (선택)</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;">
+              <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:15.5px;font-weight:500;letter-spacing:-.02em;">섬유유연제 새로 개봉</span>
+            </div>
+          </div>
+          </div>
+          <div style="margin-top:12px;font-size:13.5px;line-height:1.7;color:var(--ink-3);">평균 14일마다 하셨어요. 주기를 눌러 언제든 바꿀 수 있어요.</div>
+          <div style="margin-top:18px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;box-shadow:0 8px 18px rgba(168,95,68,.26);">이대로 저장하기</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:20px;height:54px;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;">다시 말하기</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08-B 이름 수정 중 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">08-B · 이름 수정 중 — 주기 자동 확인 (0.5초 디바운스)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:5px;">오늘 챙길 가사 2개</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:26px;height:150px;"></div>
+          <div style="margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:130px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 20px;"></div>
+          <div style="font-size:13px;color:var(--ink-3);">이렇게 들었어요</div>
+          <div style="font-size:18px;font-weight:600;letter-spacing:-.02em;color:var(--ink-2);margin-top:8px;">“오늘 이불 빨았어, 섬유유연제 새로 뜯었어”</div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid #A85F44;border-radius:16px;padding:13px 16px;">
+            <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:22px;font-weight:700;letter-spacing:-.03em;">이불 커버 세탁<span style="width:2px;height:22px;background:#A85F44;margin-left:3px;display:block;animation:caret 1s step-end infinite;"></span></span>
+            <span style="background:transparent;border:1px solid var(--line);color:var(--ink-2);font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:9px;">기존 항목</span>
+          </div>
+          <div style="margin-top:12px;border-top:1px solid var(--line);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">한 날짜</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.025em;color:var(--ink);">오늘 · 9월 6일<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">관리 주기</span>
+            <span style="display:flex;align-items:center;gap:9px;font-size:16.5px;font-weight:600;letter-spacing:-.02em;color:var(--ink-3);"><span style="width:15px;height:15px;border-radius:50%;border:2px solid #E0D8CA;border-top-color:#A85F44;display:block;animation:spin .8s linear infinite;"></span>주기 확인 중…</span>
+          </div>
+          <div style="padding:14px 0;">
+            <div style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">메모 (선택)</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;">
+              <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:15.5px;font-weight:500;letter-spacing:-.02em;">섬유유연제 새로 개봉</span>
+            </div>
+          </div>
+          </div>
+          <div style="margin-top:12px;font-size:13.5px;line-height:1.7;color:var(--ink-3);">이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.</div>
+          <div style="margin-top:18px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;box-shadow:0 8px 18px rgba(168,95,68,.26);">이대로 저장하기</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:20px;height:54px;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;">다시 말하기</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 09 확인 B -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">09 · 확인 — 새 항목 (통합 바텀시트)</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:5px;">오늘 챙길 가사 2개</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:26px;height:150px;"></div>
+          <div style="margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:130px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 20px;"></div>
+          <div style="font-size:13px;color:var(--ink-3);">이렇게 들었어요</div>
+          <div style="font-size:18px;font-weight:600;letter-spacing:-.02em;color:var(--ink-2);margin-top:8px;">“화분 물 주고 영양제 꽂았어”</div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:13px 16px;">
+            <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:22px;font-weight:700;letter-spacing:-.03em;">화분 물주기</span>
+            <span style="background:#A85F44;color:#FFFFFF;font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:9px;">새 항목</span>
+          </div>
+          <div style="margin-top:12px;border-top:1px solid var(--line);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">한 날짜</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.025em;color:var(--ink);">오늘 · 9월 6일<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+            <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">관리 주기</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.025em;color:var(--ink);">2주마다 · 다음 9월 20일<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+          <div style="padding:14px 0;">
+            <div style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">메모 (선택)</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;">
+              <span style="flex:1;min-width:0;display:flex;align-items:center;font-size:15.5px;font-weight:500;letter-spacing:-.02em;">영양제 꽂음</span>
+            </div>
+          </div>
+          </div>
+          <div style="margin-top:12px;font-size:13.5px;line-height:1.7;color:var(--ink-3);">비슷한 가사들의 평균 주기로 먼저 제안했어요. 저장 전에 바꿔도 돼요.</div>
+          <div style="margin-top:18px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;box-shadow:0 8px 18px rgba(168,95,68,.26);">이대로 저장하기</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:20px;height:54px;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;">다시 말하기</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 주기 바텀시트 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">10 · 주기 선택 — 바텀시트</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;color:#6E665D;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid #6E665D;border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 28px 34px;box-sizing:border-box;opacity:.4;">
+          <div style="font-size:14px;color:var(--ink-3);">이렇게 들었어요</div>
+          <div style="margin-top:10px;font-size:19px;font-weight:600;color:var(--ink-2);">“화분 물 주고 영양제 꽂았어”</div>
+          <div style="margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:26px 24px;box-shadow:0 8px 28px rgba(70,58,44,.06);text-align:center;">
+            <div style="font-size:24px;font-weight:700;letter-spacing:-.03em;">화분 물주기</div>
+          </div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(70,58,44,.28);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.96);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 24px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#E1D9CB;margin:0 auto 20px;"></div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;">얼마마다 알려드릴까요?</div>
+          <div style="font-size:13.5px;color:var(--ink-3);margin-top:6px;">화분 물주기</div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1.5px solid #4A433F;background:#F7EDE6;border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:700;">2주마다</span>
+              <span style="display:flex;align-items:center;gap:10px;font-size:13px;color:#9A4F31;">9월 20일<span style="width:20px;height:20px;border-radius:50%;background:#4A433F;display:flex;align-items:center;justify-content:center;"><span style="width:8px;height:4px;border-left:1.8px solid #FFFFFF;border-bottom:1.8px solid #FFFFFF;transform:rotate(-45deg);margin-top:-2px;display:block;"></span></span></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">1달마다</span><span style="font-size:13px;color:var(--ink-3);">10월 6일</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">3달마다</span><span style="font-size:13px;color:var(--ink-3);">12월 6일</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:20px;padding:16px 18px;">
+              <span style="font-size:16px;font-weight:600;">직접 입력</span><span style="width:7px;height:7px;border-right:1.8px solid var(--ink-3);border-top:1.8px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+            </div>
+          </div>
+          <div style="margin-top:20px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:56px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">이 주기로 저장</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10-B 상세 주기 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">10-B · 직접 입력 — 반복 패턴 상세</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일 · 지현님</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:5px;">오늘 챙길 가사 2개</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:26px;height:150px;"></div>
+          <div style="margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:130px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 24px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 18px;"></div>
+          <div style="display:flex;align-items:center;">
+            <span style="font-size:14px;color:var(--ink-3);">뒤로</span>
+            <span style="margin-left:auto;font-size:19px;font-weight:700;letter-spacing:-.03em;">직접 입력</span>
+            <span style="margin-left:auto;font-size:14px;color:var(--ink-3);">닫기</span>
+          </div>
+
+          <div style="margin-top:20px;font-size:12.5px;letter-spacing:.04em;color:var(--ink-3);">반복 방식</div>
+          <div style="margin-top:8px;display:flex;gap:5px;background:#F3EFE6;border-radius:14px;padding:4px;">
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--ink-3);">일 단위</span>
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;background:var(--card);font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(70,58,44,.08);">주 단위</span>
+            <span style="flex:1;text-align:center;padding:9px 0;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--ink-3);">월 단위</span>
+          </div>
+
+          <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 18px;">
+            <span style="font-size:15.5px;font-weight:600;">몇 주마다</span>
+            <span style="display:flex;align-items:center;gap:16px;">
+              <span style="width:32px;height:32px;border-radius:10px;background:#F3EFE6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--ink-2);">−</span>
+              <span style="font-size:19px;font-weight:700;letter-spacing:-.03em;min-width:24px;text-align:center;">2</span>
+              <span style="width:32px;height:32px;border-radius:10px;background:#F3EFE6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--ink-2);">+</span>
+            </span>
+          </div>
+
+          <div style="margin-top:18px;font-size:12.5px;letter-spacing:.04em;color:var(--ink-3);">요일 (선택)</div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">월</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">화</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">수</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">목</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">금</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1.5px solid #A85F44;color:#9A4F31;background:#F7EDE6;font-size:13.5px;font-weight:700;">토</span>
+            <span style="flex:1;text-align:center;padding:11px 0;border-radius:12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3);">일</span>
+          </div>
+
+          <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 18px;">
+            <div>
+              <div style="font-size:15.5px;font-weight:600;">알림 시간</div>
+              <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px;">이 항목만 따로 설정</div>
+            </div>
+            <span style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;">오전 10:00<span style="width:7px;height:7px;border-right:1.6px solid var(--ink-3);border-top:1.6px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+          </div>
+
+          <div style="margin-top:16px;background:#F3EFE6;border-radius:16px;padding:14px 16px;font-size:13.5px;line-height:1.65;color:var(--ink-2);">2주마다 <strong style="font-weight:700;color:var(--ink);">토요일 오전 10시</strong>에 알려드릴게요<br />다음 알림 · 9월 19일 (토)</div>
+
+          <div style="margin-top:18px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:56px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;box-shadow:0 8px 18px rgba(168,95,68,.26);">이 주기로 저장</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11 항목 상세 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">11 · 항목 상세</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:16px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+            <span style="width:9px;height:9px;border-left:1.8px solid var(--ink-2);border-bottom:1.8px solid var(--ink-2);transform:rotate(45deg);display:block;"></span>
+            <span style="font-size:14px;color:var(--ink-3);">편집</span>
+          </div>
+
+          <div style="margin-top:18px;text-align:center;">
+            <div style="font-size:18px;font-weight:600;margin-top:14px;">이불 빨래</div>
+            <div style="font-size:64px;font-weight:700;letter-spacing:-.05em;line-height:1;margin-top:10px;">12<span style="font-size:22px;font-weight:600;letter-spacing:-.02em;margin-left:6px;">일 전</span></div>
+            <div style="font-size:14px;color:var(--ink-2);margin-top:10px;">마지막으로 한 날 · 2026년 8월 25일 (화)</div>
+          </div>
+
+          <div style="margin-top:18px;display:flex;gap:8px;">
+            <div style="flex:1;background:var(--sage-soft);border-radius:18px;padding:14px 16px;">
+              <div style="font-size:12px;color:#6E665D;">다음 예정일</div>
+              <div style="font-size:16px;font-weight:700;color:#96543A;margin-top:4px;">2일 후 · 9월 8일</div>
+            </div>
+            <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;">
+              <div style="font-size:12px;color:var(--ink-3);">관리 주기</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;">2주마다</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;flex:1;min-height:0;">
+            <div style="font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:8px;padding:0 4px;">지난 기록</div>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--sage);display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">8월 25일 (화)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">16일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“섬유유연제 새로 개봉”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">8월 9일 (일)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">14일 만에</span>
+                  </div>
+                  <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">메모 없음</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">7월 26일 (일)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">20일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“커버까지 같이 세탁”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:var(--ink-2);">주기 수정</span>
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:var(--ink-2);">잠시 보관</span>
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:#B3402C;">삭제</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:10px 24px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">오늘 했어요</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11-B 기록 수정 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">11-B · 지난 기록 편집 — 날짜 수정 · 삭제</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="text-align:center;font-size:18px;font-weight:600;margin-top:26px;">이불 빨래</div>
+          <div style="text-align:center;font-size:64px;font-weight:700;letter-spacing:-.05em;line-height:1;margin-top:10px;">12</div>
+          <div style="margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:22px;height:120px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 20px;"></div>
+          <div style="font-size:12.5px;letter-spacing:.04em;color:var(--ink-3);">이불 빨래 · 지난 기록</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:8px;">8월 25일 (화) 기록</div>
+          <div style="font-size:13.5px;color:var(--ink-3);margin-top:6px;">직전 기록에서 16일 만이었어요</div>
+          <div style="margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:4px 18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+              <span style="font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-3);">한 날짜</span>
+              <span style="display:flex;align-items:center;gap:10px;font-size:16.5px;font-weight:600;">8월 25일 (화)<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;">
+              <span style="font-size:13.5px;color:var(--ink-3);">메모</span>
+              <span style="display:flex;align-items:center;gap:10px;font-size:16.5px;font-weight:600;">섬유유연제 새로 개봉<span style="width:7px;height:7px;border-right:1.7px solid var(--ink-3);border-top:1.7px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+            </div>
+          </div>
+          <div style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ink-3);">날짜를 바꾸면 다음 알림 예정일도 함께 조정돼요.</div>
+          <div style="margin-top:18px;background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;box-shadow:0 8px 18px rgba(168,95,68,.26);">저장하기</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);color:#B3402C;border-radius:20px;height:54px;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;">이 기록 삭제</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12 로그인 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">12 · 로그인 — 필요한 순간에만</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:40px 30px 36px;box-sizing:border-box;">
+          <h2 style="font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.45;margin:22px 0 0;">기록을 안전하게<br />보관할까요?</h2>
+          <p style="margin:12px 0 0;font-size:14.5px;line-height:1.75;color:var(--ink-2);">지금까지 쌓인 12개의 기록을 계정에 저장해두면<br />폰을 바꿔도 그대로 남아 있어요.</p>
+
+          <div style="margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:12px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--sage);display:block;flex:0 0 auto;"></span>
+            <span style="font-size:14px;color:var(--ink-2);line-height:1.6;">기록 내용은 다른 곳에 공유하지 않아요</span>
+          </div>
+
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:#FEE500;color:#191600;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600;">
+              <span style="width:20px;height:18px;border-radius:9px 9px 8px 8px;background:#191600;display:block;"></span>카카오로 계속하기
+            </div>
+            <div style="background:var(--card);border:1px solid #E6E0D4;color:var(--ink);border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600;">
+              <span style="width:19px;height:19px;border-radius:50%;border:3px solid #4285F4;border-right-color:#EA4335;border-bottom-color:#FBBC05;display:block;"></span>구글로 계속하기
+            </div>
+            <div style="text-align:center;margin-top:12px;font-size:14px;color:var(--ink-3);">나중에</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12-B 로그인 유도 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">12-B · 로그인 유도 — 기록 3개 쌓인 시점</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.35;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);">9월 6일 일요일</div>
+          <div style="font-size:23px;font-weight:700;letter-spacing:-.035em;margin-top:5px;">지현님, 오늘 몫은 끝났어요</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:150px;"></div>
+          <div style="margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:120px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.28);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 22px;"></div>
+          <div style="display:inline-block;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:700;letter-spacing:.04em;padding:6px 12px;border-radius:9px;">기록 3개째</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.035em;line-height:1.45;margin-top:14px;">잘 쌓이고 있어요.<br />이 기록, 안전하게 보관할까요?</div>
+          <div style="font-size:14px;line-height:1.75;color:var(--ink-2);margin-top:10px;">계정을 연결해두면 폰을 바꾸거나 앱을 지워도<br />지금까지의 기록이 그대로 남아요.</div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:#FEE500;color:#191600;border-radius:20px;height:56px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600;">
+              <span style="width:20px;height:18px;border-radius:9px 9px 8px 8px;background:#191600;display:block;"></span>카카오로 계속하기
+            </div>
+            <div style="background:var(--card);border:1px solid #E6E0D4;color:var(--ink);border-radius:20px;height:56px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600;">
+              <span style="width:19px;height:19px;border-radius:50%;border:3px solid #4285F4;border-right-color:#EA4335;border-bottom-color:#FBBC05;display:block;"></span>구글로 계속하기
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--ink-3);">나중에 할게요</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13 설정 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">13 · 설정</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:16px 24px 30px;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:14px;padding:0 4px;">
+            <span style="width:9px;height:9px;border-left:1.8px solid var(--ink-2);border-bottom:1.8px solid var(--ink-2);transform:rotate(45deg);display:block;"></span>
+            <span style="font-size:16px;font-weight:600;">설정</span>
+          </div>
+
+          <div style="margin-top:24px;font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);padding:0 4px;">알림</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:4px 18px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+              <div>
+                <div style="font-size:15.5px;font-weight:600;">알림 받을 시간</div>
+                <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px;">이 시간에 하루 한 번만 모아서</div>
+              </div>
+              <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;">오전 9:00<span style="width:7px;height:7px;border-right:1.6px solid var(--ink-3);border-top:1.6px solid var(--ink-3);transform:rotate(45deg);display:block;"></span></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;">
+              <div style="font-size:15.5px;font-weight:600;">알림 권한</div>
+              <span style="background:var(--sage-soft);color:#96543A;font-size:13px;font-weight:700;padding:6px 11px;border-radius:9px;">허용됨</span>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);padding:0 4px;">계정</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:4px 18px;box-shadow:0 4px 16px rgba(70,58,44,.04);">
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--line);">
+              <div style="flex:1;">
+                <div style="font-size:15.5px;font-weight:600;">지현</div>
+                <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px;">카카오 계정으로 로그인 중</div>
+              </div>
+              <span style="width:7px;height:7px;border-right:1.6px solid var(--ink-3);border-top:1.6px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);">
+              <span style="font-size:15.5px;font-weight:600;">기록 내보내기</span>
+              <span style="width:7px;height:7px;border-right:1.6px solid var(--ink-3);border-top:1.6px solid var(--ink-3);transform:rotate(45deg);display:block;"></span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;">
+              <span style="font-size:15.5px;font-weight:600;color:var(--ink-2);">로그아웃</span>
+              <span style="font-size:13.5px;font-weight:600;color:#B3402C;">계정 삭제</span>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;text-align:center;font-size:12.5px;color:var(--ink-3);">Lastly · 1.0.3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13-B 계정 삭제 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">13-B · 계정 삭제 — 데이터 영구 삭제 확인</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 24px 0;box-sizing:border-box;opacity:.3;">
+          <div style="font-size:16px;font-weight:600;">설정</div>
+          <div style="margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:180px;"></div>
+          <div style="margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:24px;height:170px;"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(45,38,34,.26);"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(251,249,244,.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:30px 30px 46px 46px;padding:12px 26px 26px;box-shadow:0 -1px 0 var(--line);">
+          <div style="height:5px;width:44px;border-radius:3px;background:#CBC2B2;margin:0 auto 20px;"></div>
+          <div style="display:inline-block;background:#F7E3DE;color:#B3402C;font-size:12px;font-weight:700;letter-spacing:.04em;padding:6px 12px;border-radius:9px;">되돌릴 수 없어요</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.035em;line-height:1.45;margin-top:14px;">계정과 모든 기록을<br />영구 삭제할까요?</div>
+          <div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 18px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--line);font-size:14.5px;color:var(--ink-2);"><span style="width:5px;height:5px;border-radius:50%;background:#B3402C;display:block;"></span>기록한 항목 8개와 히스토리 41건</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--line);font-size:14.5px;color:var(--ink-2);"><span style="width:5px;height:5px;border-radius:50%;background:#B3402C;display:block;"></span>예약된 알림 전부</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 0;font-size:14.5px;color:var(--ink-2);"><span style="width:5px;height:5px;border-radius:50%;background:#B3402C;display:block;"></span>카카오 계정 연동 정보</div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:11px;">
+            <span style="width:22px;height:22px;border-radius:7px;border:1.8px solid #B3402C;background:#B3402C;display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><span style="width:9px;height:5px;border-left:2px solid #FFFFFF;border-bottom:2px solid #FFFFFF;transform:rotate(-45deg);margin-top:-3px;display:block;"></span></span>
+            <span style="font-size:13.5px;line-height:1.6;color:var(--ink-2);">삭제하면 되돌릴 수 없다는 점을 확인했어요</span>
+          </div>
+          <div style="margin-top:18px;background:#B3402C;color:#FFFFFF;border-radius:20px;height:58px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">영구 삭제하기</div>
+          <div style="margin-top:10px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:20px;height:54px;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;">그만두기</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14 푸시 알림 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">14 · 푸시 알림 — 잠금화면</div>
+      <div style="width:390px;height:844px;background:#EAE5DA;background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;color:#2D2622;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid #2D2622;border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:34px 20px 28px;box-sizing:border-box;">
+          <div style="text-align:center;color:#6C6B66;">
+            <div style="font-size:15px;letter-spacing:.04em;color:#544E47;">9월 8일 화요일</div>
+            <div style="font-size:78px;font-weight:600;letter-spacing:-.05em;line-height:1.05;margin-top:2px;color:#2D2622;">9:41</div>
+          </div>
+
+          <div style="margin-top:36px;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:rgba(255,255,255,.86);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-radius:22px;padding:17px 19px;">
+              <div style="display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-3);margin-bottom:10px;">
+                <span style="width:17px;height:17px;border-radius:6px;background:var(--accent);display:block;"></span>
+                <span style="font-weight:600;color:var(--ink-2);">Lastly</span><span style="margin-left:auto;">지금</span>
+              </div>
+              <div style="font-size:15.5px;font-weight:700;letter-spacing:-.02em;margin-bottom:5px;">이불 빨래할 때가 됐어요</div>
+              <div style="font-size:13.5px;color:var(--ink-2);">마지막 세탁 14일 전 · 8월 25일</div>
+              <div style="display:flex;gap:8px;margin-top:15px;">
+                <span style="flex:1;text-align:center;padding:14px 0;border-radius:13px;background:var(--accent);color:#FFFFFF;font-size:14px;font-weight:600;">완료</span>
+                <span style="flex:1;text-align:center;padding:14px 0;border-radius:13px;background:#F3EFE6;color:var(--ink-2);font-size:14px;font-weight:600;">3일 뒤에</span>
+                <span style="flex:1;text-align:center;padding:14px 0;border-radius:13px;background:#F3EFE6;color:var(--ink-2);font-size:14px;font-weight:600;">주말에</span>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:18px;padding:14px 19px;">
+              <div style="display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-3);">
+                <span style="width:15px;height:15px;border-radius:5px;background:#E1D9CB;display:block;"></span>
+                <span style="color:var(--ink-2);">Lastly</span><span style="margin-left:auto;">어제</span>
+              </div>
+              <div style="font-size:14px;margin-top:8px;color:var(--ink-2);">에어컨 필터 청소를 미뤄뒀어요</div>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;text-align:center;">
+            <div style="font-size:13px;color:#6E665D;">밀어서 열기</div>
+            <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:18px auto 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- 14-B 알림 진입 -->
+    <div style="flex:0 0 auto;width:390px;">
+      <div style="display:var(--label-display);font-size:13px;letter-spacing:.04em;color:#5F584F;margin-bottom:14px;padding-left:6px;">14-B · 알림 터치 → 항목 상세 다이렉트 진입</div>
+      <div style="width:390px;height:844px;background:var(--paper);background-image:var(--paper-tex);border:1px solid #E6E0D4;border-radius:46px;box-shadow:0 24px 60px rgba(70,58,44,.13),0 2px 6px rgba(70,58,44,.05);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:14px;font-weight:600;flex:0 0 auto;">
+          <span>9:41</span><span style="width:16px;height:9px;border:1.5px solid var(--ink);border-radius:3px;display:block;"></span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:16px 24px 0;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+            <span style="width:9px;height:9px;border-left:1.8px solid var(--ink-2);border-bottom:1.8px solid var(--ink-2);transform:rotate(45deg);display:block;"></span>
+            <span style="background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:700;padding:6px 11px;border-radius:9px;">알림에서 열림</span>
+          </div>
+
+          <div style="margin-top:18px;text-align:center;">
+            <div style="font-size:18px;font-weight:600;margin-top:14px;">에어컨 필터 청소</div>
+            <div style="font-size:64px;font-weight:700;letter-spacing:-.05em;line-height:1;margin-top:10px;">45<span style="font-size:22px;font-weight:600;letter-spacing:-.02em;margin-left:6px;">일 전</span></div>
+            <div style="font-size:14px;color:var(--ink-2);margin-top:10px;">마지막으로 한 날 · 2026년 7월 23일 (목)</div>
+          </div>
+
+          <div style="margin-top:18px;display:flex;gap:8px;">
+            <div style="flex:1;background:var(--sage-soft);border-radius:18px;padding:14px 16px;">
+              <div style="font-size:12px;color:#6E665D;">다음 예정일</div>
+              <div style="font-size:16px;font-weight:700;color:#96543A;margin-top:4px;">오늘 · 9월 6일</div>
+            </div>
+            <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;">
+              <div style="font-size:12px;color:var(--ink-3);">관리 주기</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;">45일마다</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;flex:1;min-height:0;">
+            <div style="font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:8px;padding:0 4px;">지난 기록</div>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--sage);display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">7월 23일 (목)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">45일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“필터 두 장 남음, 다음엔 주문하기”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">6월 8일 (월)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">47일 만에</span>
+                  </div>
+                  <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">메모 없음</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#E1D9CB;display:block;flex:0 0 auto;margin-top:6px;"></span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;gap:10px;">
+                    <span style="flex:1;font-size:15px;font-weight:500;">4월 22일 (수)</span>
+                    <span style="font-size:13px;color:var(--ink-3);">44일 만에</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px;">“곰팡이 냄새가 심했음”</div>
+                </div>
+                <span style="width:6px;height:6px;border-right:1.5px solid #B7AE9C;border-top:1.5px solid #B7AE9C;transform:rotate(45deg);margin-top:8px;display:block;flex:0 0 auto;"></span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:var(--ink-2);">주기 수정</span>
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:var(--ink-2);">잠시 보관</span>
+              <span style="flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;font-size:13.5px;font-weight:600;color:#B3402C;">삭제</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:10px 24px 26px;background:linear-gradient(180deg,rgba(245,242,236,0),var(--paper) 34%);">
+          <div style="background:#A85F44;color:#FFFFFF;border-radius:20px;height:58px;box-shadow:0 8px 18px rgba(168,95,68,.26);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;">오늘 했어요</div>
+          <div style="height:5px;width:130px;border-radius:3px;background:#E1D9CB;margin:16px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#A85F44&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#A85F44&quot;,&quot;#D4836A&quot;,&quot;#4A433F&quot;,&quot;#2D2622&quot;],&quot;section&quot;:&quot;테마&quot;},&quot;paperTexture&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;테마&quot;},&quot;showLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;보기&quot;}}">
+class Component extends DCLogic {
+  apply() {
+    const r = document.documentElement.style;
+    const allowed = ["#A85F44", "#D4836A", "#4A433F", "#2D2622"];
+    const a = allowed.includes(this.props.accentColor) ? this.props.accentColor : "#A85F44";
+    const m = { "#A85F44": ["#F7EDE6", "#9A4F31"], "#D4836A": ["#FAF0EA", "#9A4F31"], "#4A433F": ["#F3EFE6", "#4A433F"], "#2D2622": ["#F3EFE6", "#2D2622"] };
+    const pair = m[a] || ["#F7EDE6", "#9A4F31"];
+    r.setProperty("--accent", a);
+    r.setProperty("--accent-soft", pair[0]);
+    r.setProperty("--accent-ink", pair[1]);
+    r.setProperty("--label-display", this.props.showLabels === false ? "none" : "block");
+    r.setProperty(
+      "--paper-tex",
+      this.props.paperTexture !== true
+        ? "none"
+        : "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E\")"
+    );
+  }
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -58,7 +58,7 @@ export default function SettingsPage() {
         <Row divider>
           <p className="text-15.5 font-semibold text-ink">알림 권한</p>
           {settings.data?.pushGranted ? (
-            <span className="rounded-[9px] bg-sage-soft px-[11px] py-1.5 text-13 font-bold text-sage-ink">
+            <span className="rounded-[9px] bg-sage-soft px-[11px] py-1.5 text-13 font-bold text-accent-ink">
               허용됨
             </span>
           ) : (

@@ -32,7 +32,8 @@ export function formatShortDate(iso: string): string {
  */
 export function formatDueBadge(daysUntilDue: number | null): string {
   if (daysUntilDue === null) return '—';
-  if (daysUntilDue < 0) return `${Math.abs(daysUntilDue)}일 지남`;
+  // 밀린 항목은 D+n 이다 — 설계 05 의 "D+2". 말로 풀어 쓰면 D-n 과 줄이 안 맞는다.
+  if (daysUntilDue < 0) return `D+${Math.abs(daysUntilDue)}`;
   if (daysUntilDue === 0) return '오늘';
   return `D-${daysUntilDue}`;
 }

@@ -7,11 +7,10 @@ import type { AiCadenceRequest, AiCadenceResponse, AiEmbedResponse, AiParseReque
 const TIMEOUT_MS = 8_000;
 
 /**
- * 무료 호스팅은 15분 놀면 컨테이너를 재운다. 다시 깨는 데 20초 남짓 걸려서,
- * 한 번만 시도하면 '한동안 안 쓰다가 처음 하는 기록'은 매번 인식에 실패한다.
- * 컨테이너가 없다고 판단됐을 때 이 예산 안에서 깨어나기를 기다린다.
+ * 컨테이너가 뜨기를 기다려주는 시간. 재던 값이 22초쯤이라 여유를 뒀다.
+ * 이 시간이 지나면 새 시도를 시작하지 않는다.
  */
-const COLD_START_TIMEOUT_MS = 30_000;
+const WAKE_BUDGET_MS = 45_000;
 
 /** 이 시간 안에 이미 깨워봤으면 다시 두드리지 않는다. */
 const WARMUP_INTERVAL_MS = 5 * 60_000;
@@ -56,7 +55,7 @@ export class AiClient {
     if (now - this.lastWarmUpAt < WARMUP_INTERVAL_MS) return;
     this.lastWarmUpAt = now;
 
-    fetch(`${this.baseUrl}/healthz`, { signal: AbortSignal.timeout(COLD_START_TIMEOUT_MS) }).catch(
+    fetch(`${this.baseUrl}/healthz`, { signal: AbortSignal.timeout(WAKE_BUDGET_MS) }).catch(
       () => undefined,
     );
   }
@@ -80,15 +79,17 @@ export class AiClient {
     // 서비스가 실제로 낸 답(4xx, 500 등)이면 다시 불러도 같다.
     if (!first.unreachable) return null;
 
-    // 깨어날 때까지 두드린다. 부팅 중에는 프록시가 502를 계속 즉시 돌려주므로
-    // 한 번 더 부르는 것으로는 모자라고, 예산이 다할 때까지 기다려야 한다.
+    // 깨어날 때까지 두드린다. 부팅 중에는 프록시가 502를 즉시 돌려주므로
+    // 한 번 더 부르는 것으로는 모자라고, 뜰 때까지 반복해야 한다.
     this.logger.log(`AI ${path} 응답 없음 — 깨어나길 기다린다`);
-    const deadline = Date.now() + COLD_START_TIMEOUT_MS;
+    const stopStartingAt = Date.now() + WAKE_BUDGET_MS;
 
-    while (Date.now() < deadline) {
+    while (Date.now() < stopStartingAt) {
       await sleep(RETRY_DELAY_MS);
 
-      const retry = await this.attempt<T>(path, body, deadline - Date.now());
+      // 남은 예산이 아니라 매번 온전한 시간을 준다. 남은 값으로 깎으면
+      // 마침내 살아난 서비스를 2초 만에 끊어버려 다 기다리고도 실패한다.
+      const retry = await this.attempt<T>(path, body, TIMEOUT_MS);
       if (retry.ok) return retry.value;
       if (!retry.unreachable) return null;
     }

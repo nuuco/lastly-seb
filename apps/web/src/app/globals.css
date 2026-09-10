@@ -42,6 +42,15 @@
   .pb-capture-bar {
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
+
+  /* 캐러셀은 손가락으로 넘긴다. 막대가 보이면 카드 아래가 지저분해진다. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

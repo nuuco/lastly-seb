@@ -5,7 +5,6 @@ import { forwardRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 import { QuickPhrases } from './quick-phrases';
-import { Waveform } from './waveform';
 
 interface CaptureBarProps {
   value: string;
@@ -48,16 +47,25 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
           if (value.trim() && !interpreting) onSubmit();
         }}
         className={cn(
-          'flex items-center gap-2.5 rounded-card border bg-white/[.86] py-2 pl-5 pr-2 shadow-hair backdrop-blur-[24px]',
-          // 테두리 색만 바뀐다 — 크기도 곡률도 그대로라 형태가 흔들리지 않는다.
-          listening || interpreting ? 'border-action' : 'border-line focus-within:border-accent',
+          'flex items-center gap-2.5 rounded-pill border-[1.5px] bg-white/[.92] py-2 pl-[18px] pr-2 backdrop-blur-[24px]',
+          // 크기도 곡률도 그대로다. 상태는 테두리와 그림자로만 알린다.
+          listening
+            ? // 듣는 중에는 테두리가 숨쉰다 — 설계 07. 파형 막대는 개정에서 빠졌다.
+              'animate-glow border-listen-edge'
+            : cn(
+                'shadow-input',
+                interpreting ? 'border-action' : 'border-line focus-within:border-accent',
+              ),
         )}
       >
         {listening ? (
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <Waveform scale={0.62} />
-            <span className="min-w-0 flex-1 truncate text-[15.5px] text-ink">
+            {/* 듣고 있다는 신호는 이 점 하나다. 커졌다 작아지며 맥박처럼 뛴다. */}
+            <span className="block h-[7px] w-[7px] shrink-0 animate-halo rounded-full bg-action" aria-hidden />
+            <span className="flex min-w-0 flex-1 items-center overflow-hidden whitespace-nowrap text-[15.5px] font-medium tracking-t2 text-ink">
               {liveTranscript || <span className="text-ink-3">듣고 있어요…</span>}
+              {/* 받아쓰는 중임을 보이는 커서. 말이 멈춰도 깜빡여 아직 듣고 있음을 알린다. */}
+              <span className="ml-[3px] block h-[17px] w-[2px] shrink-0 animate-caret bg-action" aria-hidden />
             </span>
           </div>
         ) : (
@@ -112,7 +120,7 @@ function Thinking() {
       {[0, 0.15, 0.3].map((delay) => (
         <span
           key={delay}
-          className="block h-1.5 w-1.5 animate-wv rounded-full bg-ink-3"
+          className="block h-1.5 w-1.5 animate-halo rounded-full bg-ink-3"
           style={{ animationDelay: `${delay}s`, animationDuration: '.6s' }}
         />
       ))}

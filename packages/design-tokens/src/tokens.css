@@ -1,31 +1,45 @@
 /**
- * docs/design-reference/ 의 :root 변수를 그대로 옮긴 것.
+ * docs/design-reference/ 의 :root 변수와 본문에 쓰인 값을 그대로 옮긴 것.
  * 이름과 값을 설계와 1:1로 맞춰 두었으니, 설계가 바뀌면 여기부터 고친다.
+ *
+ * 2026-09 설계 개정으로 팔레트가 통째로 바뀌었다.
+ * 초록(세이지)과 노랑이 빠지고 따뜻한 테라코타 계열로 통일됐다.
+ * 옛 주황 #B0552F, 옛 세이지 #5A6347 은 새 설계에 한 번도 나오지 않는다.
  */
 :root {
   --lastly-font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
     sans-serif;
 
-  /* 강조 — accent는 웜 그레이다. 주황이 아니다.
-     주황(#B0552F)은 주 액션 버튼과 D-n 배지에만 쓰는 별도 색이다. */
+  /* 강조 — accent는 웜 그레이다. 테라코타가 아니다.
+     테라코타(action)는 주 버튼과 임박 표시에만 쓰는 별도 색이다. */
   --lastly-accent: #4a433f;
-  --lastly-accent-soft: #f7eeda;
-  --lastly-accent-ink: #8a5a12;
+  --lastly-accent-soft: #f7ede6;
+  --lastly-accent-ink: #9a4f31;
 
-  /* 세이지 — "백업됨" 같은 안심 신호에 쓴다. */
-  --lastly-sage: #5a6347;
-  --lastly-sage-soft: #e9ede1;
-  --lastly-sage-ink: #4a5439;
+  /* 주 액션 — 시작하기·알림 켜기 같은 큰 버튼과 D-n 배지 */
+  --lastly-action: #a85f44;
+  --lastly-action-pressed: #94513a;
+  --lastly-action-glow: rgba(168, 95, 68, 0.26);
 
-  /* 주 액션 (오늘 했어요 / 시작하기)과 임박 표시 */
-  --lastly-action: #b0552f;
-  --lastly-action-pressed: #9c4a26;
-  --lastly-action-glow: rgba(176, 85, 47, 0.26);
+  /* 카드 안의 "오늘 했어요" — 꽉 찬 버튼이 아니라 옅게 깔린 면이다 */
+  --lastly-action-soft: #f7ede6;
+  --lastly-action-soft-ink: #9a4f31;
 
-  /* 텍스트 3단계 */
+  /* 밀린 항목(D+n)과 파괴적 동작. 주 액션보다 붉다. */
+  --lastly-danger: #b3402c;
+
+  /* 안심 신호. 이름은 남기지만 색은 더 이상 초록이 아니다. */
+  --lastly-sage: #d4836a;
+  --lastly-sage-soft: #faf0ea;
+
+  /* 텍스트 4단계 */
   --lastly-ink: #2d2622;
   --lastly-ink-2: #5a534c;
-  --lastly-ink-3: #6e665d;
+  --lastly-ink-3: #6a6259;
+  --lastly-ink-4: #b7ae9c;
+  /* 화면 라벨·보조 설명에 쓰이는 중간 회색 */
+  --lastly-ink-mute: #5f584f;
+  --lastly-ink-faint: #8f8577;
 
   /* 지면 */
   --lastly-paper: #f5f2ec;
@@ -33,28 +47,32 @@
   --lastly-line: #e6e0d4;
   --lastly-line-2: #e4dccb;
   --lastly-rule: #e1d9cb;
+  --lastly-surface-alt: #f3efe6;
+  --lastly-surface-sunken: #efeae0;
+  --lastly-backdrop: #ede8df;
 
   /* 강조 카드의 세로 그라디언트 (오늘 챙길 것) */
   --lastly-card-hi-from: #f6f1e6;
   --lastly-card-hi-to: #fcfbf8;
-  --lastly-dot-warn: #e09f3e;
 
-  /* 경과 진행 막대 — 남은 날짜에 따라 채움 색이 바뀐다 */
+  /* 경과 진행 막대 — 예정일이 가까울수록 진해진다 */
   --lastly-bar-track: #efeae0;
-  --lastly-bar-near: #c68b59;
-  --lastly-bar-far: #5a6347;
+  --lastly-bar-near: #a85f44;
+  --lastly-bar-far: #e4bca9;
 
-  /* 음성 파형 막대 3색 */
-  --lastly-wave-1: #eadfc6;
-  --lastly-wave-2: #ddbb7c;
-  --lastly-wave-3: #4a433f;
+  /* 히어로 카드 캐러셀의 페이지 점 */
+  --lastly-dot-on: #a85f44;
+  --lastly-dot-off: #ddd5c6;
+  --lastly-dot-mute: #cbc2b2;
 
-  /* 눌림·가라앉은 면, 흐린 글자 */
-  --lastly-surface-alt: #f3efe6;
-  --lastly-surface-sunken: #efeae0;
-  --lastly-ink-4: #b7ae9c;
+  /* 음성 인식 중 입력 바가 숨쉬는 테두리 (glow 키프레임이 이 사이를 오간다) */
+  --lastly-listen-edge: #e0bfa6;
+  --lastly-listen-edge-mid: #d9a87f;
+  --lastly-listen-edge-warm: #c98a54;
 
-  --lastly-danger: #b3402c;
+  /* 보내기·멈춤 버튼의 짙은 면 */
+  --lastly-solid-from: #5a534e;
+  --lastly-solid-to: #4a433f;
 
   /* 곡률 — 설계가 쓰는 실제 값 */
   --lastly-r-row: 18px;
@@ -63,25 +81,33 @@
   --lastly-r-phone: 46px;
   /* 바텀시트 상단 곡률 */
   --lastly-r-sheet: 30px;
+  /* 큰 버튼 / 입력 바 / 카드 안 옅은 버튼 */
+  --lastly-r-btn: 20px;
+  --lastly-r-pill: 24px;
+  --lastly-r-soft: 14px;
+  --lastly-r-key: 16px;
 
   /* 그림자 — 설계에서 쓰인 값 그대로 */
   --lastly-shadow-hero: 0 10px 28px rgba(44, 38, 35, 0.1);
+  /* 오늘 챙길 것 캐러셀의 카드 — 목록 카드보다 살짝 더 뜬다 */
+  --lastly-shadow-hero-card: 0 6px 20px rgba(70, 58, 44, 0.05);
   --lastly-shadow-card: 0 4px 16px rgba(70, 58, 44, 0.04);
-  --lastly-shadow-action: 0 8px 18px rgba(176, 85, 47, 0.26);
-  --lastly-shadow-action-lg: 0 10px 24px rgba(176, 85, 47, 0.28);
-  /* 하단 고정 바 — 위로 퍼지는 그림자에 주황 기운을 살짝 섞는다 */
-  --lastly-shadow-dock: 0 -4px 26px rgba(70, 58, 44, 0.06), 0 12px 30px rgba(176, 85, 47, 0.14);
+  --lastly-shadow-action: 0 8px 18px rgba(168, 95, 68, 0.26);
+  --lastly-shadow-action-lg: 0 10px 24px rgba(168, 95, 68, 0.28);
+  /* 하단 고정 바 — 위로 퍼지는 그림자에 테라코타 기운을 살짝 섞는다 */
+  --lastly-shadow-dock: 0 -4px 26px rgba(70, 58, 44, 0.06), 0 12px 30px rgba(168, 95, 68, 0.14);
   --lastly-shadow-toast: 0 6px 16px rgba(44, 38, 35, 0.3);
   --lastly-shadow-sheet: 0 12px 26px rgba(45, 38, 34, 0.22);
   --lastly-shadow-raise: 0 8px 20px rgba(70, 58, 44, 0.08);
   --lastly-shadow-soft: 0 10px 30px rgba(70, 58, 44, 0.06);
   --lastly-shadow-hair: 0 1px 2px rgba(70, 58, 44, 0.08);
+  --lastly-shadow-input: 0 12px 26px rgba(70, 58, 44, 0.08);
   /* 키보드 키의 아래 한 줄 */
   --lastly-shadow-key: 0 1px 0 rgba(70, 58, 44, 0.2);
   /* 위쪽 경계선 역할 */
   --lastly-shadow-topline: 0 -1px 0 var(--lastly-line);
   /* 듣고 있음을 알리는 점의 후광 */
-  --lastly-ring-listen: 0 0 0 5px rgba(176, 85, 47, 0.12);
+  --lastly-ring-listen: 0 0 0 5px rgba(168, 95, 68, 0.12);
 
   /* 설계가 라이트 단일 테마이므로 다크 대응은 하지 않는다. */
   color-scheme: light;

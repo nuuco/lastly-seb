@@ -124,7 +124,7 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
             <p
               className={cn(
                 'mt-1 text-16 font-bold',
-                data.snoozedUntil ? 'text-ink-3' : 'text-sage-ink',
+                data.snoozedUntil ? 'text-ink-3' : 'text-accent-ink',
               )}
             >
               {data.snoozedUntil

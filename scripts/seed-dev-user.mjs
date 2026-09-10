@@ -39,20 +39,34 @@ const admin = createClient(url, serviceKey, {
 const iso = (d) => format(d, 'yyyy-MM-dd');
 const today = new Date();
 
-/** 설계 화면 05에 나오는 항목들을 그대로 재현한다. */
+/**
+ * 설계 05 에 그려진 값을 그대로 재현한다.
+ * 화면과 나란히 놓고 비교하려면 숫자까지 같아야 한다.
+ *
+ *   욕실 배수구 청소  D+2 · 32일 전 · 한 달마다   ← 밀림
+ *   에어컨 필터 청소  오늘 · 45일 전 · 45일마다   ← 오늘
+ *   이불 빨래        D-2 · 12일 전 · 2주마다
+ *   칫솔 교체        D-12 · 78일 전 · 3달마다
+ */
 const SAMPLES = [
+  {
+    name: '욕실 배수구 청소',
+    cadence: { unit: 'month', interval: 1, weekdays: [] },
+    source: 'community',
+    // 32일 전 + 한 달 주기 → 이틀 밀렸다. 캐러셀 첫 장이 된다.
+    doneDaysAgo: [32, 63, 95],
+  },
   {
     name: '에어컨 필터 청소',
     cadence: { unit: 'day', interval: 45, weekdays: [] },
     source: 'community',
-    // 45일 전에 했으니 오늘이 예정일 → "오늘 챙길 것"
+    // 45일 전 → 오늘이 예정일
     doneDaysAgo: [45, 92, 136],
   },
   {
     name: '이불 빨래',
     cadence: { unit: 'week', interval: 2, weekdays: [] },
     source: 'personal',
-    // 12일 전 → D-2, "다가오는 항목"
     doneDaysAgo: [12, 28, 42],
   },
   {
@@ -65,7 +79,6 @@ const SAMPLES = [
     name: '정수기 필터 교체',
     cadence: { unit: 'month', interval: 3, weekdays: [] },
     source: 'community',
-    // 20일 전 → 여유 있는 항목
     doneDaysAgo: [20, 112],
   },
   {
