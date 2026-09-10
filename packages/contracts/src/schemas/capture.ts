@@ -54,6 +54,14 @@ export const interpretResultSchema = z.object({
   /** new_item일 때의 주기 제안. matched면 기존 항목 주기를 그대로 담는다. */
   cadence: cadenceSuggestionSchema.nullable(),
   confidence: z.number().min(0).max(1),
+  /**
+   * AI가 응답하지 않아 규칙만으로 판단했는지.
+   *
+   * "AI가 보고 애매하다고 한 것"과 "AI가 아예 대답을 못 한 것"은 다르다.
+   * 둘을 뭉뚱그리면 화면이 서버 사정을 사용자 탓으로 돌리게 된다
+   * ("조금 더 또렷하게 말해주세요"). 화면이 다른 말을 할 수 있도록 구분해서 내린다.
+   */
+  degraded: z.boolean().default(false),
   /** 재해석 없이 그대로 커밋할 수 있는 서명된 토큰. */
   draftToken: z.string(),
 });

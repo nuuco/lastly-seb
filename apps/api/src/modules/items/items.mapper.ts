@@ -27,7 +27,7 @@ export function toItem(row: ItemRow, cadence: CadenceService, today: Date): Item
     snoozedUntil: row.snoozed_until,
     daysSinceLastDone: cadence.daysSince(row.last_done_on, today),
     daysUntilDue,
-    bucket: cadence.bucketFor(daysUntilDue),
+    bucket: cadence.bucketFor(daysUntilDue, row.snoozed_until),
     averageIntervalDays: row.average_interval_days,
     logCount: row.log_count,
     createdAt: row.created_at,

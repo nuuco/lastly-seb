@@ -41,8 +41,15 @@ export class CadenceService {
     return lastDoneOn ? differenceInCalendarDays(today, parseISO(lastDoneOn)) : null;
   }
 
-  /** 밀렸거나 오늘이면 due, 2주 안이면 upcoming, 나머지는 later. */
-  bucketFor(daysUntilDue: number | null): ItemBucket {
+  /**
+   * 밀렸거나 오늘이면 due, 2주 안이면 upcoming, 나머지는 later.
+   *
+   * 쉬는 중이면 날짜와 무관하게 later 다. 일주일만 쉬기로 해도 마찬가지다.
+   * 쉬기로 한 일이 "다가오는 항목" 에 D-7 로 남아 있으면 쉬는 것처럼 보이지 않고,
+   * 사용자는 자기가 누른 게 먹었는지 알 수 없다.
+   */
+  bucketFor(daysUntilDue: number | null, snoozedUntil: IsoDate | null = null): ItemBucket {
+    if (snoozedUntil) return 'later';
     if (daysUntilDue === null) return 'due';
     if (daysUntilDue <= 0) return 'due';
     return daysUntilDue <= UPCOMING_WINDOW_DAYS ? 'upcoming' : 'later';

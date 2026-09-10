@@ -14,10 +14,17 @@ interface DisambiguateSheetProps {
   /** 배경 탭·취소로 그냥 물러날 때. 다시 말하기와 달리 마이크를 켜지 않는다. */
   onDismiss: () => void;
   committing: boolean;
+  /** 사용자가 말했는지 적었는지. 안내 문구가 달라진다. */
+  mode: 'voice' | 'text';
 }
 
 /**
- * 설계 07-B — 못 알아들었거나 후보가 여럿일 때.
+ * 못 알아들었거나 후보가 여럿일 때.
+ *
+ * 안내 문구가 세 갈래다. 원인이 다르면 사용자가 할 일도 다르기 때문이다.
+ *   AI 무응답  서버 사정이다. 사용자를 탓하지 않고 고르게만 한다.
+ *   음성       발음이나 주변 소음일 수 있다. 다시 말해달라고 한다.
+ *   타이핑·칩  말한 적이 없다. "또렷하게 말해주세요" 는 여기서 헛소리가 된다.
  *
  * 여기서 고른 선택이 별칭으로 학습돼 다음부터는 이 화면을 거치지 않는다.
  */
@@ -30,9 +37,11 @@ export function DisambiguateSheet({
   onKeyboard,
   onDismiss,
   committing,
+  mode,
 }: DisambiguateSheetProps) {
   const hasCandidates = result.candidates.length > 0;
   const newItemName = result.normalizedName ?? result.transcript;
+  const notice = describeNotice(result.degraded, hasCandidates, mode);
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 선택">
@@ -49,14 +58,8 @@ export function DisambiguateSheet({
       </p>
 
       <div className="mt-5 rounded-lg border border-[#EFD9CB] bg-[#F8EAE1] px-[18px] py-4">
-        <p className="text-[14.5px] font-bold text-action-pressed">
-          {hasCandidates ? '어떤 항목인지 확실하지 않아요' : '무슨 일인지 잘 모르겠어요'}
-        </p>
-        <p className="mt-1.5 text-[13.5px] leading-[1.7] text-ink-2">
-          {hasCandidates
-            ? '조금 더 또렷하게 말해주시거나, 아래에서 골라주세요.'
-            : '다시 말해주시거나 키보드로 적어주세요.'}
-        </p>
+        <p className="text-[14.5px] font-bold text-action-pressed">{notice.title}</p>
+        <p className="mt-1.5 text-[13.5px] leading-[1.7] text-ink-2">{notice.body}</p>
       </div>
 
       {hasCandidates ? (
@@ -100,7 +103,7 @@ export function DisambiguateSheet({
           disabled={committing}
           className="flex h-14 flex-1 items-center justify-center rounded-row bg-action text-16 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
         >
-          다시 말하기
+          {mode === 'voice' ? '다시 말하기' : '다시 적기'}
         </button>
         <button
           type="button"
@@ -113,4 +116,38 @@ export function DisambiguateSheet({
       </div>
     </Sheet>
   );
+}
+
+function describeNotice(
+  degraded: boolean,
+  hasCandidates: boolean,
+  mode: 'voice' | 'text',
+): { title: string; body: string } {
+  // 서버가 대답을 못 한 것이다. 사용자가 잘못 말한 게 아니므로 고쳐 말하라고 하지 않는다.
+  if (degraded) {
+    return {
+      title: '지금은 자동으로 알아보기 어려워요',
+      body: hasCandidates
+        ? '잠시 후 다시 하거나, 아래에서 직접 골라주세요.'
+        : '잠시 후 다시 시도하거나, 직접 적어서 남겨주세요.',
+    };
+  }
+
+  if (hasCandidates) {
+    return {
+      title: '어떤 항목인지 확실하지 않아요',
+      body:
+        mode === 'voice'
+          ? '조금 더 또렷하게 말해주시거나, 아래에서 골라주세요.'
+          : '조금 더 자세히 적어주시거나, 아래에서 골라주세요.',
+    };
+  }
+
+  return {
+    title: '무슨 일인지 잘 모르겠어요',
+    body:
+      mode === 'voice'
+        ? '다시 말해주시거나 키보드로 적어주세요.'
+        : '조금 더 자세히 적어주세요.',
+  };
 }

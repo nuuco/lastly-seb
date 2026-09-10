@@ -53,7 +53,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
             ? // 듣는 중에는 테두리가 숨쉰다 — 설계 07. 파형 막대는 개정에서 빠졌다.
               'animate-glow border-listen-edge'
             : cn(
-                'shadow-input',
+                'shadow-topline',
                 interpreting ? 'border-action' : 'border-line focus-within:border-accent',
               ),
         )}
@@ -90,12 +90,26 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
         {interpreting ? (
           <Thinking />
         ) : value.trim() && !listening ? (
-          <button
-            type="submit"
-            className="h-[46px] shrink-0 rounded-md bg-action px-4 text-15 font-semibold text-white shadow-action active:bg-action-pressed"
-          >
-            기록
-          </button>
+          /**
+           * 글자가 있을 때 — 설계 06.
+           * 마이크가 사라지지 않는다. 작고 흐리게 물러나 자리를 지키고,
+           * 그 옆에 보내기 화살표가 선다. 적다가 말로 바꾸려는 사람이
+           * 글자를 지워야만 마이크가 돌아오는 일이 없어야 한다.
+           */
+          <>
+            <SmallMicButton onClick={onMic} />
+            <button
+              type="submit"
+              aria-label="기록하기"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-[linear-gradient(180deg,var(--lastly-solid-from),var(--lastly-solid-to))] shadow-toast"
+            >
+              {/* 오른쪽 위를 가리키는 꺾쇠. 설계가 테두리 두 개를 돌려서 그렸다. */}
+              <span
+                className="-ml-[3px] block h-[9px] w-[9px] -rotate-45 border-r-2 border-t-2 border-white"
+                aria-hidden
+              />
+            </button>
+          </>
         ) : (
           <MicButton listening={listening} onClick={onMic} />
         )}
@@ -128,10 +142,21 @@ function Thinking() {
   );
 }
 
-/**
- * 캡슐과 U자 받침을 도형으로 그린다 — 설계가 SVG 대신 이렇게 그렸다.
- * 듣는 중에는 주황으로 바뀌어 "다시 누르면 멈춘다"를 알린다.
- */
+/** 글자를 적는 중일 때의 마이크 — 물러나 있지만 사라지지는 않는다 (설계 06). */
+function SmallMicButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="음성으로 입력하기"
+      className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px] bg-surface-alt"
+    >
+      <span className="block h-[13px] w-2 rounded-[5px] bg-ink-2" />
+      <span className="absolute bottom-2 block h-1.5 w-3.5 rounded-b-[8px] border-x-[1.6px] border-b-[1.6px] border-t-0 border-ink-2" />
+    </button>
+  );
+}
+
 function MicButton({ listening, onClick }: { listening: boolean; onClick: () => void }) {
   return (
     <button
@@ -139,15 +164,19 @@ function MicButton({ listening, onClick }: { listening: boolean; onClick: () => 
       onClick={onClick}
       aria-label={listening ? '말하기 멈추기' : '음성으로 입력하기'}
       aria-pressed={listening}
-      className={cn(
-        'relative flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md',
-        listening
-          ? 'bg-[linear-gradient(180deg,#B0552F,#9C4A26)] shadow-action'
-          : 'bg-[linear-gradient(180deg,#5A534E,#4A433F)] shadow-toast',
-      )}
+      /* 면은 듣든 안 듣든 같은 짙은 색이다 — 설계 07. 바뀌는 건 안에 든 도형뿐이다. */
+      className="relative flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md bg-[linear-gradient(180deg,var(--lastly-solid-from),var(--lastly-solid-to))] shadow-toast"
     >
-      <span className="block h-[18px] w-[11px] rounded-[6px] bg-white" />
-      <span className="absolute bottom-[11px] block h-[9px] w-[19px] rounded-b-[10px] border-x-2 border-b-2 border-t-0 border-white" />
+      {listening ? (
+        /* 멈춤 — 네모 하나. 누르면 멈춘다는 걸 도형만으로 알린다. */
+        <span className="block h-[13px] w-[13px] rounded-[4px] bg-white" />
+      ) : (
+        <>
+          {/* 캡슐과 U자 받침을 도형으로 그린다 — 설계가 SVG 대신 이렇게 그렸다. */}
+          <span className="block h-[18px] w-[11px] rounded-[6px] bg-white" />
+          <span className="absolute bottom-[11px] block h-[9px] w-[19px] rounded-b-[10px] border-x-2 border-b-2 border-t-0 border-white" />
+        </>
+      )}
     </button>
   );
 }

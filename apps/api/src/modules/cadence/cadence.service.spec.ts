@@ -41,6 +41,16 @@ describe('CadenceService', () => {
     expect(service.bucketFor(70)).toBe('later');
   });
 
+  it('쉬는 중이면 날짜와 상관없이 여유 있는 항목으로 내린다', () => {
+    // 일주일만 쉬기로 해도 마찬가지다. 쉬기로 한 일이 "다가오는 항목" 에
+    // D-7 로 남아 있으면 사용자는 자기가 누른 게 먹었는지 알 수 없다.
+    expect(service.bucketFor(7, '2026-09-17')).toBe('later');
+    expect(service.bucketFor(-3, '2026-09-17')).toBe('later');
+    expect(service.bucketFor(0, '2026-09-17')).toBe('later');
+    // 쉬지 않으면 원래대로.
+    expect(service.bucketFor(7, null)).toBe('upcoming');
+  });
+
   it('주기를 화면 문구로 옮긴다', () => {
     expect(service.describe(rule({ unit: 'week', interval: 2 }))).toBe('2주마다');
     expect(service.describe(rule({ weekdays: [6] }))).toBe('2주마다 토요일');

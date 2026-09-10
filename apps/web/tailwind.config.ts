@@ -126,6 +126,7 @@ const config: Config = {
         listen: 'var(--lastly-ring-listen)',
         input: 'var(--lastly-shadow-input)',
         'hero-card': 'var(--lastly-shadow-hero-card)',
+        chip: 'var(--lastly-shadow-chip)',
       },
 
       backgroundImage: {

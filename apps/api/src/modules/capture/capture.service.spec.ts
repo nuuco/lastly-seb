@@ -187,13 +187,40 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
     ]);
 
-    const result = await service.interpret('user-1', { text: '이불 빨래', mode: 'text' }, TODAY);
+    // 항목 이름과 다른 말이어야 폴백을 탄다. 이름 그대로면 AI 없이 바로 매칭된다.
+    const result = await service.interpret('user-1', { text: '이불 세탁했다', mode: 'text' }, TODAY);
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(1);
     expect(result.confidence).toBe(0);
+    // 화면이 "또렷하게 말해주세요" 대신 다른 말을 하도록 원인을 알려준다.
+    expect(result.degraded).toBe(true);
     // 토큰은 여전히 발급돼야 커밋으로 이어갈 수 있다.
     expect(result.draftToken).toBe('signed-token');
+  });
+
+  it('이름을 그대로 적었으면 AI가 죽어 있어도 바로 매칭한다', async () => {
+    // 자주 쓰는 문장 칩(설계 06)은 항목 이름을 그대로 넣는다.
+    // 눌러서 넣은 이름을 "혹시 이건가요?" 하고 되묻는 일이 없어야 한다.
+    const { service, ai } = buildService({ parse: null });
+
+    const result = await service.interpret('user-1', { text: '이불 빨래', mode: 'text' }, TODAY);
+
+    expect(result.outcome).toBe('matched_existing');
+    expect(result.matchedItemId).toBe('item-1');
+    expect(result.confidence).toBe(1);
+    expect(result.degraded).toBe(false);
+    // AI에게 물어볼 것이 없으므로 부르지도 않는다.
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('띄어쓰기가 달라도 같은 이름으로 본다', async () => {
+    const { service } = buildService({ parse: null });
+
+    const result = await service.interpret('user-1', { text: '이불빨래', mode: 'text' }, TODAY);
+
+    expect(result.outcome).toBe('matched_existing');
+    expect(result.matchedItemId).toBe('item-1');
   });
 
   it('AI도 검색도 결과가 없으면 재시도로 보낸다', async () => {

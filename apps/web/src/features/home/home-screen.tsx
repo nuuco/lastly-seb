@@ -19,7 +19,7 @@ import { EmptyState } from './components/empty-state';
 import { HomeError, HomeSkeleton } from './components/home-states';
 import { HeroCarousel } from './components/hero-carousel';
 import { AllDoneCard, HomeHeader } from './components/home-header';
-import { LaterSummaryRow, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
+import { LaterGroup, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
 
 interface HomeScreenProps {
   /** 서버에서 미리 가져온 피드. 없으면(비로그인 등) 클라이언트가 다시 가져온다. */
@@ -118,6 +118,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
 
   const { summary, due, upcoming, later } = feed.data;
   const isEmpty = due.length + upcoming.length + later.length === 0;
+  const resting = later.filter((i) => i.snoozedUntil).length;
 
   return (
     <main className="pb-capture-bar min-h-dvh">
@@ -156,10 +157,14 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
 
             {later.length > 0 ? (
               <>
-                <SectionHeader label="여유 있는 항목" count={later.length} dim />
-                <RowGroup>
-                  <LaterSummaryRow items={later} />
-                </RowGroup>
+                <SectionHeader
+                  label="여유 있는 항목"
+                  count={later.length}
+                  dim
+                  // 접혀 있어도 쉬는 게 있다는 건 알 수 있어야 한다.
+                  note={resting > 0 ? `쉬는 중 ${resting}` : null}
+                />
+                <LaterGroup items={later} />
               </>
             ) : null}
           </div>
@@ -209,6 +214,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           onKeyboard={retryWithKeyboard}
           onDismiss={capture.cancel}
           committing={capture.committing}
+          mode={capture.lastMode}
         />
       ) : null}
 

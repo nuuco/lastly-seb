@@ -121,7 +121,16 @@ export class AiClient {
       return { ok: true, value: (await res.json()) as T };
     } catch (err) {
       this.logger.warn(`AI ${path} failed: ${err instanceof Error ? err.message : String(err)}`);
-      return { ok: false, unreachable: true };
+
+      /**
+       * 시간이 다 된 것과 아무도 없는 것을 가른다.
+       *
+       * 깨어나는 중이면 프록시가 붙잡고 있다가 시간 초과가 난다 — 기다리면 뜬다.
+       * 연결 자체가 거부되면 그 자리에 아무것도 없다는 뜻이라, 45초를 기다려도
+       * 달라지지 않는다. 로컬에서 AI 를 안 띄우고 기록해보다 46초를 붙잡혀서 찾았다.
+       */
+      const timedOut = err instanceof Error && err.name === 'AbortError';
+      return { ok: false, unreachable: timedOut };
     } finally {
       clearTimeout(timer);
     }

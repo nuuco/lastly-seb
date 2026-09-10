@@ -26,11 +26,16 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   /** 확인 시트에서 사용자가 주기를 바꿨다면 그 값. 없으면 서버 제안을 그대로 쓴다. */
   const [cadenceOverride, setCadenceOverride] = useState<CadenceRule | null>(null);
   const [committed, setCommitted] = useState<CommitResult | null>(null);
+  /** 마지막으로 보낸 입력이 말이었는지 글이었는지. 재시도 화면의 문구가 갈린다. */
+  const [lastMode, setLastMode] = useState<'voice' | 'text'>('text');
 
   const interpret = useMutation({
     mutationFn: (input: { text: string; mode: 'voice' | 'text'; asrConfidence?: number }) =>
       captureApi.interpret(input),
-    onMutate: () => setStep('interpreting'),
+    onMutate: (input) => {
+      setLastMode(input.mode);
+      setStep('interpreting');
+    },
     onSuccess: (data) => {
       setResult(data);
       setCadenceOverride(null);
@@ -42,7 +47,11 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   });
 
   const commit = useMutation({
-    mutationFn: async (input: { itemId?: string; newItemName?: string }) => {
+    mutationFn: async (input: {
+      itemId?: string;
+      newItemName?: string;
+      note?: string | null;
+    }) => {
       if (!result) throw new Error('해석 결과가 없습니다.');
 
       return captureApi.commit({
@@ -51,7 +60,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
         newItemName: input.newItemName,
         doneOn: result.doneOn,
         cadence: cadenceOverride ?? undefined,
-        note: null,
+        note: input.note ?? null,
       });
     },
     onSuccess: async (data) => {
@@ -94,6 +103,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     step,
     result,
     committed,
+    lastMode,
     cadence: cadenceOverride ?? result?.cadence?.rule ?? null,
     setCadenceOverride,
     interpret: interpret.mutate,

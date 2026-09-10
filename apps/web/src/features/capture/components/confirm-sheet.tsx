@@ -14,7 +14,7 @@ interface ConfirmSheetProps {
   result: InterpretResult;
   cadence: CadenceRule | null;
   onCadenceChange: (rule: CadenceRule) => void;
-  onConfirm: (input: { itemId?: string; newItemName?: string }) => void;
+  onConfirm: (input: { itemId?: string; newItemName?: string; note?: string | null }) => void;
   onRetry: () => void;
   committing: boolean;
 }
@@ -22,8 +22,8 @@ interface ConfirmSheetProps {
 /**
  * 설계 08(기존 항목) / 09(새 항목) 통합 바텀시트.
  *
- * 구조가 같고 배지 색과 안내 문구만 다르다.
- * 기존 항목은 세이지(이미 알던 것), 새 항목은 앰버(처음 보는 것)로 구분한다.
+ * 구조가 같고 배지 모양과 안내 문구만 다르다.
+ * 기존 항목은 테두리만 두른 배지, 새 항목은 꽉 찬 배지로 구분한다 — 설계 08/09.
  */
 export function ConfirmSheet({
   open,
@@ -36,6 +36,7 @@ export function ConfirmSheet({
 }: ConfirmSheetProps) {
   const [cadenceOpen, setCadenceOpen] = useState(false);
   const [name, setName] = useState(result.normalizedName ?? '');
+  const [note, setNote] = useState('');
 
   const isNew = result.outcome === 'new_item';
 
@@ -79,6 +80,27 @@ export function ConfirmSheet({
             }
             onClick={() => setCadenceOpen(true)}
           />
+
+          {/**
+           * 메모 — 설계 08/09 에 새로 생겼다.
+           * "섬유유연제 새로 개봉" 처럼 다음에 할 때 알면 좋을 것을 적는 자리다.
+           * 나중에 항목 상세의 지난 기록과 검색(05-D)에서 이 글이 다시 보인다.
+           */}
+          <div className="py-3.5">
+            <label htmlFor="capture-note" className="text-12.5 font-bold tracking-wide2 text-ink-3">
+              메모 (선택)
+            </label>
+            <div className="mt-2 rounded-soft border border-line bg-card px-3.5 py-3">
+              <input
+                id="capture-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={200}
+                placeholder="다음에 할 때 알면 좋을 것"
+                className="w-full bg-transparent text-[15.5px] font-medium tracking-t2 text-ink outline-none placeholder:font-normal placeholder:text-ink-3"
+              />
+            </div>
+          </div>
         </div>
 
         {result.cadence ? (
@@ -90,9 +112,12 @@ export function ConfirmSheet({
             label: committing ? '저장하는 중…' : '이대로 저장하기',
             disabled: committing || !name.trim(),
             onClick: () =>
-              onConfirm(
-                isNew ? { newItemName: name.trim() } : { itemId: result.matchedItemId ?? undefined },
-              ),
+              onConfirm({
+                ...(isNew
+                  ? { newItemName: name.trim() }
+                  : { itemId: result.matchedItemId ?? undefined }),
+                note: note.trim() || null,
+              }),
           }}
           secondary={{ label: '다시 말하기', onClick: onRetry, disabled: committing }}
         />

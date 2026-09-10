@@ -155,20 +155,38 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
                   <button
                     type="button"
                     onClick={() => setEditingLogId(log.id)}
-                    className="flex w-full items-center gap-3.5 border-b border-line px-1 py-3 text-left"
+                    className="flex w-full items-start gap-3.5 border-b border-line px-1 py-[13px] text-left"
                   >
-                    {/* 가장 최근 기록만 세이지로 짚어 준다. */}
+                    {/* 가장 최근 기록만 짚어 준다. */}
                     <span
                       className={cn(
-                        'block h-[7px] w-[7px] shrink-0 rounded-full',
+                        'mt-1.5 block h-[7px] w-[7px] shrink-0 rounded-full',
                         i === 0 ? 'bg-sage' : 'bg-rule',
                       )}
                     />
-                    <span className="flex-1 text-15 text-ink">{formatLogDate(log.doneOn)}</span>
-                    <span className="text-13 text-ink-3">
-                      {log.gapDays !== null ? `${log.gapDays}일 만에` : '첫 기록'}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline gap-2.5">
+                        <span className="flex-1 text-15 font-medium text-ink">
+                          {formatLogDate(log.doneOn)}
+                        </span>
+                        <span className="text-13 text-ink-3">
+                          {log.gapDays !== null ? `${log.gapDays}일 만에` : '첫 기록'}
+                        </span>
+                      </span>
+                      {/**
+                       * 메모 — 설계 11. 없으면 "메모 없음" 을 흐리게 남긴다.
+                       * 줄을 비우면 기록마다 높이가 달라져 목록이 들쭉날쭉해진다.
+                       */}
+                      <span
+                        className={cn(
+                          'mt-1 block text-13 leading-[1.5]',
+                          log.note ? 'text-ink-2' : 'text-ink-3',
+                        )}
+                      >
+                        {log.note ? `“${log.note}”` : '메모 없음'}
+                      </span>
                     </span>
-                    <span className="ml-2.5 block h-1.5 w-1.5 shrink-0 rotate-45 border-r-[1.5px] border-t-[1.5px] border-ink-disabled" />
+                    <span className="mt-2 block h-1.5 w-1.5 shrink-0 rotate-45 border-r-[1.5px] border-t-[1.5px] border-ink-disabled" />
                   </button>
                 </li>
               ))}

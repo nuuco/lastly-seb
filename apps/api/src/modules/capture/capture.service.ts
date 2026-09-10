@@ -39,6 +39,12 @@ export const FALLBACK_CADENCE: CadenceRule = {
  * 자연어 한 문장을 항목 + 날짜 + 주기로 바꾸는 오케스트레이터.
  * 해석은 AI가 하되, 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
  */
+/**
+ * 이름을 견주기 위해 공백을 지우고 소문자로 눕힌다.
+ * "화분 물 주기" 와 "화분물주기" 는 사람에겐 같은 말이다.
+ */
+const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
+
 @Injectable()
 export class CaptureService {
   private readonly logger = new Logger(CaptureService.name);
@@ -55,6 +61,43 @@ export class CaptureService {
   async interpret(userId: string, input: InterpretRequest, today = new Date()): Promise<InterpretResult> {
     const referenceDate = input.referenceDate ?? format(today, 'yyyy-MM-dd');
     const known = await this.items.listActive(userId);
+
+    /**
+     * 이름을 그대로 적었으면 AI에게 물을 것이 없다.
+     * 자주 쓰는 문장 칩(설계 06)은 항목 이름을 그대로 넣으므로 늘 이 길로 온다.
+     * AI가 자거나 죽어 있어도 칩은 항상 동작해야 한다 — 눌러서 넣은 이름을
+     * "혹시 이건가요?" 하고 되묻는 건 어느 경우에도 말이 안 된다.
+     */
+    const typed = squash(input.text);
+    const exact = known.find((i) => squash(i.name) === typed);
+    if (exact) {
+      return {
+        transcript: input.text,
+        outcome: 'matched_existing',
+        normalizedName: exact.name,
+        doneOn: referenceDate,
+        matchedItemId: exact.id,
+        candidates: [],
+        cadence: await this.resolveCadence(
+          userId,
+          'matched_existing',
+          exact.id,
+          exact.name,
+          referenceDate,
+        ),
+        confidence: 1,
+        degraded: false,
+        draftToken: this.draft.sign({
+          userId,
+          rawInput: input.text,
+          normalizedName: exact.name,
+          doneOn: referenceDate,
+          matchedItemId: exact.id,
+          mode: input.mode,
+          issuedAt: Date.now(),
+        }),
+      };
+    }
 
     const parsed = await this.ai.parseUtterance({
       text: input.text,
@@ -94,6 +137,7 @@ export class CaptureService {
         parsed.done_on,
       ),
       confidence: parsed.confidence,
+      degraded: false,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
@@ -285,6 +329,8 @@ export class CaptureService {
       candidates,
       cadence: null,
       confidence: 0,
+      // AI가 판단해서 애매한 게 아니라, 아예 대답을 못 받은 것이다.
+      degraded: true,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
