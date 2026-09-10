@@ -3,14 +3,17 @@ from datetime import date, timedelta
 import pytest
 
 from lastly_ai.core.config import Settings
-from lastly_ai.schemas.capture import CadenceRequest
+from lastly_ai.schemas.capture import CadenceRequest, Caller
 from lastly_ai.services.cadence import CadenceService
+
+# 개인 이력 계산은 제공자를 부르지 않는다. 형식을 맞추기 위한 값이다.
+CALLER = Caller(provider="anthropic", api_key="sk-test-not-used")
 
 
 @pytest.fixture
 def service() -> CadenceService:
     # 개인 이력 경로만 테스트하므로 llm / priors는 쓰이지 않는다.
-    return CadenceService(llm=None, priors=None, settings=Settings())  # type: ignore[arg-type]
+    return CadenceService(priors=None, settings=Settings())  # type: ignore[arg-type]
 
 
 def days_ago(*offsets: int) -> list[date]:
@@ -89,6 +92,6 @@ class TestPersonalHistory:
 
 class TestRequestShape:
     def test_accepts_empty_history(self) -> None:
-        req = CadenceRequest(item_name="이불 빨래")
+        req = CadenceRequest(caller=CALLER, item_name="이불 빨래")
         assert req.history == []
         assert req.user_average_interval_days is None

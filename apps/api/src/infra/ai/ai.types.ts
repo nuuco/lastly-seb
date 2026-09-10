@@ -45,3 +45,12 @@ export interface AiCadenceResponse {
 export interface AiEmbedResponse {
   embedding: number[];
 }
+
+/**
+ * 요청마다 실려 가는 사용자 자격.
+ * AI 서비스는 서버 키를 쓰지 않고 이 값으로만 제공자를 부른다.
+ */
+export interface AiCaller {
+  provider: 'anthropic' | 'openai' | 'gemini';
+  api_key: string;
+}

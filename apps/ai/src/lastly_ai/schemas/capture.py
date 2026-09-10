@@ -7,6 +7,18 @@ CadenceUnit = Literal["day", "week", "month"]
 CadenceSource = Literal["personal", "community", "default"]
 
 
+class Caller(BaseModel):
+    """
+    요청마다 실려 오는 사용자 자격.
+
+    서버가 모든 사용자의 AI 비용을 대신 낼 수 없어, 각자 등록한 키로만 부른다.
+    이 서비스는 키를 보관하지 않는다 — 한 번 쓰고 버린다.
+    """
+
+    provider: Literal["anthropic", "openai", "gemini"]
+    api_key: str = Field(min_length=10, max_length=400)
+
+
 class KnownItem(BaseModel):
     """사용자가 이미 가진 항목. 매칭 후보 풀이 된다."""
 
@@ -16,6 +28,7 @@ class KnownItem(BaseModel):
 
 
 class ParseRequest(BaseModel):
+    caller: Caller
     text: str = Field(min_length=1, max_length=300)
     reference_date: date
     known_items: list[KnownItem] = Field(default_factory=list)
@@ -47,6 +60,7 @@ class ParseResponse(BaseModel):
 
 
 class CadenceRequest(BaseModel):
+    caller: Caller
     item_name: str = Field(min_length=1, max_length=60)
     # 이 사용자가 실제로 이 일을 한 날짜들. 오름차순.
     history: list[date] = Field(default_factory=list)

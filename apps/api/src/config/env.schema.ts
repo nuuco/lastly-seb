@@ -5,6 +5,19 @@ export const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
+  /**
+   * 사용자 AI 키를 암호화하는 비밀값. base64 로 인코딩한 32바이트.
+   *   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   * 이 값을 잃으면 저장된 키를 아무도 풀 수 없다. 사용자가 다시 등록해야 한다.
+   */
+  CREDENTIALS_SECRET: z.string().min(44),
+
+  /**
+   * 무료 체험용 서버 키. 없으면 체험 없이 각자 키만 쓴다.
+   * 사용자가 자기 키를 등록하기 전 몇 번만 이 키로 대신 부른다.
+   */
+  ANTHROPIC_API_KEY: z.string().optional(),
+
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 

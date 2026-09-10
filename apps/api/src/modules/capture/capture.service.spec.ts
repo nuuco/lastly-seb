@@ -72,6 +72,12 @@ function buildService(overrides: {
   const logs = { add: jest.fn() };
   const draft = { sign: jest.fn().mockReturnValue('signed-token'), verify: jest.fn() };
 
+  // 키가 등록된 사용자를 기본으로 둔다. 미등록 상황은 별도 케이스에서 다룬다.
+  const credentials = {
+    resolve: jest.fn().mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-test', trial: false }),
+    consumeTrial: jest.fn().mockResolvedValue(undefined),
+  };
+
   const service = new CaptureService(
     ai as never,
     items as never,
@@ -79,9 +85,10 @@ function buildService(overrides: {
     logs as never,
     new CadenceService(),
     draft as never,
+    credentials as never,
   );
 
-  return { service, ai, items, itemsService };
+  return { service, ai, items, itemsService, credentials };
 }
 
 const TODAY = new Date('2026-09-06T00:00:00Z');
@@ -221,6 +228,44 @@ describe('CaptureService.interpret — AI 장애 시', () => {
 
     expect(result.outcome).toBe('matched_existing');
     expect(result.matchedItemId).toBe('item-1');
+  });
+
+  it('체험으로 부른 뒤에만 횟수를 센다', async () => {
+    const { service, credentials } = buildService({});
+    credentials.resolve.mockResolvedValue({
+      provider: 'anthropic',
+      apiKey: 'server-key',
+      trial: true,
+    });
+
+    await service.interpret('user-1', { text: '오늘 이불 빨았어', mode: 'voice' }, TODAY);
+    expect(credentials.consumeTrial).toHaveBeenCalledWith('user-1');
+  });
+
+  it('AI가 답하지 못하면 체험 횟수를 세지 않는다', async () => {
+    // 잠든 서버를 깨우다 실패한 것까지 세면 써 보지도 못하고 줄어든다.
+    const { service, credentials } = buildService({ parse: null });
+    credentials.resolve.mockResolvedValue({
+      provider: 'anthropic',
+      apiKey: 'server-key',
+      trial: true,
+    });
+
+    await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
+    expect(credentials.consumeTrial).not.toHaveBeenCalled();
+  });
+
+  it('키를 등록하지 않았으면 AI를 부르지 않는다', async () => {
+    // 서버 키를 쓰지 않으므로 미등록 사용자는 해석 단계 자체가 없다.
+    const { service, ai, credentials } = buildService({});
+    credentials.resolve.mockResolvedValue(null);
+
+    const result = await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
+
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(result.degraded).toBe(true);
+    // 토큰은 발급돼야 사용자가 이름을 정해 그대로 저장할 수 있다.
+    expect(result.draftToken).toBe('signed-token');
   });
 
   it('AI도 검색도 결과가 없으면 재시도로 보낸다', async () => {

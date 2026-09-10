@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
 
 /**
@@ -11,8 +12,24 @@ import { ApiExcludeController } from '@nestjs/swagger';
 @ApiExcludeController()
 @Controller('health')
 export class HealthController {
+  constructor(private readonly config: ConfigService) {}
+
   @Get()
   check() {
-    return { status: 'ok', uptime: Math.round(process.uptime()) };
+    return {
+      status: 'ok',
+      uptime: Math.round(process.uptime()),
+      /**
+       * 선택 기능이 실제로 연결됐는지. 값이 아니라 참·거짓만 담는다.
+       *
+       * 환경변수가 빠지면 기능이 조용히 꺼진 채로 돌아 원인을 밖에서 알 수 없다.
+       * 무료 체험 키를 lastly-ai 에만 넣고 lastly-api 에 빠뜨려 하루를 쓴 적이 있다.
+       */
+      integrations: {
+        credentialSecret: Boolean(this.config.get('CREDENTIALS_SECRET')),
+        trialKey: Boolean(this.config.get('ANTHROPIC_API_KEY')),
+        push: Boolean(this.config.get('VAPID_PRIVATE_KEY')),
+      },
+    };
   }
 }

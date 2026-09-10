@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from lastly_ai.api.v1.routes import capture, health
 from lastly_ai.core.config import get_settings
 from lastly_ai.services.embeddings import build_provider
-from lastly_ai.services.llm import LlmClient
 
 log = structlog.get_logger(__name__)
 
@@ -42,7 +41,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:  # noqa: BLE001
         app.state.pool = None
         log.warning("ai.db_unavailable", error=str(exc), effect="주기 사전 캐시 없이 동작")
-    app.state.llm = LlmClient(settings)
     app.state.embeddings = build_provider(settings)
 
     log.info("ai.started", model=settings.ai_model)

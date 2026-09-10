@@ -1,5 +1,6 @@
 'use client';
 
+import { AiConnect } from '@/features/ai-credential/ai-connect';
 import { todayIso } from '@/lib/date';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -35,6 +36,11 @@ export default function SettingsPage() {
           <span className="block h-[9px] w-[9px] rotate-45 border-b-[1.8px] border-l-[1.8px] border-ink-2" />
         </Link>
         <h1 className="text-16 font-semibold text-ink">설정</h1>
+      </div>
+
+      <SectionLabel>AI 연결</SectionLabel>
+      <div className="mt-2">
+        <AiConnect />
       </div>
 
       <SectionLabel>알림</SectionLabel>

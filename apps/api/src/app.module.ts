@@ -5,6 +5,8 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { envSchema } from './config/env.schema';
 import { AiModule } from './infra/ai/ai.module';
+import { CryptoModule } from './infra/crypto/crypto.module';
+import { AiCredentialModule } from './modules/ai-credential/ai-credential.module';
 import { PushModule } from './infra/push/push.module';
 import { SupabaseModule } from './infra/supabase/supabase.module';
 import { CadenceModule } from './modules/cadence/cadence.module';
@@ -25,6 +27,8 @@ import { ProfileModule } from './modules/profile/profile.module';
     TerminusModule,
     SupabaseModule,
     AiModule,
+    CryptoModule,
+    AiCredentialModule,
     PushModule,
     CadenceModule,
     HealthModule,

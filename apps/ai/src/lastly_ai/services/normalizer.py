@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import structlog
 
 from lastly_ai.schemas.capture import Candidate, KnownItem, ParseRequest, ParseResponse
-from lastly_ai.services.llm import LlmClient, LlmError
+from lastly_ai.services.providers.factory import LlmError, build_provider
 
 log = structlog.get_logger(__name__)
 
@@ -107,18 +107,15 @@ SYSTEM_PROMPT = """당신은 한국어 집안일 기록 앱의 문장 해석기�
 class Normalizer:
     """자연어 한 문장 → 항목 이름 + 날짜 + 기존 항목 연결."""
 
-    def __init__(self, llm: LlmClient) -> None:
-        self._llm = llm
-
     async def parse(self, req: ParseRequest) -> ParseResponse:
         prompt = self._build_prompt(req)
+        llm = build_provider(req.caller.provider, req.caller.api_key)
 
         try:
-            raw = await self._llm.complete_json(
+            raw = await llm.complete_json(
                 system=SYSTEM_PROMPT,
                 user=prompt,
                 schema=PARSE_SCHEMA,
-                effort="low",
             )
         except LlmError as exc:
             log.warning("normalizer.failed", error=str(exc), text=req.text)

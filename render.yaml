@@ -59,6 +59,15 @@ services:
         sync: false # GitHub Actions 시크릿과 같은 값
       - key: DRAFT_TOKEN_SECRET
         sync: false
+      # 사용자 AI 키를 암호화한다. base64 32바이트.
+      #   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+      # 이 값을 잃으면 저장된 키를 아무도 풀 수 없다.
+      - key: CREDENTIALS_SECRET
+        sync: false
+      # 무료 체험 3회에만 쓴다. lastly-ai 의 같은 키와 값이 같아야 한다.
+      # 비워 두면 체험 없이 각자 키만 쓰는 방식이 된다.
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

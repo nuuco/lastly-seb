@@ -1,7 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import type { AiCadenceRequest, AiCadenceResponse, AiEmbedResponse, AiParseRequest, AiParseResponse } from './ai.types';
+import type {
+  AiCadenceRequest,
+  AiCadenceResponse,
+  AiCaller,
+  AiEmbedResponse,
+  AiParseRequest,
+  AiParseResponse,
+} from './ai.types';
 
 /** 깨어 있는 AI는 1초 안에 답한다. 이걸 넘기면 자고 있다고 본다. */
 const TIMEOUT_MS = 8_000;
@@ -60,12 +67,12 @@ export class AiClient {
     );
   }
 
-  parseUtterance(body: AiParseRequest) {
-    return this.post<AiParseResponse>('/v1/parse', body);
+  parseUtterance(body: AiParseRequest, caller: AiCaller) {
+    return this.post<AiParseResponse>('/v1/parse', { ...body, caller });
   }
 
-  suggestCadence(body: AiCadenceRequest) {
-    return this.post<AiCadenceResponse>('/v1/cadence/suggest', body);
+  suggestCadence(body: AiCadenceRequest, caller: AiCaller) {
+    return this.post<AiCadenceResponse>('/v1/cadence/suggest', { ...body, caller });
   }
 
   embed(text: string) {

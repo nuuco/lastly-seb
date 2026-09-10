@@ -5,8 +5,8 @@ import structlog
 
 from lastly_ai.core.config import Settings
 from lastly_ai.repositories.priors import CadencePrior, PriorsRepository
-from lastly_ai.schemas.capture import CadenceRequest, CadenceResponse
-from lastly_ai.services.llm import LlmClient, LlmError
+from lastly_ai.schemas.capture import CadenceRequest, CadenceResponse, Caller
+from lastly_ai.services.providers.factory import LlmError, build_provider
 
 log = structlog.get_logger(__name__)
 
@@ -60,8 +60,7 @@ class CadenceService:
     2. 부족하면 → 일반적인 주기를 쓴다. 사전에 없으면 조사해서 채운다.
     """
 
-    def __init__(self, llm: LlmClient, priors: PriorsRepository, settings: Settings) -> None:
-        self._llm = llm
+    def __init__(self, priors: PriorsRepository, settings: Settings) -> None:
         self._priors = priors
         self._settings = settings
 
@@ -140,7 +139,7 @@ class CadenceService:
         prior = await self._priors.find(req.item_name)
 
         if prior is None:
-            prior = await self._research(req.item_name)
+            prior = await self._research(req.item_name, req.caller)
 
         if prior is None:
             return self._fallback()
@@ -169,10 +168,11 @@ class CadenceService:
         per_unit = {"day": 1, "week": 7, "month": 30}[prior.unit]
         return prior.interval * per_unit
 
-    async def _research(self, item_name: str) -> CadencePrior | None:
+    async def _research(self, item_name: str, caller: Caller) -> CadencePrior | None:
         """사전에 없는 항목. 웹 검색으로 조사하고 결과를 사전에 캐시한다."""
         try:
-            raw, sources = await self._llm.complete_json_with_search(
+            llm = build_provider(caller.provider, caller.api_key)
+            raw, sources = await llm.complete_json_with_search(
                 system=RESEARCH_SYSTEM,
                 user=f'집안일: "{item_name}"\n\n이 일을 보통 며칠마다 하는 것이 적절한가요?',
                 schema=RESEARCH_SCHEMA,

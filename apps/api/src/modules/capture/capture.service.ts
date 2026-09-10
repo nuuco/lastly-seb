@@ -20,6 +20,7 @@ import type { ItemRow } from '../items/items.repository';
 import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
+import { AiCredentialService } from '../ai-credential/ai-credential.service';
 import { DraftTokenService } from './draft-token.service';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
@@ -58,6 +59,7 @@ export class CaptureService {
     private readonly logs: LogsService,
     private readonly cadence: CadenceService,
     private readonly draft: DraftTokenService,
+    private readonly credentials: AiCredentialService,
   ) {}
 
   async interpret(userId: string, input: InterpretRequest, today = new Date()): Promise<InterpretResult> {
@@ -102,16 +104,34 @@ export class CaptureService {
       };
     }
 
-    const parsed = await this.ai.parseUtterance({
-      text: input.text,
-      reference_date: referenceDate,
-      known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
-    });
+    /**
+     * AI 는 사용자가 등록한 키로만 부른다. 서버 키를 쓰지 않으므로
+     * 키가 없으면 해석 단계 자체가 없다 — 폴백으로 바로 간다.
+     */
+    const caller = await this.credentials.resolve(userId);
+
+    const parsed = caller
+      ? await this.ai.parseUtterance(
+          {
+            text: input.text,
+            reference_date: referenceDate,
+            known_items: known.map((i) => ({
+              id: i.id,
+              name: i.name,
+              last_done_on: i.last_done_on,
+            })),
+          },
+          { provider: caller.provider, api_key: caller.apiKey },
+        )
+      : null;
 
     // AI가 응답하지 않으면 해석을 포기하되, 이름이 비슷한 항목은 직접 고르게 한다.
     if (!parsed) {
       return this.withoutAi(userId, input, referenceDate, known);
     }
+
+    // 답을 받은 뒤에만 센다. 깨우다 실패한 것까지 세면 써 보지도 못하고 줄어든다.
+    if (caller?.trial) await this.credentials.consumeTrial(userId);
 
     const candidates = this.toCandidates(parsed.candidates, known, today);
 
@@ -367,11 +387,18 @@ export class CaptureService {
 
     if (!normalizedName) return null;
 
-    const suggested = await this.ai.suggestCadence({
-      item_name: normalizedName,
-      history: [],
-      user_average_interval_days: await this.itemsService.userAverageInterval(userId),
-    });
+    // 주기 제안은 해석과 같은 요청 안에서 이어지므로 체험 횟수를 또 세지 않는다.
+    const caller = await this.credentials.resolve(userId);
+    const suggested = caller
+      ? await this.ai.suggestCadence(
+          {
+            item_name: normalizedName,
+            history: [],
+            user_average_interval_days: await this.itemsService.userAverageInterval(userId),
+          },
+          { provider: caller.provider, api_key: caller.apiKey },
+        )
+      : null;
 
     if (!suggested) {
       this.logger.warn(`주기 제안 실패, 폴백 사용: ${normalizedName}`);

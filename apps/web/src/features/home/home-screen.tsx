@@ -12,6 +12,7 @@ import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
+import { ConnectBanner } from '@/features/ai-credential/connect-banner';
 import { CalendarView } from '@/features/calendar/calendar-view';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
@@ -153,6 +154,8 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           onViewChange={isEmpty ? undefined : setView}
           title={view === 'calendar' ? formatYearMonth(month) : undefined}
         />
+
+        <ConnectBanner />
 
         {isEmpty ? (
           <EmptyState
