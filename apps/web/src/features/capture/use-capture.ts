@@ -16,7 +16,14 @@ import { queryKeys } from '@/lib/api/query-keys';
  *   ambiguous        → disambiguate (화면 07-B)
  *   unrecognized     → retry (화면 07-B)
  */
-export type CaptureStep = 'idle' | 'interpreting' | 'confirm' | 'disambiguate' | 'retry';
+export type CaptureStep =
+  | 'idle'
+  | 'interpreting'
+  | 'confirm'
+  | 'disambiguate'
+  | 'retry'
+  /** 07-C — 물어본 것에 답만 하고 끝난다. 아무것도 기록하지 않는다. */
+  | 'answered';
 
 export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {}) {
   const queryClient = useQueryClient();
@@ -123,6 +130,8 @@ function stepForOutcome(result: InterpretResult): CaptureStep {
     case 'matched_existing':
     case 'new_item':
       return 'confirm';
+    case 'answered':
+      return 'answered';
     case 'ambiguous':
       return 'disambiguate';
     case 'unrecognized':

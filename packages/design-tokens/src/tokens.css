@@ -97,6 +97,8 @@
   /* 하단 고정 바 — 위로 퍼지는 그림자에 테라코타 기운을 살짝 섞는다 */
   --lastly-shadow-dock: 0 -4px 26px rgba(70, 58, 44, 0.06), 0 12px 30px rgba(168, 95, 68, 0.14);
   --lastly-shadow-toast: 0 6px 16px rgba(44, 38, 35, 0.3);
+  /* 07-C 의 답변 카드 — 입력 바 위에 떠서 지면과 갈라진다 */
+  --lastly-shadow-answer: 0 14px 30px rgba(45, 38, 34, 0.24);
   --lastly-shadow-sheet: 0 12px 26px rgba(45, 38, 34, 0.22);
   --lastly-shadow-raise: 0 8px 20px rgba(70, 58, 44, 0.08);
   --lastly-shadow-soft: 0 10px 30px rgba(70, 58, 44, 0.06);

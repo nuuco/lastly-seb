@@ -19,6 +19,11 @@ interface CaptureBarProps {
   interpreting: boolean;
   /** 설계 06 — 입력창이 비어 있고 포커스가 있을 때 위에 뜨는 칩. */
   quickPhrases?: string[];
+  /**
+   * 입력 바 바로 위에 얹을 것 — 설계 07-C 의 답변 카드.
+   * 입력 바가 화면 하단에 고정이라 같은 컨테이너 안에 있어야 붙어 보인다.
+   */
+  above?: React.ReactNode;
 }
 
 /**
@@ -29,7 +34,17 @@ interface CaptureBarProps {
  * 상태는 안쪽 내용과 오른쪽 버튼으로만 알린다.
  */
 export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function CaptureBar(
-  { value, onChange, onSubmit, onMic, listening, liveTranscript, interpreting, quickPhrases = [] },
+  {
+    value,
+    onChange,
+    onSubmit,
+    onMic,
+    listening,
+    liveTranscript,
+    interpreting,
+    quickPhrases = [],
+    above,
+  },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
@@ -39,6 +54,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
 
   return (
     <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] bg-[linear-gradient(180deg,rgba(245,242,236,0),var(--lastly-paper)_34%)] px-[22px] pb-[26px] pt-3.5">
+      {above}
       {showPhrases ? <QuickPhrases phrases={quickPhrases} onPick={onChange} /> : null}
 
       <form

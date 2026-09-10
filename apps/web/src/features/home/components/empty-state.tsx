@@ -1,6 +1,9 @@
 /**
  * 기록이 하나도 없을 때 — 설계 04.
- * 점선 테두리와 반투명 흰 면으로 "아직 비어 있다"를 형태로 말한다.
+ *
+ * 개정 설계에서 점선이 빠지고 보통 카드가 됐다. 처음 열었을 때 화면이
+ * "아직 덜 된 상태" 로 보이지 않게 하려는 것이다. 대신 문구가 무엇을
+ * 하라는 안내가 아니라 권유가 됐다 — "첫 기록을 남겨볼까요?"
  */
 const EXAMPLES = [
   '오늘 이불 빨았어',
@@ -11,25 +14,25 @@ const EXAMPLES = [
 export function EmptyState({ onExampleTap }: { onExampleTap?: (text: string) => void }) {
   return (
     <div>
-      <div className="mt-8 rounded-[30px] border-[1.5px] border-dashed border-line bg-white/70 px-6 py-9 text-center">
-        <p className="text-19 font-bold tracking-[-.02em] text-ink">아직 기록이 없어요</p>
-        <p className="mt-2.5 text-14 leading-[1.75] text-ink-2">
-          아래 마이크를 누르고 오늘 한 일을 말해보세요.
+      <div className="mt-10 rounded-[28px] border border-line bg-card px-[26px] py-[34px] shadow-hero-card">
+        <p className="break-keep text-21 font-bold tracking-t3 text-ink">첫 기록을 남겨볼까요?</p>
+        <p className="mt-3 break-keep text-[14.5px] leading-[1.8] text-ink-2">
+          오늘 한 집안일을 한 문장으로 남겨두면,
           <br />
-          항목과 날짜는 알아서 정리해드려요.
+          다음에 챙길 때가 됐을 때 알려드릴게요.
         </p>
       </div>
 
       <div className="mt-7 px-1">
-        <p className="text-12.5 font-bold tracking-wide2 text-accent-ink">이렇게 말해보세요</p>
+        <p className="text-12.5 tracking-[.06em] text-ink-3">이렇게 말해보세요</p>
 
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-3 flex flex-col gap-2.5">
           {EXAMPLES.map((example) => (
             <li key={example}>
               <button
                 type="button"
                 onClick={() => onExampleTap?.(example)}
-                className="w-full rounded-row border border-line bg-card px-4 py-3.5 text-left text-15 text-ink-2 shadow-card active:bg-surface-alt"
+                className="w-full rounded-md border border-line bg-card px-[18px] py-[15px] text-left text-15 text-ink-2 active:bg-surface-alt"
               >
                 “{example}”
               </button>

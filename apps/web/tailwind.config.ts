@@ -75,6 +75,7 @@ const config: Config = {
         '16': '16px',
         '17': '17px',
         '19': '19px',
+        '20': '20px',
         '21': '21px',
         '23': '23px',
         '26': '26px',
@@ -127,6 +128,7 @@ const config: Config = {
         input: 'var(--lastly-shadow-input)',
         'hero-card': 'var(--lastly-shadow-hero-card)',
         chip: 'var(--lastly-shadow-chip)',
+        answer: 'var(--lastly-shadow-answer)',
       },
 
       backgroundImage: {

@@ -62,6 +62,8 @@ const SAMPLES = [
     source: 'community',
     // 45일 전 → 오늘이 예정일
     doneDaysAgo: [45, 92, 136],
+    // 설계 05-D 의 검색 결과에 나오는 메모. 이름에 없는 말로도 찾아진다.
+    notes: { 45: '필터 두 장 남음, 다음엔 주문하기' },
   },
   {
     name: '이불 빨래',
@@ -80,6 +82,7 @@ const SAMPLES = [
     cadence: { unit: 'month', interval: 3, weekdays: [] },
     source: 'community',
     doneDaysAgo: [20, 112],
+    notes: { 20: '필터 색이 많이 어두웠음' },
   },
   {
     name: '화분 물 주기',
@@ -147,6 +150,7 @@ async function main() {
         item_id: item.id,
         done_on: iso(subDays(today, days)),
         source: 'manual',
+        note: sample.notes?.[days] ?? null,
       }));
 
     const { error: logError } = await admin.from('item_logs').insert(logs);

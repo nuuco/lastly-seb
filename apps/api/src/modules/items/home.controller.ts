@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -31,5 +31,13 @@ export class HomeController {
       .maybeSingle();
 
     return this.items.homeFeed(userId, data?.display_name ?? null);
+  }
+
+  @Get('calendar')
+  @ApiOperation({ summary: '한 달치 예정일·완료 이력 — 화면 05-C' })
+  calendar(@CurrentUser('id') userId: string, @Query('month') month?: string) {
+    // 값이 없거나 형식이 어긋나면 이번 달을 본다.
+    const valid = month && /^\d{4}-\d{2}$/.test(month);
+    return this.items.calendar(userId, valid ? month : new Date().toISOString().slice(0, 7));
   }
 }

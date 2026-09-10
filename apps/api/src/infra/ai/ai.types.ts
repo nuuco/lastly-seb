@@ -9,6 +9,11 @@ export interface AiParseRequest {
 }
 
 export interface AiParseResponse {
+  /**
+   * 기록하려는 말인지, 언제 했는지 묻는 말인지 — 설계 07-C.
+   * 옛 버전 AI 가 안 보낼 수 있으므로 없으면 기록으로 본다.
+   */
+  intent?: 'record' | 'query';
   normalized_name: string | null;
   done_on: string;
   matched_item_id: string | null;

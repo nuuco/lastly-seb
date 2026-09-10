@@ -1,6 +1,14 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import type { CreateItemInput, HomeFeed, Item, UpdateItemInput } from '@lastly/contracts';
-import { startOfWeek } from 'date-fns';
+import type {
+  CalendarMark,
+  CalendarMonth,
+  CreateItemInput,
+  HomeFeed,
+  Item,
+  SearchResult,
+  UpdateItemInput,
+} from '@lastly/contracts';
+import { differenceInCalendarDays, endOfMonth, format, parseISO, startOfWeek } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
 import { CadenceService } from '../cadence/cadence.service';
@@ -113,7 +121,84 @@ export class ItemsService {
     return toItem(await this.items.update(userId, itemId, patch), this.cadence, today);
   }
   async remove(userId: string, itemId: string): Promise<void> {
-    await this.items.remove(userId, itemId);
+    await this.items.archive(userId, itemId);
+  }
+
+  /**
+   * 항목 이름과 기록 메모를 함께 뒤진다 — 설계 05-D.
+   *
+   * 메모를 같이 찾는 게 요점이다. "필터 두 장 남음" 처럼 그때 적어둔 말은
+   * 항목 이름에는 없지만 사용자가 기억하는 단서다.
+   */
+  async search(userId: string, query: string, today = new Date()): Promise<SearchResult> {
+    const q = query.trim();
+    if (!q) return { items: [], notes: [] };
+
+    const [rows, notes] = await Promise.all([
+      this.items.searchByName(userId, q),
+      this.logs.searchByNote(userId, q),
+    ]);
+
+    return {
+      items: rows.map((row) => toItem(row, this.cadence, today)),
+      notes: notes.map((n) => ({
+        logId: n.id,
+        itemId: n.item_id,
+        itemName: n.items.name,
+        doneOn: n.done_on,
+        note: n.note,
+      })),
+    };
+  }
+
+  /**
+   * 한 달치 달력 — 설계 05-C.
+   *
+   * 예정일은 각 항목의 다음 한 번만 찍는다. 주기로 앞날을 계속 그려내면
+   * 아직 일어나지 않은 일이 사실처럼 보이는데, 주기는 기록이 쌓이면 바뀐다.
+   */
+  async calendar(userId: string, month: string, today = new Date()): Promise<CalendarMonth> {
+    const from = `${month}-01`;
+    const to = format(endOfMonth(parseISO(from)), 'yyyy-MM-dd');
+    const todayIso = format(today, 'yyyy-MM-dd');
+
+    const [rows, logs] = await Promise.all([
+      this.items.listActive(userId),
+      this.logs.listBetween(userId, from, to),
+    ]);
+
+    const days: Record<string, CalendarMark[]> = {};
+    const push = (date: string, mark: CalendarMark) => {
+      (days[date] ??= []).push(mark);
+    };
+
+    for (const log of logs) {
+      push(log.done_on, {
+        itemId: log.item_id,
+        name: log.items.name,
+        kind: 'done',
+        overdueDays: null,
+      });
+    }
+
+    for (const row of rows) {
+      const due = row.next_due_on;
+      if (!due || due < from || due > to) continue;
+
+      const overdue = due < todayIso;
+      push(due, {
+        itemId: row.id,
+        name: row.name,
+        kind: overdue ? 'overdue' : 'due',
+        overdueDays: overdue ? differenceInCalendarDays(parseISO(todayIso), parseISO(due)) : null,
+      });
+    }
+
+    return { month, days };
+  }
+
+  async restore(userId: string, itemId: string): Promise<void> {
+    await this.items.restore(userId, itemId);
   }
 
   /** 사용자의 전체 평균 주기 — AI가 개인 성향을 보정할 때 참고한다. */

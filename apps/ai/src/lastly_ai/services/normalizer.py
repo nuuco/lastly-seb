@@ -10,8 +10,13 @@ log = structlog.get_logger(__name__)
 PARSE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["item_name", "days_ago", "matched_item_id", "candidate_ids", "confidence"],
+    "required": ["intent", "item_name", "days_ago", "matched_item_id", "candidate_ids", "confidence"],
     "properties": {
+        "intent": {
+            "type": "string",
+            "enum": ["record", "query"],
+            "description": "방금 한 일을 남기려는 것이면 record, 언제 했는지 묻는 것이면 query.",
+        },
         "item_name": {
             "type": ["string", "null"],
             "description": "집안일 항목의 표준 이름. 명사구로. 못 알아들었으면 null.",
@@ -38,7 +43,16 @@ PARSE_SCHEMA = {
 
 SYSTEM_PROMPT = """당신은 한국어 집안일 기록 앱의 문장 해석기입니다.
 
-사용자가 방금 한 집안일을 자연스러운 말로 이야기하면, 다음을 뽑아냅니다.
+먼저 사용자가 무엇을 하려는지 가릅니다.
+
+0. intent — 기록인가 질문인가
+   - record: 방금 한 일을 남기려는 말. "오늘 이불 빨았어", "어제 필터 갈았어"
+   - query: 언제 했는지 묻는 말. "마지막으로 이불 언제 빨았어?", "필터 간 지 얼마나 됐지?"
+   - 묻는 말투(언제·얼마나·며칠·?)가 있으면 query 입니다.
+   - query 일 때도 item_name 과 matched_item_id 는 똑같이 채웁니다.
+     무엇에 대해 묻는지 알아야 답할 수 있습니다. days_ago 는 0 으로 둡니다.
+
+그리고 다음을 뽑아냅니다.
 
 1. item_name — 이 일의 표준 이름
    - 항상 명사구로 만듭니다. "이불 빨았어" → "이불 빨래", "필터 갈았어" → "필터 교체"
@@ -128,6 +142,7 @@ class Normalizer:
         candidates = self._to_candidates(raw.get("candidate_ids") or [], known_ids)
 
         return ParseResponse(
+            intent="query" if raw.get("intent") == "query" else "record",
             normalized_name=raw.get("item_name"),
             done_on=done_on,
             matched_item_id=matched,

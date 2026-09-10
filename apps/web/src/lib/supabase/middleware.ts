@@ -2,8 +2,22 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * 세션 토큰을 갱신한다.
- * 로그인 없이도 앱을 쓸 수 있는 설계(화면 12)이므로 여기서 리다이렉트하지 않는다.
+ * 로그인 없이 열어 두는 길.
+ *
+ * 온보딩은 계정을 만들기 전에 보는 화면이고, /auth 는 로그인 과정에서
+ * 거치는 자리다. 둘을 막으면 로그인 자체를 할 수 없다.
+ */
+const PUBLIC_PATHS = ['/login', '/auth', '/onboarding'];
+
+const isPublic = (pathname: string) =>
+  PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
+/**
+ * 세션 토큰을 갱신하고, 계정이 없으면 로그인으로 돌려보낸다.
+ *
+ * 로그인 없이 쓰게 두면 그 기록은 계정에 묶이지 않아 폰을 바꾸거나
+ * 브라우저를 비우는 순간 주인을 잃는다. 마지막으로 언제 했는지 기억해주는
+ * 앱에서 그건 앱이 존재할 이유를 무너뜨린다.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -23,6 +37,27 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  if (!user && !isPublic(pathname)) {
+    const login = request.nextUrl.clone();
+    login.pathname = '/login';
+    // 로그인 뒤 원래 가려던 자리로 돌려보낸다.
+    login.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(login);
+  }
+
+  // 이미 로그인한 사람에게 로그인 화면을 다시 보여줄 이유가 없다.
+  if (user && pathname === '/login') {
+    const home = request.nextUrl.clone();
+    home.pathname = '/';
+    home.search = '';
+    return NextResponse.redirect(home);
+  }
+
   return response;
 }

@@ -105,9 +105,46 @@ export class ItemsRepository {
     return data as ItemRow;
   }
 
-  async remove(userId: string, itemId: string): Promise<void> {
-    const { error } = await this.table.delete().eq('user_id', userId).eq('id', itemId);
+  /**
+   * 지우지 않고 치워 둔다.
+   *
+   * 진짜 DELETE 를 하면 그 항목의 기록이 함께 사라진다. 3년치 이력이
+   * 오타 한 번에 날아가면 되돌릴 방법이 없다. status 만 바꾸면 목록·검색·
+   * 알림에서 모두 빠지므로 사용자가 보기엔 지워진 것과 같고,
+   * 되돌리기는 status 를 되돌리는 것으로 끝난다.
+   */
+  async archive(userId: string, itemId: string): Promise<void> {
+    const { error } = await this.table
+      .update({ status: 'archived' })
+      .eq('user_id', userId)
+      .eq('id', itemId);
     if (error) throw error;
+  }
+
+  async restore(userId: string, itemId: string): Promise<void> {
+    const { error } = await this.table
+      .update({ status: 'active' })
+      .eq('user_id', userId)
+      .eq('id', itemId);
+    if (error) throw error;
+  }
+
+  /**
+   * 이름으로 찾기 — 설계 05-D.
+   * 검색은 사용자가 이미 아는 것을 다시 꺼내는 일이라 의미 검색이 아니라
+   * 글자 그대로 찾는다. "필터" 를 쳤으면 "필터" 가 든 것만 나와야 한다.
+   */
+  async searchByName(userId: string, query: string, limit = 20): Promise<ItemRow[]> {
+    const { data, error } = await this.table
+      .select(COLUMNS)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .ilike('name', `%${query}%`)
+      .order('next_due_on', { ascending: true, nullsFirst: true })
+      .limit(limit);
+
+    if (error) throw error;
+    return (data ?? []) as ItemRow[];
   }
 
   /** match_items RPC — 임베딩 + 트라이그램 + 별칭을 함께 본다. */

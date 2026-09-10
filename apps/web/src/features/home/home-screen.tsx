@@ -6,14 +6,17 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Toast } from '@/components/ui/toast';
 import { CadenceSheet } from '@/features/capture/components/cadence-sheet';
+import { AnswerCard } from '@/features/capture/components/answer-card';
 import { CaptureBar } from '@/features/capture/components/capture-bar';
 import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
+import { CalendarView } from '@/features/calendar/calendar-view';
+import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { queryKeys } from '@/lib/api/query-keys';
-import { formatShortDate } from '@/lib/date';
+import { formatMonth, formatShortDate, formatYearMonth } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
 import { HomeError, HomeSkeleton } from './components/home-states';
@@ -43,6 +46,10 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   const [draft, setDraft] = useState('');
+  /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
+  const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
+  const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [month, setMonth] = useState(() => formatMonth(new Date()));
   const inputRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -55,6 +62,28 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   ]
     .slice(0, 3)
     .map((item) => item.name);
+
+  /**
+   * 홈에 들어올 때 한 번만 본다. 읽으면 지워지므로 새로고침해도 다시 뜨지 않는다.
+   *
+   * ref 로 막는 이유: 개발 모드의 StrictMode 는 effect 를 두 번 실행한다.
+   * 첫 번째가 읽고 지운 값을 두 번째가 못 찾아 null 로 덮어써서 토스트가
+   * 뜨자마자 사라진다.
+   */
+  const noticeRead = useRef(false);
+  useEffect(() => {
+    if (noticeRead.current) return;
+    noticeRead.current = true;
+    setDeleted(takeDeletedNotice());
+  }, []);
+
+  const restore = useMutation({
+    mutationFn: (id: string) => itemsApi.restore(id),
+    onSuccess: async () => {
+      setDeleted(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.home });
+    },
+  });
 
   const complete = useMutation({
     mutationFn: (item: Item) => itemsApi.complete(item.id),
@@ -123,7 +152,15 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   return (
     <main className="pb-capture-bar min-h-dvh">
       <div className="px-6 pt-[18px]">
-        <HomeHeader summary={summary} today={today} empty={isEmpty} />
+        <HomeHeader
+          summary={summary}
+          today={today}
+          empty={isEmpty}
+          // 기록이 없으면 볼 달력도 없다.
+          view={isEmpty ? undefined : view}
+          onViewChange={isEmpty ? undefined : setView}
+          title={view === 'calendar' ? formatYearMonth(month) : undefined}
+        />
 
         {isEmpty ? (
           <EmptyState
@@ -132,6 +169,8 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
               inputRef.current?.focus();
             }}
           />
+        ) : view === 'calendar' ? (
+          <CalendarView today={today} month={month} onMonthChange={setMonth} />
         ) : (
           <div>
             {due.length > 0 ? (
@@ -141,7 +180,8 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
                 completingId={complete.isPending ? (complete.variables?.id ?? null) : null}
               />
             ) : (
-              <AllDoneCard summary={summary} />
+              /* 방금 기록해서 비워진 날(05-B)과 애초에 없던 날(05-E)의 말이 다르다. */
+              <AllDoneCard summary={summary} justFinished={Boolean(capture.committed)} />
             )}
 
             {upcoming.length > 0 ? (
@@ -190,6 +230,20 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
         liveTranscript={speech.transcript}
         interpreting={capture.interpreting}
         quickPhrases={quickPhrases}
+        above={
+          capture.step === 'answered' && capture.result ? (
+            <AnswerCard
+              result={capture.result}
+              completing={complete.isPending}
+              onComplete={(itemId) => {
+                const item = [...due, ...upcoming, ...later].find((i) => i.id === itemId);
+                if (item) complete.mutate(item);
+                capture.cancel();
+              }}
+              onDismiss={capture.cancel}
+            />
+          ) : null
+        }
       />
 
       {capture.step === 'confirm' && capture.result ? (
@@ -230,6 +284,17 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
             setCadenceItem(null);
           }}
           onClose={() => setCadenceItem(null)}
+        />
+      ) : null}
+
+      {deleted ? (
+        <Toast
+          message={`${deleted.name} 삭제됨`}
+          actionLabel="되돌리기"
+          onAction={() => restore.mutate(deleted.id)}
+          onDismiss={() => setDeleted(null)}
+          // 지운 걸 알아채는 데 시간이 걸린다. 완료 토스트보다 길게 연다.
+          durationMs={10000}
         />
       ) : null}
 

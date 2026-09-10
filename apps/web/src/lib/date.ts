@@ -70,3 +70,9 @@ export function cycleProgress(item: Item): number {
 
   return Math.round(Math.min(100, Math.max(0, (elapsed / total) * 100)));
 }
+
+/** "2026-09" — 달력이 다루는 달의 키. */
+export const formatMonth = (d: Date) => format(d, 'yyyy-MM');
+
+/** "2026년 9월" — 달력 뷰의 머리말. */
+export const formatYearMonth = (month: string) => format(parseISO(`${month}-01`), 'yyyy년 M월');

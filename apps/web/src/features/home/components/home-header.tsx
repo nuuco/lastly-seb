@@ -1,6 +1,7 @@
 import type { HomeSummary } from '@lastly/contracts';
 import Link from 'next/link';
 
+import { cn } from '@/lib/cn';
 import { formatHeaderDate, formatShortDate } from '@/lib/date';
 
 /** 설계 05 상단 — 날짜·백업 상태·헤드라인, 오른쪽에 설정. */
@@ -8,11 +9,18 @@ export function HomeHeader({
   summary,
   today,
   empty,
+  view,
+  onViewChange,
+  title,
 }: {
   summary: HomeSummary;
   today: Date;
   /** 설계 04 — 기록이 없으면 인사만 건넨다. */
   empty?: boolean;
+  view?: 'list' | 'calendar';
+  onViewChange?: (view: 'list' | 'calendar') => void;
+  /** 달력에서는 헤드라인 자리에 연·월이 온다. */
+  title?: string;
 }) {
   return (
     <header className="safe-top px-1 pt-2">
@@ -23,9 +31,15 @@ export function HomeHeader({
           {!empty && summary.greetingName ? ` · ${summary.greetingName}님` : ''}
         </div>
 
-        <Link href="/settings" aria-label="설정" className="shrink-0">
-          <GearIcon />
-        </Link>
+        <span className="flex shrink-0 items-center gap-4">
+          <Link href="/search" aria-label="찾기" className="flex text-ink-2">
+            {/* 설계 05 는 21px, 설정 아이콘보다 한 칸 작다. */}
+            <SearchIcon />
+          </Link>
+          <Link href="/settings" aria-label="설정" className="flex text-ink-2">
+            <GearIcon />
+          </Link>
+        </span>
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3">
@@ -34,8 +48,12 @@ export function HomeHeader({
             안녕하세요{summary.greetingName ? `, ${summary.greetingName}님` : ''}
           </h1>
         ) : (
-          <h1 className="min-w-0 text-23 font-bold tracking-t35 text-ink">{headline(summary)}</h1>
+          <h1 className="min-w-0 text-23 font-bold tracking-t35 text-ink">
+            {title ?? headline(summary)}
+          </h1>
         )}
+
+        {view && onViewChange ? <ViewToggle value={view} onChange={onViewChange} /> : null}
       </div>
     </header>
   );
@@ -48,22 +66,111 @@ export function HomeHeader({
  * 여기에 overdueCount 를 더하면 밀린 것이 두 번 세어져 카드 수와 어긋난다.
  */
 function headline(summary: HomeSummary): string {
-  return summary.dueTodayCount > 0
-    ? `오늘 챙길 가사 ${summary.dueTodayCount}개`
-    : '오늘 챙길 가사가 없어요';
+  // 0 일 때도 셈으로 말한다. "없어요" 는 바로 아래 카드가 하는 말이라 겹친다.
+  return `오늘 챙길 가사 ${summary.dueTodayCount}개`;
 }
 
-/** 오늘 할 게 없을 때 (설계 05-B). */
-export function AllDoneCard({ summary }: { summary: HomeSummary }) {
+/**
+ * 오늘 챙길 게 없는 날 — 설계 05-E.
+ *
+ * 히어로 캐러셀이 서던 자리를 그대로 쓴다. 빈칸으로 두면 화면이 무너져
+ * "오늘은 할 게 없다" 가 아니라 "뭔가 안 불러왔다" 로 읽힌다.
+ * 방금 다 끝냈을 때(05-B)와 애초에 없던 날(05-E)의 말이 다르다.
+ */
+export function AllDoneCard({ summary, justFinished }: { summary: HomeSummary; justFinished?: boolean }) {
   return (
-    <div className="mt-3 rounded-hero border border-line-2 bg-hero px-5 py-6 text-center shadow-hero">
-      <p className="text-17 font-bold tracking-t35 text-ink">오늘 할 건 다 하셨어요</p>
-      {summary.nextUp ? (
-        <p className="mt-2 text-13 text-ink-3">
-          다음은 {formatShortDate(summary.nextUp.dueOn)} · {summary.nextUp.name}예요
-        </p>
-      ) : null}
+    <div className="mt-4 rounded-card border border-line-2 bg-[linear-gradient(180deg,var(--lastly-card-hi-from),var(--lastly-card-hi-to))] px-5 py-[26px] text-center">
+      <p className="text-20 font-bold tracking-t3 text-ink">
+        {justFinished ? '오늘 할 건 다 하셨어요 🎉' : '오늘 챙길 가사가 없어요 🌿'}
+      </p>
+      <p className="mt-2 text-[13.5px] text-ink-2">
+        {summary.nextUp
+          ? `${justFinished ? '' : '편안한 하루 보내세요. '}다음은 ${formatShortDate(summary.nextUp.dueOn)} · ${summary.nextUp.name}예요`
+          : '편안한 하루 보내세요.'}
+      </p>
     </div>
+  );
+}
+
+/** 목록 ↔ 달력 — 설계 05/05-C. 고른 쪽만 밝은 면으로 떠오른다. */
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: 'list' | 'calendar';
+  onChange: (view: 'list' | 'calendar') => void;
+}) {
+  return (
+    <span className="flex shrink-0 items-center gap-0.5 rounded-[12px] bg-surface-sunken p-[3px]">
+      <ToggleButton active={value === 'list'} label="목록으로 보기" onClick={() => onChange('list')}>
+        <path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+      </ToggleButton>
+      <ToggleButton
+        active={value === 'calendar'}
+        label="달력으로 보기"
+        onClick={() => onChange('calendar')}
+      >
+        <rect x="3" y="4.5" width="18" height="16" rx="3" />
+        <path d="M3 9.5h18M8 3v3M16 3v3" />
+      </ToggleButton>
+    </span>
+  );
+}
+
+function ToggleButton({
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      className={cn(
+        'flex h-7 w-[34px] items-center justify-center rounded-[9px]',
+        active ? 'bg-card text-ink shadow-hair' : 'text-ink-faint',
+      )}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        {children}
+      </svg>
+    </button>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      width="21"
+      height="21"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.6-3.6" />
+    </svg>
   );
 }
 
@@ -78,7 +185,6 @@ function GearIcon() {
       strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="text-ink-2"
       aria-hidden
     >
       <circle cx="12" cy="12" r="3.2" />

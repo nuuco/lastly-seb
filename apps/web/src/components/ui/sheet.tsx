@@ -151,7 +151,8 @@ export function SheetActions({
   primary,
   secondary,
 }: {
-  primary: { label: string; onClick: () => void; disabled?: boolean };
+  /** danger 는 되돌리기 어려운 동작에만 쓴다. 주 액션 색과 구분되어야 한다. */
+  primary: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean };
   secondary?: { label: string; onClick: () => void; disabled?: boolean };
 }) {
   return (
@@ -160,7 +161,10 @@ export function SheetActions({
         type="button"
         onClick={primary.onClick}
         disabled={primary.disabled}
-        className="mt-[18px] flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
+        className={cn(
+          'mt-[18px] flex h-[58px] w-full items-center justify-center rounded-lg text-17 font-semibold text-white disabled:opacity-60',
+          primary.danger ? 'bg-danger' : 'bg-action shadow-action active:bg-action-pressed',
+        )}
       >
         {primary.label}
       </button>

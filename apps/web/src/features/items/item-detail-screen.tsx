@@ -7,6 +7,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { CadenceSheet } from '@/features/capture/components/cadence-sheet';
+
+import { DeleteSheet } from './components/delete-sheet';
+import { SnoozeSheet } from './components/snooze-sheet';
+import { putDeletedNotice } from './deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { queryKeys } from '@/lib/api/query-keys';
 import { cn } from '@/lib/cn';
@@ -34,6 +38,8 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
 
   const [cadenceOpen, setCadenceOpen] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const item = useQuery({
     queryKey: queryKeys.item(itemId),
@@ -62,8 +68,12 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
   const remove = useMutation({
     mutationFn: () => itemsApi.remove(itemId),
     onSuccess: async () => {
+      // 지운 항목의 상세에 머물면 "오늘 했어요" 로 다시 기록할 수 있다.
+      // 곧바로 홈으로 보내고 되돌리기는 거기서 띄운다.
+      putDeletedNotice({ id: itemId, name: item.data?.name ?? '항목' });
+      setDeleteOpen(false);
       await invalidate();
-      router.push('/');
+      router.replace('/');
     },
   });
 
@@ -82,6 +92,12 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
 
   const data = item.data;
   const editingLog = logs.data?.find((log) => log.id === editingLogId) ?? null;
+
+  const nextLabel = data.snoozedUntil
+    ? `${formatShortDate(data.snoozedUntil)}에 다시`
+    : data.nextDueOn
+      ? `${dueLabel(data.daysUntilDue)} · ${formatShortDate(data.nextDueOn)}`
+      : '—';
 
   return (
     <main className="min-h-dvh pb-[120px]">
@@ -121,17 +137,19 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
             )}
           >
             <p className="text-12 text-ink-3">{data.snoozedUntil ? '쉬는 중' : '다음 예정일'}</p>
+            {/**
+             * 한 줄로 붙잡는다. 설계의 "2일 후 · 9월 8일" 은 짧지만 실제 값은
+             * "14일 후 · 9월 24일" 처럼 길어져 카드 폭을 넘고 두 줄로 깨진다.
+             * 자간을 좁히고 넘칠 때만 크기를 한 단계 내린다.
+             */}
             <p
               className={cn(
-                'mt-1 text-16 font-bold',
+                'mt-1 whitespace-nowrap font-bold tracking-t3',
+                nextLabel.length > 12 ? 'text-[14.5px]' : 'text-16',
                 data.snoozedUntil ? 'text-ink-3' : 'text-accent-ink',
               )}
             >
-              {data.snoozedUntil
-                ? `${formatShortDate(data.snoozedUntil)}에 다시`
-                : data.nextDueOn
-                  ? `${dueLabel(data.daysUntilDue)} · ${formatShortDate(data.nextDueOn)}`
-                  : '—'}
+              {nextLabel}
             </p>
           </div>
 
@@ -198,12 +216,9 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
 
         <div className="mt-3.5 flex gap-2">
           <MinorAction onClick={() => setCadenceOpen(true)}>주기 수정</MinorAction>
-          <MinorAction
-            danger
-            onClick={() => {
-              if (confirm(`"${data.name}" 항목과 기록을 모두 삭제할까요?`)) remove.mutate();
-            }}
-          >
+          {/* 주기 수정과 다른 일이다. 리듬은 그대로 두고 다음 차례만 미룬다. */}
+          <MinorAction onClick={() => setSnoozeOpen(true)}>잠시 쉬어가기</MinorAction>
+          <MinorAction danger onClick={() => setDeleteOpen(true)}>
             삭제
           </MinorAction>
         </div>
@@ -232,8 +247,27 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
             setCadenceOpen(false);
           }}
           onClose={() => setCadenceOpen(false)}
+        />
+      ) : null}
+
+      {snoozeOpen ? (
+        <SnoozeSheet
           snoozedUntil={data.snoozedUntil}
-          onSnooze={(until) => snooze.mutate(until)}
+          onPick={(until) => {
+            snooze.mutate(until);
+            setSnoozeOpen(false);
+          }}
+          onClose={() => setSnoozeOpen(false)}
+        />
+      ) : null}
+
+      {deleteOpen ? (
+        <DeleteSheet
+          item={data}
+          logs={logs.data ?? []}
+          deleting={remove.isPending}
+          onConfirm={() => remove.mutate()}
+          onCancel={() => setDeleteOpen(false)}
         />
       ) : null}
 

@@ -78,6 +78,43 @@ export class LogsRepository {
     if (error) throw error;
   }
 
+  /** 한 달치 기록 — 설계 05-C 의 "완료 이력" 점. */
+  async listBetween(userId: string, from: string, to: string) {
+    const { data, error } = await this.table
+      .select('id, item_id, done_on, items!inner(name)')
+      .eq('user_id', userId)
+      .gte('done_on', from)
+      .lte('done_on', to)
+      .order('done_on');
+
+    if (error) throw error;
+    return (data ?? []) as unknown as Array<{
+      id: string;
+      item_id: string;
+      done_on: string;
+      items: { name: string };
+    }>;
+  }
+
+  /** 메모로 찾기 — 설계 05-D. 어느 항목의 기록인지 함께 가져온다. */
+  async searchByNote(userId: string, query: string, limit = 20) {
+    const { data, error } = await this.table
+      .select('id, item_id, done_on, note, items!inner(name)')
+      .eq('user_id', userId)
+      .ilike('note', `%${query}%`)
+      .order('done_on', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return (data ?? []) as unknown as Array<{
+      id: string;
+      item_id: string;
+      done_on: string;
+      note: string;
+      items: { name: string };
+    }>;
+  }
+
   async countSince(userId: string, since: Date): Promise<number> {
     const { count, error } = await this.table
       .select('id', { count: 'exact', head: true })

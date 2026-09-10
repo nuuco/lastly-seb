@@ -1,6 +1,6 @@
 # @lastly/web
 
-설계 22종 화면을 구현한 모바일 웹앱. Next.js 15 App Router · PWA.
+설계 26종 화면을 구현한 모바일 웹앱. Next.js 15 App Router · PWA.
 
 설계 원본은 [`docs/design-reference/`](../../docs/design-reference/)에 화면별로 쪼개 두었다.
 **UI를 손대기 전에 해당 화면 파일을 먼저 연다.** 기억이나 추측이 아니라 대조로 맞추기 위한 것이다.
@@ -16,18 +16,21 @@ pnpm --filter @lastly/web dev      # :3000
 ```
 src/
 ├── app/              라우트만. 얇게 유지한다
-│   ├── page.tsx          홈          설계 04 · 05 · 05-B
+│   ├── page.tsx          홈          설계 04 · 05 · 05-B · 05-C · 05-E
+│   ├── search/           검색        설계 05-D
 │   ├── items/[id]/       항목 상세    설계 11 · 11-B · 14-B
 │   ├── onboarding/       온보딩      설계 01 · 02-A · 02-B · 03
-│   ├── login/            로그인      설계 12 · 12-B
+│   ├── login/            로그인      설계 12
 │   ├── settings/         설정        설계 13 · 13-B
 │   ├── auth/callback/    OAuth 착지점
 │   └── api/notifications/action/   서비스워커가 알림 액션을 중계하는 곳
 │
 ├── features/         화면 알맹이는 전부 여기
 │   ├── home/             홈 조립 + 카드·행·빈 상태·로딩/오류
-│   ├── capture/          말하기 → 확인 → 저장
-│   │                     설계 06 · 07 · 07-B · 08 · 09 · 10 · 10-B
+│   ├── capture/          말하기 → 확인 → 저장, 그리고 조회
+│   │                     설계 06 · 07 · 07-C · 08 · 08-B · 09 · 10 · 10-B
+│   ├── calendar/         달력 뷰      설계 05-C
+│   ├── search/           검색        설계 05-D
 │   ├── items/            상세 + 기록 편집
 │   ├── onboarding/       소개 · 설치 안내 · 알림 권한
 │   ├── auth/             개발용 로그인

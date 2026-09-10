@@ -28,6 +28,14 @@ class Candidate(BaseModel):
 
 
 class ParseResponse(BaseModel):
+    """
+    intent 가 갈림길이다 — 설계 07-C.
+
+    같은 입력창에 "이불 빨았어"(기록)와 "이불 언제 빨았어?"(조회)가 함께 들어온다.
+    둘을 구분하지 못하면 물어본 것을 기록으로 남겨 없던 일이 생긴다.
+    """
+
+    intent: Literal["record", "query"] = "record"
     normalized_name: str | None
     done_on: date
     matched_item_id: str | None

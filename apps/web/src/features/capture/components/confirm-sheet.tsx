@@ -1,9 +1,11 @@
 'use client';
 
 import type { CadenceRule, InterpretResult } from '@lastly/contracts';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
+import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
 import { describeCadence, formatShortDate } from '@/lib/date';
 
@@ -38,7 +40,38 @@ export function ConfirmSheet({
   const [name, setName] = useState(result.normalizedName ?? '');
   const [note, setNote] = useState('');
 
-  const isNew = result.outcome === 'new_item';
+  /**
+   * 이름을 고치면 주기를 다시 맞춘다 — 설계 08-B.
+   *
+   * 이름이 바뀌면 다른 일이 된 것이므로 앞서 받은 주기가 더 이상 맞지 않는다.
+   * 한 글자마다 물으면 AI 를 그만큼 부르므로 0.5초 쉬었다 묻는다.
+   */
+  const original = result.normalizedName ?? '';
+  const [edited, setEdited] = useState<string | null>(null);
+
+  useEffect(() => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === original) {
+      setEdited(null);
+      return;
+    }
+    const timer = setTimeout(() => setEdited(trimmed), 500);
+    return () => clearTimeout(timer);
+  }, [name, original]);
+
+  const preview = useQuery({
+    queryKey: ['cadence-preview', edited, result.doneOn],
+    queryFn: () => captureApi.previewCadence({ name: edited!, doneOn: result.doneOn }),
+    enabled: Boolean(edited),
+  });
+
+  // 이름을 고쳤으면 그 이름의 주기를 쓴다. 되돌리면 처음 받은 것으로 돌아온다.
+  const shown = edited ? (preview.data?.cadence ?? null) : result.cadence;
+  const checking = Boolean(edited) && preview.isPending;
+  const matchedId = edited ? (preview.data?.matchedItemId ?? null) : result.matchedItemId;
+  const isNew = matchedId === null;
+  // 사용자가 주기 시트에서 직접 고른 값이 언제나 우선한다.
+  const shownRule = edited ? (shown?.rule ?? null) : cadence;
 
   return (
     <>
@@ -48,12 +81,18 @@ export function ConfirmSheet({
           “{result.transcript}”
         </p>
 
-        <div className="mt-4 flex items-center gap-2.5 rounded-[16px] border-[1.5px] border-line bg-card px-4 py-[13px]">
+        <div
+          className={cn(
+            'mt-4 flex items-center gap-2.5 rounded-md border-[1.5px] bg-card px-4 py-[13px]',
+            // 고치는 중임을 테두리로 알린다 — 설계 08-B.
+            edited ? 'border-action' : 'border-line',
+          )}
+        >
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             aria-label="항목 이름"
-            className="min-w-0 flex-1 bg-transparent text-[22px] font-bold tracking-[-.03em] text-ink outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[22px] font-bold tracking-t3 text-ink outline-none"
           />
           <span
             className={cn(
@@ -71,15 +110,28 @@ export function ConfirmSheet({
             value={`${dayLabel(result.doneOn)} · ${formatShortDate(result.doneOn)}`}
             divider
           />
-          <SheetRow
-            label="관리 주기"
-            value={
-              cadence
-                ? `${describeCadence(cadence)} · 다음 ${result.cadence ? formatShortDate(result.cadence.nextDueOn) : '—'}`
-                : '설정 안 됨'
-            }
-            onClick={() => setCadenceOpen(true)}
-          />
+          {checking ? (
+            <div className="flex items-center justify-between py-4">
+              <span className="text-12.5 font-bold tracking-wide2 text-ink-3">관리 주기</span>
+              <span className="flex items-center gap-[9px] text-[16.5px] font-semibold tracking-t2 text-ink-3">
+                <span
+                  className="block h-[15px] w-[15px] animate-spin rounded-full border-2 border-line-2 border-t-action"
+                  aria-hidden
+                />
+                주기 확인 중…
+              </span>
+            </div>
+          ) : (
+            <SheetRow
+              label="관리 주기"
+              value={
+                shownRule
+                  ? `${describeCadence(shownRule)} · 다음 ${shown ? formatShortDate(shown.nextDueOn) : '—'}`
+                  : '설정 안 됨'
+              }
+              onClick={() => setCadenceOpen(true)}
+            />
+          )}
 
           {/**
            * 메모 — 설계 08/09 에 새로 생겼다.
@@ -103,9 +155,11 @@ export function ConfirmSheet({
           </div>
         </div>
 
-        {result.cadence ? (
-          <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">{result.cadence.rationale}</p>
-        ) : null}
+        <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">
+          {edited
+            ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
+            : (shown?.rationale ?? '')}
+        </p>
 
         <SheetActions
           primary={{
@@ -113,9 +167,7 @@ export function ConfirmSheet({
             disabled: committing || !name.trim(),
             onClick: () =>
               onConfirm({
-                ...(isNew
-                  ? { newItemName: name.trim() }
-                  : { itemId: result.matchedItemId ?? undefined }),
+                ...(isNew ? { newItemName: name.trim() } : { itemId: matchedId ?? undefined }),
                 note: note.trim() || null,
               }),
           }}

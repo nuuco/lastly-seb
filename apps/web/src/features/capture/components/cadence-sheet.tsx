@@ -8,7 +8,6 @@ import { Chevron, Sheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
 import { formatShortDate } from '@/lib/date';
 
-import { SnoozeEntry, SnoozePicker } from './snooze-picker';
 
 const PRESETS: Array<{ label: string; rule: Pick<CadenceRule, 'unit' | 'interval'> }> = [
   { label: '2주마다', rule: { unit: 'week', interval: 2 } },
@@ -39,8 +38,6 @@ interface CadenceSheetProps {
    * 쉬어가기를 함께 다룰 때만 넘긴다.
    * 아직 저장되지 않은 항목(기록 직후 확인 시트)에서는 미룰 대상이 없으므로 감춘다.
    */
-  snoozedUntil?: string | null;
-  onSnooze?: (until: string | null) => void;
 }
 
 /** 설계 10(프리셋) + 10-B(직접 입력). 한 시트 안에서 모드만 바뀐다. */
@@ -51,27 +48,11 @@ export function CadenceSheet({
   value,
   onChange,
   onClose,
-  snoozedUntil = null,
-  onSnooze,
 }: CadenceSheetProps) {
   const [draft, setDraft] = useState<CadenceRule>(value);
   const [custom, setCustom] = useState(!matchesPreset(value));
-  const [snoozing, setSnoozing] = useState(false);
 
   const update = (patch: Partial<CadenceRule>) => setDraft((prev) => ({ ...prev, ...patch }));
-
-  if (snoozing && onSnooze) {
-    return (
-      <Sheet open={open} onClose={onClose} label="쉬어가기">
-        <SnoozePicker
-          snoozedUntil={snoozedUntil}
-          onPick={(until) => onSnooze(until)}
-          onCancel={() => onSnooze(null)}
-          onBack={() => setSnoozing(false)}
-        />
-      </Sheet>
-    );
-  }
 
   return (
     <Sheet open={open} onClose={onClose} label="주기 선택">
@@ -145,9 +126,6 @@ export function CadenceSheet({
         이 주기로 저장
       </button>
 
-      {onSnooze ? (
-        <SnoozeEntry snoozedUntil={snoozedUntil} onClick={() => setSnoozing(true)} />
-      ) : null}
     </Sheet>
   );
 }

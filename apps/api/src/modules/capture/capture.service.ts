@@ -5,6 +5,8 @@ import type {
   CommitRequest,
   CommitResult,
   InterpretOutcome,
+  CadencePreviewRequest,
+  CadencePreviewResult,
   InterpretRequest,
   InterpretResult,
   ItemCandidate,
@@ -13,7 +15,7 @@ import { format } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
 import { CadenceService } from '../cadence/cadence.service';
-import { toCadenceRule } from '../items/items.mapper';
+import { toCadenceRule, toItem } from '../items/items.mapper';
 import type { ItemRow } from '../items/items.repository';
 import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
@@ -87,6 +89,7 @@ export class CaptureService {
         ),
         confidence: 1,
         degraded: false,
+        answer: null,
         draftToken: this.draft.sign({
           userId,
           rawInput: input.text,
@@ -118,6 +121,15 @@ export class CaptureService {
         ? parsed.matched_item_id
         : null;
 
+    /**
+     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
+     * 어느 항목을 묻는지 알아야 답할 수 있으므로, 못 짚었으면 평소대로 되묻는다.
+     */
+    if (parsed.intent === 'query') {
+      const target = claimed ?? candidates[0]?.itemId ?? null;
+      if (target) return this.answer(userId, input, referenceDate, target, today);
+    }
+
     const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
     const matchedItemId =
       outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
@@ -138,6 +150,7 @@ export class CaptureService {
       ),
       confidence: parsed.confidence,
       degraded: false,
+      answer: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
@@ -246,6 +259,69 @@ export class CaptureService {
    * 기존 항목이면 그 항목의 주기를, 새 항목이면 AI 제안을 붙인다.
    * 화면 08/09의 안내 문구가 이 source에 따라 갈린다.
    */
+  /**
+   * 이름만 주고 주기를 물어본다 — 설계 08-B.
+   *
+   * 이미 쓰던 이름이면 그 항목의 주기를 그대로 돌려준다. 사용자가 이름을
+   * 되돌렸을 때 원래 리듬으로 돌아와야지, 같은 일에 새 주기를 제안하면 안 된다.
+   */
+  async previewCadence(userId: string, input: CadencePreviewRequest): Promise<CadencePreviewResult> {
+    const known = await this.items.listActive(userId);
+    const exact = known.find((i) => squash(i.name) === squash(input.name));
+
+    return {
+      matchedItemId: exact?.id ?? null,
+      cadence: await this.resolveCadence(
+        userId,
+        exact ? 'matched_existing' : 'new_item',
+        exact?.id ?? null,
+        input.name,
+        input.doneOn,
+      ),
+    };
+  }
+
+  /** 물어본 것에 그 자리에서 답한다 — 설계 07-C. 아무것도 기록하지 않는다. */
+  private async answer(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    itemId: string,
+    today: Date,
+  ): Promise<InterpretResult> {
+    const item = toItem(await this.items.findById(userId, itemId), this.cadence, today);
+
+    return {
+      transcript: input.text,
+      outcome: 'answered',
+      normalizedName: item.name,
+      doneOn: referenceDate,
+      matchedItemId: item.id,
+      candidates: [],
+      cadence: null,
+      confidence: 1,
+      degraded: false,
+      answer: {
+        itemId: item.id,
+        name: item.name,
+        lastDoneOn: item.lastDoneOn,
+        daysSinceLastDone: item.daysSinceLastDone,
+        nextDueOn: item.nextDueOn,
+        daysUntilDue: item.daysUntilDue,
+      },
+      // 답만 하고 끝이라 커밋으로 이어지지 않는다. 토큰은 형식을 맞추기 위한 빈 값이다.
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: item.name,
+        doneOn: referenceDate,
+        matchedItemId: item.id,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
   private async resolveCadence(
     userId: string,
     outcome: InterpretOutcome,
@@ -331,6 +407,7 @@ export class CaptureService {
       confidence: 0,
       // AI가 판단해서 애매한 게 아니라, 아예 대답을 못 받은 것이다.
       degraded: true,
+      answer: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,

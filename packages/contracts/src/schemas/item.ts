@@ -73,3 +73,38 @@ export const homeFeedSchema = z.object({
   later: z.array(itemSchema),
 });
 export type HomeFeed = z.infer<typeof homeFeedSchema>;
+
+/** 검색 결과 — 설계 05-D. 항목 이름과 기록 메모를 함께 뒤진다. */
+export const searchResultSchema = z.object({
+  items: z.array(itemSchema),
+  /** 메모가 걸린 기록. 어느 항목의 언제 기록인지 함께 보여준다. */
+  notes: z.array(
+    z.object({
+      logId: uuidSchema,
+      itemId: uuidSchema,
+      itemName: z.string(),
+      doneOn: isoDateSchema,
+      note: z.string(),
+    }),
+  ),
+});
+export type SearchResult = z.infer<typeof searchResultSchema>;
+
+/** 달력 한 칸에 찍히는 표시 — 설계 05-C 의 점 세 가지. */
+export const calendarMarkSchema = z.object({
+  itemId: uuidSchema,
+  name: z.string(),
+  /** due 다가올 예정일 · done 실제로 한 날 · overdue 지나간 예정일 */
+  kind: z.enum(['due', 'done', 'overdue']),
+  /** overdue 일 때 며칠 밀렸는지. */
+  overdueDays: z.number().int().nullable(),
+});
+export type CalendarMark = z.infer<typeof calendarMarkSchema>;
+
+export const calendarMonthSchema = z.object({
+  /** YYYY-MM */
+  month: z.string(),
+  /** 날짜(YYYY-MM-DD) → 그 날의 표시들. 비어 있는 날은 키가 없다. */
+  days: z.record(z.string(), z.array(calendarMarkSchema)),
+});
+export type CalendarMonth = z.infer<typeof calendarMonthSchema>;

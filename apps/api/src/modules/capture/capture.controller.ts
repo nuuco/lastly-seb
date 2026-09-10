@@ -1,8 +1,10 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  cadencePreviewRequestSchema,
   commitRequestSchema,
   interpretRequestSchema,
+  type CadencePreviewRequest,
   type CommitRequest,
   type InterpretRequest,
 } from '@lastly/contracts';
@@ -28,6 +30,18 @@ export class CaptureController {
   })
   interpret(@CurrentUser('id') userId: string, @Body(zodBody(interpretRequestSchema)) body: InterpretRequest) {
     return this.capture.interpret(userId, body);
+  }
+
+  @Post('cadence')
+  @ApiOperation({
+    summary: '이름을 고쳤을 때 주기 다시 묻기 — 화면 08-B',
+    description: '이미 쓰던 이름이면 그 항목의 주기로 돌아온다.',
+  })
+  previewCadence(
+    @CurrentUser('id') userId: string,
+    @Body(zodBody(cadencePreviewRequestSchema)) body: CadencePreviewRequest,
+  ) {
+    return this.capture.previewCadence(userId, body);
   }
 
   @Post('commit')
