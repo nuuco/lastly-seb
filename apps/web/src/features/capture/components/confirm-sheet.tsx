@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
-import { describeCadence, formatShortDate } from '@/lib/date';
+import { describeCadence, formatShortDate, todayIso } from '@/lib/date';
 
 import { CadenceSheet } from './cadence-sheet';
 
@@ -193,12 +193,18 @@ export function ConfirmSheet({
   );
 }
 
+/**
+ * toISOString 은 UTC 를 준다. 한국 시각으로 자정이 지나면 하루가 어긋나
+ * "-1일 전" 같은 값이 나온다. 화면에 보이는 날짜는 늘 사용자의 지역 날짜여야 한다.
+ */
 function dayLabel(iso: string): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   if (iso === today) return '오늘';
 
   const diff = Math.round((Date.parse(today) - Date.parse(iso)) / 86_400_000);
   if (diff === 1) return '어제';
   if (diff === 2) return '그저께';
+  // 서버와 기기의 시각이 어긋나 미래로 나오는 경우를 방어한다.
+  if (diff < 0) return '오늘';
   return `${diff}일 전`;
 }

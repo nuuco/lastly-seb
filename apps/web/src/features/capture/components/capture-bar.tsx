@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -24,6 +24,8 @@ interface CaptureBarProps {
    * 입력 바가 화면 하단에 고정이라 같은 컨테이너 안에 있어야 붙어 보인다.
    */
   above?: React.ReactNode;
+  /** 해석을 기다리지 않고 적은 그대로 남긴다. */
+  onSkipWait?: () => void;
 }
 
 /**
@@ -44,10 +46,29 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
     interpreting,
     quickPhrases = [],
     above,
+    onSkipWait,
   },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+
+  /**
+   * 오래 기다리면 빠져나갈 길을 연다.
+   *
+   * 무료 호스팅은 잠든 AI 를 깨우는 데 20초가 넘게 걸린다. 그동안 사용자는
+   * 아무것도 못 하고 기다리는데, 방금 한 일을 남기려던 것뿐이라 굳이
+   * 해석을 기다릴 이유가 없다.
+   */
+  const [waitedLong, setWaitedLong] = useState(false);
+
+  useEffect(() => {
+    if (!interpreting) {
+      setWaitedLong(false);
+      return;
+    }
+    const timer = setTimeout(() => setWaitedLong(true), 6000);
+    return () => clearTimeout(timer);
+  }, [interpreting]);
 
   // 빈 입력창에 포커스가 있을 때만. 뭔가 적기 시작하면 방해가 된다.
   const showPhrases = focused && !value && !listening && !interpreting;
@@ -132,9 +153,19 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
       </form>
 
       {interpreting ? (
-        <p className="mt-2.5 text-center text-12.5 text-ink-3" role="status">
-          어떤 항목인지 살펴보고 있어요…
-        </p>
+        waitedLong && onSkipWait ? (
+          <button
+            type="button"
+            onClick={onSkipWait}
+            className="mt-2.5 w-full text-center text-12.5 font-semibold text-accent-ink underline underline-offset-4"
+          >
+            기다리지 않고 이대로 남기기
+          </button>
+        ) : (
+          <p className="mt-2.5 text-center text-12.5 text-ink-3" role="status">
+            어떤 항목인지 살펴보고 있어요…
+          </p>
+        )
       ) : null}
     </div>
   );

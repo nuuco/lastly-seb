@@ -1,5 +1,6 @@
 'use client';
 
+import { todayIso } from '@/lib/date';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -259,7 +260,7 @@ async function downloadExport() {
 
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `lastly-export-${new Date().toISOString().slice(0, 10)}.json`;
+  anchor.download = `lastly-export-${todayIso()}.json`;
   anchor.click();
 
   URL.revokeObjectURL(url);

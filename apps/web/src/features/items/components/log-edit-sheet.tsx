@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import { Sheet, SheetActions } from '@/components/ui/sheet';
 import { itemsApi } from '@/lib/api/items';
-import { formatLogDate } from '@/lib/date';
+import { formatLogDate, todayIso } from '@/lib/date';
 
 interface LogEditSheetProps {
   log: LogEntry;
@@ -59,7 +59,7 @@ export function LogEditSheet({ log, itemName, onClose, onSaved }: LogEditSheetPr
         <input
           type="date"
           value={doneOn}
-          max={new Date().toISOString().slice(0, 10)}
+          max={todayIso()}
           onChange={(e) => setDoneOn(e.target.value)}
           className="mt-2 h-[52px] w-full rounded-row border border-line bg-card px-[18px] text-16 text-ink outline-none focus:border-accent"
         />

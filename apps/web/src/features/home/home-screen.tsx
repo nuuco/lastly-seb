@@ -16,7 +16,7 @@ import { CalendarView } from '@/features/calendar/calendar-view';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { queryKeys } from '@/lib/api/query-keys';
-import { formatMonth, formatShortDate, formatYearMonth } from '@/lib/date';
+import { formatMonth, formatShortDate, formatYearMonth, todayIso } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
 import { HomeError, HomeSkeleton } from './components/home-states';
@@ -128,14 +128,6 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
     else inputRef.current?.focus();
   };
 
-  /** "직접 고치기" — 들은 문장을 입력창에 담아 고치게 한다. */
-  const retryWithKeyboard = () => {
-    const heard = capture.result?.transcript ?? '';
-    capture.cancel();
-    setDraft(heard);
-    inputRef.current?.focus();
-  };
-
   const submitDraft = (mode: 'voice' | 'text') => {
     const text = draft.trim();
     if (!text || capture.interpreting) return;
@@ -230,6 +222,10 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
         liveTranscript={speech.transcript}
         interpreting={capture.interpreting}
         quickPhrases={quickPhrases}
+        onSkipWait={() => {
+          capture.saveRaw(draft.trim() || '기록');
+          setDraft('');
+        }}
         above={
           capture.step === 'answered' && capture.result ? (
             <AnswerCard
@@ -265,7 +261,6 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           onChoose={capture.chooseCandidate}
           onCreateNew={capture.createAsNew}
           onRetry={retryWithVoice}
-          onKeyboard={retryWithKeyboard}
           onDismiss={capture.cancel}
           committing={capture.committing}
           mode={capture.lastMode}
@@ -276,7 +271,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
         <CadenceSheet
           open
           itemName={cadenceItem.name}
-          doneOn={cadenceItem.lastDoneOn ?? new Date().toISOString().slice(0, 10)}
+          doneOn={cadenceItem.lastDoneOn ?? todayIso()}
           value={cadenceItem.cadence}
           onChange={async (rule) => {
             await itemsApi.update(cadenceItem.id, { cadence: rule, cadenceSource: 'user' });
@@ -295,6 +290,13 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           onDismiss={() => setDeleted(null)}
           // 지운 걸 알아채는 데 시간이 걸린다. 완료 토스트보다 길게 연다.
           durationMs={10000}
+        />
+      ) : null}
+
+      {capture.rawSaved ? (
+        <Toast
+          message={`${capture.rawSaved} 기록했어요`}
+          onDismiss={capture.dismissRawSaved}
         />
       ) : null}
 

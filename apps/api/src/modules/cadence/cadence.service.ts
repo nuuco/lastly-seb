@@ -66,6 +66,32 @@ export class CadenceService {
     return `${base} ${days.join('·')}`;
   }
 
+  /**
+   * 일수를 사람이 세는 단위로 옮긴다. apps/ai 의 _to_unit 과 같은 규칙이다.
+   *
+   * 45일은 45일로 두고 216일은 7달로 바꾼다. 오차가 8% 안쪽일 때만 큰 단위로
+   * 올린다. "216일마다" 는 아무도 그렇게 세지 않고, 45일을 1.5달로 만들면
+   * 원래 리듬이 뭉개진다.
+   */
+  toRule(days: number): Omit<CadenceRule, 'notifyTimeLocal'> {
+    const clamped = Math.max(1, Math.min(730, Math.round(days)));
+
+    if (clamped >= 28) {
+      const months = Math.round(clamped / 30);
+      const tolerance = Math.max(2, clamped * 0.08);
+      if (months >= 1 && Math.abs(clamped - months * 30) <= tolerance) {
+        return { unit: 'month', interval: Math.min(24, months), weekdays: [] };
+      }
+      return { unit: 'day', interval: clamped, weekdays: [] };
+    }
+
+    if (clamped >= 7 && clamped % 7 === 0) {
+      return { unit: 'week', interval: clamped / 7, weekdays: [] };
+    }
+
+    return { unit: 'day', interval: clamped, weekdays: [] };
+  }
+
   /** 주기를 일수로 환산 — 개인 평균과 비교할 때 쓴다. */
   toApproxDays(rule: CadenceRule): number {
     const perUnit = { day: 1, week: 7, month: 30 }[rule.unit];

@@ -14,6 +14,8 @@ export interface AiParseResponse {
    * 옛 버전 AI 가 안 보낼 수 있으므로 없으면 기록으로 본다.
    */
   intent?: 'record' | 'query';
+  /** 사용자가 문장에서 직접 말한 주기(일수). 말하지 않았으면 null. */
+  stated_cadence_days?: number | null;
   normalized_name: string | null;
   done_on: string;
   matched_item_id: string | null;

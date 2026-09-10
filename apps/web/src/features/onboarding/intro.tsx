@@ -1,54 +1,56 @@
-'use client';
-
-import { StepDots } from './notify-permission';
-
 /**
- * 설계 01 — 이 앱이 무엇이 "아닌지"부터 말한다.
- * 두 번째 문단만 앰버로 칠해 대비를 만드는 게 이 화면의 핵심이다.
+ * 설계 01 — 온보딩 소개.
+ *
+ * 무엇을 하는 앱인지 세 단계로 나눠 말한다. 기록 → 계산 → 알림 순서가
+ * 그대로 이 앱의 동작 순서다.
  */
+const STEPS = [
+  { n: 1, title: '한 문장으로 기록', body: '말하거나 적으면 항목과 날짜를 알아서 정리해요.' },
+  { n: 2, title: '주기는 자동 계산', body: '지금까지 해온 간격을 보고 다음 시점을 잡아드려요.' },
+  { n: 3, title: '때가 되면 조용히 알림', body: '재촉하지 않고 알맞은 때에 한 번만 알려드려요.' },
+] as const;
+
 export function Intro({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
   return (
-    <main className="safe-top flex min-h-dvh flex-col px-8 pb-10 pt-12">
-      <StepDots current={1} total={3} />
-
+    <main className="safe-top flex min-h-dvh flex-col px-8 pb-10 pt-[52px]">
       <p className="text-13 font-bold tracking-[.16em] text-accent-ink">LASTLY</p>
 
-      <h1 className="mt-6 text-30 font-bold leading-[1.45] tracking-t35 text-ink">
-        해야 할 일을
-        <br />
-        알려주는 앱이 아니라,
-      </h1>
-      <h1 className="mt-2.5 text-30 font-bold leading-[1.45] tracking-t35 text-accent-ink">
+      <h1 className="mt-[26px] text-[31px] font-bold leading-[1.42] tracking-[-.04em] text-ink">
         마지막으로 언제 했는지
         <br />
         기억해주는 앱
       </h1>
 
-      <p className="mt-5 text-15 leading-[1.8] text-ink-2">
-        이불 빨래, 칫솔 교체, 필터 청소.
+      <p className="mt-[18px] text-15.5 leading-[1.8] text-ink-2">
+        “오늘 이불 빨았어”처럼 한 줄만 적으면,
         <br />
-        말 한마디만 남기면 나머지는 저희가 챙길게요.
+        다음 알림일까지 알아서 척척 계산해드려요.
       </p>
 
+      <div className="mt-10 rounded-card border border-line bg-card px-5 py-1 shadow-hero-card">
+        {STEPS.map((step, i) => (
+          <div
+            key={step.n}
+            className={`flex items-start gap-3.5 px-0.5 py-4 ${
+              i === STEPS.length - 1 ? '' : 'border-b border-line'
+            }`}
+          >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] bg-accent-soft text-12.5 font-bold text-accent-ink">
+              {step.n}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-16 font-semibold tracking-t25 text-ink">{step.title}</p>
+              <p className="mt-[5px] break-keep text-13.5 leading-[1.6] text-ink-2">{step.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="mt-auto">
-        <div className="rounded-hero border border-[#EBE3D4] bg-[linear-gradient(180deg,#F8F4EA,#FCFBF8)] px-6 py-[22px] shadow-soft">
-          <div className="mb-3.5 flex items-center gap-2 text-12 tracking-[.06em] text-ink-3">
-            <span className="block h-3.5 w-3.5 rounded-full bg-accent" />
-            말하거나 적기만 하면
-          </div>
-
-          <p className="text-21 font-semibold tracking-[-.02em] text-ink">“오늘 이불 빨았어”</p>
-
-          <div className="mt-4.5 flex items-center gap-2.5 border-t border-line pt-4">
-            <span className="block h-2 w-2 shrink-0 rounded-full bg-sage" />
-            <span className="text-14 text-ink-2">이불 빨래 · 9월 6일 기록 · 다음 알림 9월 20일</span>
-          </div>
-        </div>
-
         <button
           type="button"
           onClick={onNext}
-          className="mt-8 flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed"
+          className="flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed"
         >
           시작하기
         </button>
@@ -56,7 +58,7 @@ export function Intro({ onNext, onSkip }: { onNext: () => void; onSkip: () => vo
         <button
           type="button"
           onClick={onSkip}
-          className="mt-4.5 w-full text-center text-14 text-ink-3"
+          className="mt-[18px] w-full text-center text-14 text-ink-3"
         >
           이미 쓰고 있어요
         </button>

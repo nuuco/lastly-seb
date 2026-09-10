@@ -147,6 +147,7 @@ export class CaptureService {
         matchedItemId,
         parsed.normalized_name,
         parsed.done_on,
+        parsed.stated_cadence_days ?? null,
       ),
       confidence: parsed.confidence,
       degraded: false,
@@ -328,8 +329,25 @@ export class CaptureService {
     matchedItemId: string | null,
     normalizedName: string | null,
     doneOn: string,
+    statedDays: number | null = null,
   ): Promise<CadenceSuggestion | null> {
     if (outcome === 'unrecognized') return null;
+
+    /**
+     * 사용자가 문장에서 직접 말한 주기가 최우선이다.
+     * "한달에 한번 빨거야" 라고 했는데 개인 이력이나 커뮤니티 통계로 덮으면
+     * 방금 한 말을 무시하는 셈이 된다.
+     */
+    if (statedDays) {
+      const rule = { ...this.cadence.toRule(statedDays), notifyTimeLocal: null };
+      return {
+        rule,
+        source: 'user',
+        confidence: 1,
+        rationale: `말씀하신 ${this.cadence.describe(rule)}로 맞춰뒀어요.`,
+        nextDueOn: this.cadence.nextDueOn(doneOn, rule) ?? doneOn,
+      };
+    }
 
     if (outcome === 'matched_existing' && matchedItemId) {
       const row = await this.items.findById(userId, matchedItemId);

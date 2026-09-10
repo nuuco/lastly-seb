@@ -51,6 +51,19 @@ describe('CadenceService', () => {
     expect(service.bucketFor(7, null)).toBe('upcoming');
   });
 
+  it('말한 일수를 사람이 세는 단위로 옮긴다', () => {
+    // apps/ai 의 _to_unit 과 같은 규칙이어야 한다. 두 곳이 어긋나면
+    // 같은 문장이 경로에 따라 다른 주기가 된다.
+    expect(service.toRule(30)).toMatchObject({ unit: 'month', interval: 1 });
+    expect(service.toRule(14)).toMatchObject({ unit: 'week', interval: 2 });
+    expect(service.toRule(7)).toMatchObject({ unit: 'week', interval: 1 });
+    expect(service.toRule(2)).toMatchObject({ unit: 'day', interval: 2 });
+    // 45일은 1.5달로 뭉개지 않는다.
+    expect(service.toRule(45)).toMatchObject({ unit: 'day', interval: 45 });
+    // 216일은 7달로 올린다.
+    expect(service.toRule(216)).toMatchObject({ unit: 'month', interval: 7 });
+  });
+
   it('주기를 화면 문구로 옮긴다', () => {
     expect(service.describe(rule({ unit: 'week', interval: 2 }))).toBe('2주마다');
     expect(service.describe(rule({ weekdays: [6] }))).toBe('2주마다 토요일');

@@ -36,6 +36,8 @@ class ParseResponse(BaseModel):
     """
 
     intent: Literal["record", "query"] = "record"
+    """사용자가 문장에서 직접 말한 주기(일수). 말하지 않았으면 None."""
+    stated_cadence_days: int | None = None
     normalized_name: str | None
     done_on: date
     matched_item_id: str | None

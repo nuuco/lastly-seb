@@ -2,9 +2,11 @@
 
 import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { captureApi } from '@/lib/api/capture';
+import { itemsApi } from '@/lib/api/items';
+import { todayIso } from '@/lib/date';
 import { queryKeys } from '@/lib/api/query-keys';
 
 /**
@@ -35,22 +37,32 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const [committed, setCommitted] = useState<CommitResult | null>(null);
   /** 마지막으로 보낸 입력이 말이었는지 글이었는지. 재시도 화면의 문구가 갈린다. */
   const [lastMode, setLastMode] = useState<'voice' | 'text'>('text');
+  /** 해석을 건너뛰고 그대로 남긴 항목의 이름. */
+  const [rawSaved, setRawSaved] = useState<string | null>(null);
+  /** 기다림을 포기했는지. 늦게 도착한 해석 결과를 버리는 기준이다. */
+  const abandoned = useRef(false);
 
   const interpret = useMutation({
     mutationFn: (input: { text: string; mode: 'voice' | 'text'; asrConfidence?: number }) =>
       captureApi.interpret(input),
     onMutate: (input) => {
+      abandoned.current = false;
       setLastMode(input.mode);
       setStep('interpreting');
     },
     onSuccess: (data) => {
+      // 기다리다 그냥 남겼으면 뒤늦게 온 해석 결과로 시트를 열지 않는다.
+      if (abandoned.current) return;
       setResult(data);
       setCadenceOverride(null);
       setStep(stepForOutcome(data));
       // 결과가 나온 뒤에야 입력창을 비운다 — 기다리는 동안 무엇을 보냈는지 보여야 한다.
       onInterpreted?.();
     },
-    onError: () => setStep('retry'),
+    onError: () => {
+      if (abandoned.current) return;
+      setStep('retry');
+    },
   });
 
   const commit = useMutation({
@@ -90,6 +102,33 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     [commit],
   );
 
+  /**
+   * 해석을 기다리지 않고 적은 그대로 남긴다.
+   *
+   * 잠든 AI 를 깨우는 20초 동안 사용자는 아무것도 못 한다. 방금 한 일을
+   * 남기려던 것뿐인데 서버 사정으로 붙잡아 둘 이유가 없다.
+   * 해석을 거치지 않으므로 주기는 기본값으로 두고, 나중에 고치면 된다.
+   */
+  const saveRaw = useMutation({
+    onMutate: () => {
+      abandoned.current = true;
+    },
+    mutationFn: (name: string) =>
+      itemsApi.create({
+        name,
+        cadence: { unit: 'week', interval: 2, weekdays: [], notifyTimeLocal: null },
+        cadenceSource: 'default',
+        firstDoneOn: todayIso(),
+      }),
+    onSuccess: async (item) => {
+      setStep('idle');
+      setResult(null);
+      // 되돌리기 토큰이 없다. 커밋을 거치지 않았으므로 되돌릴 기록도 없다.
+      setRawSaved(item.name);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.home });
+    },
+  });
+
   const cancel = useCallback(() => {
     setStep('idle');
     setResult(null);
@@ -119,6 +158,9 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     committing: commit.isPending,
     chooseCandidate,
     createAsNew,
+    saveRaw: saveRaw.mutate,
+    rawSaved,
+    dismissRawSaved: () => setRawSaved(null),
     cancel,
     dismissToast,
     undo: undo.mutate,

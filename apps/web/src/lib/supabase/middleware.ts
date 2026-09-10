@@ -1,6 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { SEEN_ONBOARDING } from '@/lib/onboarding';
+
 /**
  * 로그인 없이 열어 두는 길.
  *
@@ -44,11 +46,23 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && !isPublic(pathname)) {
-    const login = request.nextUrl.clone();
-    login.pathname = '/login';
+    const target = request.nextUrl.clone();
+
+    /**
+     * 처음 온 사람은 온보딩(설계 01)부터 본다.
+     * 무엇을 하는 앱인지 모르는 채로 로그인부터 요구하면 이유 없이 계정을 내주는
+     * 꼴이 된다. 온보딩을 한 번 본 뒤로는 로그인으로 바로 보낸다.
+     */
+    if (!request.cookies.get(SEEN_ONBOARDING)) {
+      target.pathname = '/onboarding';
+      target.search = '';
+      return NextResponse.redirect(target);
+    }
+
+    target.pathname = '/login';
     // 로그인 뒤 원래 가려던 자리로 돌려보낸다.
-    login.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(login);
+    target.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(target);
   }
 
   // 이미 로그인한 사람에게 로그인 화면을 다시 보여줄 이유가 없다.

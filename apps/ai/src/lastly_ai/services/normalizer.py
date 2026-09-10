@@ -10,7 +10,15 @@ log = structlog.get_logger(__name__)
 PARSE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["intent", "item_name", "days_ago", "matched_item_id", "candidate_ids", "confidence"],
+    "required": [
+        "intent",
+        "item_name",
+        "days_ago",
+        "matched_item_id",
+        "candidate_ids",
+        "confidence",
+        "stated_cadence_days",
+    ],
     "properties": {
         "intent": {
             "type": "string",
@@ -37,6 +45,14 @@ PARSE_SCHEMA = {
         "confidence": {
             "type": "number",
             "description": "항목 해석 전체에 대한 확신도 0~1.",
+        },
+        "stated_cadence_days": {
+            "type": ["integer", "null"],
+            "description": (
+                "사용자가 문장에서 직접 말한 주기를 일수로 환산한 값. "
+                "말하지 않았으면 null. 예: '한달에 한번' -> 30, '2주마다' -> 14, "
+                "'일주일에 한번' -> 7, '이틀에 한번' -> 2"
+            ),
         },
     },
 }
@@ -75,6 +91,15 @@ SYSTEM_PROMPT = """당신은 한국어 집안일 기록 앱의 문장 해석기�
 
 4. confidence — 위 판단 전체에 대한 확신도
    - 음성 인식이 뭉개진 문장("이불 빠라써")은 낮게 잡습니다.
+
+5. stated_cadence_days — 사용자가 직접 말한 주기
+   - "한달에 한번 빨거야", "2주마다 할래", "일주일에 한번씩" 처럼
+     앞으로 얼마마다 할지를 말했다면 일수로 환산합니다.
+   - "한달에 한번" → 30, "2주마다" → 14, "일주일에 한번" → 7, "이틀에 한번" → 2
+   - "45일마다" 처럼 일수를 그대로 말하면 그 숫자를 씁니다.
+   - 언제 했는지(days_ago)와 혼동하지 않습니다.
+     "3일 전에 했어"는 days_ago=3 이고 주기 언급이 아니므로 null 입니다.
+   - 주기를 말하지 않았으면 null 입니다.
 
 한국어 구어체, 오타, 음성 인식 오류를 감안해 해석합니다."""
 
@@ -141,8 +166,12 @@ class Normalizer:
 
         candidates = self._to_candidates(raw.get("candidate_ids") or [], known_ids)
 
+        stated = raw.get("stated_cadence_days")
+        stated_days = int(stated) if isinstance(stated, (int, float)) and 1 <= stated <= 730 else None
+
         return ParseResponse(
             intent="query" if raw.get("intent") == "query" else "record",
+            stated_cadence_days=stated_days,
             normalized_name=raw.get("item_name"),
             done_on=done_on,
             matched_item_id=matched,
