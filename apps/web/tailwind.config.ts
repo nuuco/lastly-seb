@@ -48,19 +48,13 @@ const config: Config = {
 
         danger: 'var(--lastly-danger)',
 
-        // 구 이름 별칭 — 값은 설계 토큰을 가리킨다.
+        // 구 이름 별칭 — 값은 설계 토큰을 가리킨다. 쓰이는 것만 남긴다.
         bg: 'var(--lastly-paper)',
         surface: 'var(--lastly-card)',
         'surface-alt': 'var(--lastly-surface-alt)',
         'surface-sunken': 'var(--lastly-surface-sunken)',
-        'line-strong': 'var(--lastly-rule)',
         'line-muted': 'var(--lastly-line-2)',
-        'ink-secondary': 'var(--lastly-ink-2)',
-        'ink-muted': 'var(--lastly-ink-3)',
         'ink-disabled': 'var(--lastly-ink-4)',
-        success: 'var(--lastly-accent-ink)',
-        warning: 'var(--lastly-accent-ink)',
-        'warning-soft': 'var(--lastly-accent-soft)',
       },
 
       fontSize: {

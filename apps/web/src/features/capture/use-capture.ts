@@ -15,8 +15,8 @@ import { queryKeys } from '@/lib/api/query-keys';
  * step은 서버가 내려준 outcome에서 파생된다. 프론트가 직접 판단하지 않는다.
  *   matched_existing → confirm (화면 08)
  *   new_item         → confirm (화면 09)
- *   ambiguous        → disambiguate (화면 07-B)
- *   unrecognized     → retry (화면 07-B)
+ *   ambiguous        → disambiguate (07 재확인 시트)
+ *   unrecognized     → retry (07 재확인 시트)
  */
 export type CaptureStep =
   | 'idle'
@@ -73,12 +73,24 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     }) => {
       if (!result) throw new Error('해석 결과가 없습니다.');
 
+      /**
+       * 새 항목에는 화면에 보여준 주기를 그대로 실어 보낸다.
+       *
+       * 사용자가 주기 시트를 열어 고친 경우에만 보내고 있어서, "한달에 한번" 을
+       * 확인하고 그냥 저장하면 서버가 기본값 2주로 만들었다.
+       *
+       * 기존 항목에는 고친 값만 보낸다. 보여준 값을 되돌려 보내면 원래 주기가
+       * 사용자 지정으로 덮여 다음 제안에 영향을 준다.
+       */
+      const isNew = Boolean(input.newItemName);
+      const cadence = cadenceOverride ?? (isNew ? result.cadence?.rule : undefined);
+
       return captureApi.commit({
         draftToken: result.draftToken,
         itemId: input.itemId,
         newItemName: input.newItemName,
         doneOn: result.doneOn,
-        cadence: cadenceOverride ?? undefined,
+        cadence: cadence ?? undefined,
         note: input.note ?? null,
       });
     },
@@ -90,13 +102,13 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     },
   });
 
-  /** 07-B에서 후보를 골랐을 때 — 바로 저장으로 넘어간다. */
+  /** 재확인 시트에서 후보를 골랐을 때 — 바로 저장으로 넘어간다. */
   const chooseCandidate = useCallback(
     (itemId: string) => commit.mutate({ itemId }),
     [commit],
   );
 
-  /** 07-B에서 "새 항목으로 만들기". 이름은 원문을 그대로 쓴다. */
+  /** 재확인 시트에서 "새 항목으로 만들기". 이름은 원문을 그대로 쓴다. */
   const createAsNew = useCallback(
     (name: string) => commit.mutate({ newItemName: name }),
     [commit],

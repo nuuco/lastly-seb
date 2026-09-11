@@ -31,6 +31,8 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+# B008 — FastAPI 는 Depends() 를 인자 기본값에 두는 것이 정해진 사용법이다.
+ignore = ["B008"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -39,3 +41,8 @@ asyncio_mode = "auto"
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+# asyncpg 는 py.typed 를 배포하지 않는다. 이 모듈만 예외로 둔다.
+[[tool.mypy.overrides]]
+module = "asyncpg.*"
+ignore_missing_imports = true

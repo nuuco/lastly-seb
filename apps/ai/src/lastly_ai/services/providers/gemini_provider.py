@@ -64,9 +64,13 @@ class GeminiProvider:
             raise LlmError("모델이 빈 응답을 반환했습니다.")
 
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
         except json.JSONDecodeError as exc:
             raise LlmError(f"JSON 파싱 실패: {text[:200]}") from exc
+
+        if not isinstance(parsed, dict):
+            raise LlmError(f"객체가 아닌 JSON 을 받았습니다: {text[:200]}")
+        return parsed
 
     async def complete_json_with_search(
         self,
@@ -90,7 +94,9 @@ def _to_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """
     types = schema.get("type")
     nullable = isinstance(types, list) and "null" in types
-    primary = next((t for t in types if t != "null"), "string") if isinstance(types, list) else types
+    primary = (
+        next((t for t in types if t != "null"), "string") if isinstance(types, list) else types
+    )
 
     out: dict[str, Any] = {"type": str(primary).upper()}
     if nullable:

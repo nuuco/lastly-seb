@@ -4,14 +4,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Web Speech API 래퍼.
- * 사파리/크롬은 webkit 접두사를 쓰고, 지원하지 않는 브라우저도 있으므로
- * supported를 노출해 호출부가 키보드 입력으로 대체할 수 있게 한다.
+ *
+ * 인식 객체를 들고 있지 않고 말할 때마다 만들었다가 끝나면 버린다.
+ * 하나를 계속 붙들고 있으면 stop() 뒤에도 브라우저가 마이크를 놓지 않아
+ * 녹음 표시가 켜진 채로 남는다.
+ *
+ * 사파리·크롬은 webkit 접두사를 쓰고 지원하지 않는 브라우저도 있으므로
+ * supported 를 노출해 호출부가 키보드 입력으로 대체할 수 있게 한다.
  */
 
 interface SpeechRecognitionLike extends EventTarget {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  maxAlternatives: number;
   start(): void;
   stop(): void;
   abort(): void;
@@ -26,6 +32,9 @@ interface SpeechRecognitionEventLike {
     ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
   >;
 }
+
+/** 말이 없어도 이 시간이 지나면 스스로 끊는다. onend 가 오지 않는 경우가 있다. */
+const MAX_LISTEN_MS = 15_000;
 
 function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null;
@@ -46,6 +55,8 @@ export interface SpeechState {
 
 export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [state, setState] = useState<SpeechState>({
     supported: false,
     listening: false,
@@ -54,14 +65,48 @@ export function useSpeechRecognition() {
     error: null,
   });
 
+  // 생성자 존재 여부만 본다. 객체를 미리 만들지 않는다.
   useEffect(() => {
+    if (getRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
+  }, []);
+
+  /** 인식 객체를 확실히 버린다. 이걸 해야 마이크가 풀린다. */
+  const release = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    recognitionRef.current = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    // abort 는 stop 과 달리 결과를 기다리지 않고 즉시 끊는다.
+    try {
+      recognition.abort();
+    } catch {
+      // 이미 끝난 뒤라면 무시한다.
+    }
+  }, []);
+
+  // 화면을 떠날 때도 반드시 놓아준다.
+  useEffect(() => release, [release]);
+
+  const start = useCallback(() => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) return;
+
+    // 이전 것이 남아 있으면 먼저 버린다. 두 개가 동시에 살면 마이크가 안 풀린다.
+    release();
 
     const recognition = new Ctor();
     recognition.lang = 'ko-KR';
     recognition.continuous = false;
     recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
       let text = '';
@@ -78,24 +123,50 @@ export function useSpeechRecognition() {
     };
 
     recognition.onerror = (event) => {
-      setState((prev) => ({ ...prev, listening: false, error: describeError(event.error) }));
+      const message = describeError(event.error);
+      release();
+      // no-speech 는 잘못이 아니라 그냥 조용했던 것이다. 오류로 적지 않는다.
+      setState((prev) => ({
+        ...prev,
+        listening: false,
+        error: event.error === 'no-speech' ? null : message,
+      }));
     };
 
-    recognition.onend = () => setState((prev) => ({ ...prev, listening: false }));
+    recognition.onend = () => {
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    };
 
     recognitionRef.current = recognition;
-    setState((prev) => ({ ...prev, supported: true }));
+    timerRef.current = setTimeout(() => {
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    }, MAX_LISTEN_MS);
 
-    return () => recognition.abort();
-  }, []);
-
-  const start = useCallback(() => {
-    if (!recognitionRef.current) return;
     setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null, listening: true }));
-    recognitionRef.current.start();
-  }, []);
 
-  const stop = useCallback(() => recognitionRef.current?.stop(), []);
+    try {
+      recognition.start();
+    } catch {
+      // 이미 듣는 중이면 브라우저가 던진다. 상태만 되돌린다.
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    }
+  }, [release]);
+
+  /** 사용자가 멈춤을 눌렀을 때. 지금까지 들은 것은 살린다. */
+  const stop = useCallback(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    try {
+      recognition.stop();
+    } catch {
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    }
+  }, [release]);
 
   const reset = useCallback(
     () => setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null })),

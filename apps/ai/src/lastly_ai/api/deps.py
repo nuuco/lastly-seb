@@ -26,7 +26,8 @@ def get_pool(request: Request) -> asyncpg.Pool | None:
 
 
 def get_embeddings(request: Request) -> EmbeddingProvider:
-    return request.app.state.embeddings
+    provider: EmbeddingProvider = request.app.state.embeddings
+    return provider
 
 
 def get_normalizer() -> Normalizer:

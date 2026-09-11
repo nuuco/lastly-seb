@@ -61,3 +61,99 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/**
+ * 약관·개인정보처리방침 본문.
+ *
+ * 이 두 장은 화면 설계에 없는 문서다. 앱 화면처럼 꾸미지 않고 읽기만 편하게 둔다.
+ * 색과 자간은 설계 토큰을 그대로 쓴다.
+ */
+.legal {
+  color: var(--lastly-ink-2);
+  font-size: 15px;
+  line-height: 1.85;
+  word-break: keep-all;
+}
+
+.legal h1 {
+  color: var(--lastly-ink);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.4;
+}
+
+.legal h2 {
+  color: var(--lastly-ink);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-top: 40px;
+}
+
+.legal h3 {
+  color: var(--lastly-ink);
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 24px;
+}
+
+.legal .lead {
+  color: var(--lastly-ink-3);
+  margin-top: 12px;
+}
+
+.legal p {
+  margin-top: 12px;
+}
+
+.legal ul {
+  list-style: disc;
+  margin-top: 12px;
+  padding-left: 20px;
+}
+
+.legal li {
+  margin-top: 6px;
+}
+
+.legal strong {
+  color: var(--lastly-ink);
+  font-weight: 600;
+}
+
+.legal code {
+  background: var(--lastly-surface-alt);
+  border-radius: 4px;
+  font-size: 13.5px;
+  padding: 1px 5px;
+}
+
+.legal table {
+  border-collapse: collapse;
+  display: block;
+  margin-top: 16px;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.legal th,
+.legal td {
+  border: 1px solid var(--lastly-line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.legal th {
+  background: var(--lastly-surface-alt);
+  color: var(--lastly-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.legal td {
+  font-size: 14px;
+}

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: str = ""
+    # LLM 자격은 요청마다 caller 로 실려 온다. 서버는 키를 보관하지 않는다.
     ai_model: str = "claude-opus-5"
 
     database_url: str = "postgresql://postgres:postgres@localhost:54322/postgres"

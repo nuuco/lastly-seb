@@ -49,7 +49,8 @@ class VoyageEmbeddingProvider:
                     json={"input": [text], "model": self._model, "input_type": "document"},
                 )
                 res.raise_for_status()
-                return res.json()["data"][0]["embedding"]
+                vector: list[float] = res.json()["data"][0]["embedding"]
+                return vector
         except Exception as exc:  # noqa: BLE001 — 임베딩 실패가 기록을 막으면 안 된다.
             log.warning("embeddings.failed", error=str(exc))
             return None

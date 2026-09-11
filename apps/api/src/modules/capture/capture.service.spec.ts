@@ -5,7 +5,7 @@ import { CaptureService } from './capture.service';
 
 /**
  * 여기서 검증하는 것은 outcome 분기다.
- * outcome이 프론트의 화면 선택을 그대로 결정하므로(08 / 09 / 07-B),
+ * outcome이 프론트의 화면 선택을 그대로 결정하므로(08 / 09 / 07 재확인 시트),
  * 임계값을 바꾸면 사용자가 보는 화면이 바뀐다.
  */
 

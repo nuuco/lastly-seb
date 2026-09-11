@@ -38,7 +38,7 @@ src/lastly_ai/
 │   └── v1/routes/       health.py, capture.py
 ├── schemas/capture.py   요청·응답 모델 (pydantic)
 ├── services/
-│   ├── llm.py           Anthropic Messages API 래퍼
+│   ├── providers/       제공자 어댑터 (anthropic · openai · gemini)
 │   ├── normalizer.py    문장 → 항목 + 날짜
 │   ├── cadence.py       주기 계산·추천
 │   └── embeddings.py    이름 임베딩
@@ -62,6 +62,30 @@ tests/test_cadence.py
 | `GET /readyz` | DB까지 붙었는지 |
 
 `/healthz` 는 DB를 안 본다. DB가 없어도 파싱은 되기 때문이다.
+
+---
+
+## 0. 키는 요청에 실려 온다 — `providers/`
+
+이 서비스는 **LLM 키를 보관하지 않는다.** 매 요청의 `caller` 에 제공자와 키가 실려 오고,
+`build_provider()` 가 그것으로 클라이언트를 만들어 한 번 쓰고 버린다.
+사용자가 각자 자기 키를 등록해 자기 몫만 쓰기 때문이다 (정책은 루트 README 참고).
+
+제공자마다 다른 건 두 메서드뿐이라, 그 차이만 어댑터가 흡수한다.
+
+| | 구조화 출력을 켜는 방법 | 웹 검색 |
+|---|---|---|
+| Anthropic | `output_config.format` | `web_search_20260209` 서버 툴 |
+| OpenAI | `response_format.json_schema` (strict) | 없음 |
+| Gemini | `generationConfig.responseSchema` | 안 켠다 |
+
+Gemini 는 JSON Schema 를 그대로 받지 않아 `_to_gemini_schema()` 가 옮긴다 —
+타입 이름이 대문자고, nullable 이 별도 필드고, `additionalProperties` 를 모른다.
+
+Gemini 에 검색을 붙이지 않은 건 **검색과 `responseSchema` 를 동시에 켤 수 없어서**다.
+스키마를 택했다. 형식이 깨진 응답은 기록 자체를 막지만, 검색이 없으면 주기 제안만 무뎌진다.
+
+> OpenAI · Gemini 어댑터는 아직 실제 키로 검증되지 않았다. 등록 사용자가 생기면 확인할 것.
 
 ---
 
@@ -150,11 +174,13 @@ None (apps/api 가 기본값으로 폴백)
 
 | | 없으면 |
 |---|---|
-| `ANTHROPIC_API_KEY` | 해석·조사가 전부 실패한다. 앱은 돌지만 AI가 없는 셈 |
 | `VOYAGE_API_KEY` | 임베딩 없이 트라이그램만 |
 | `DATABASE_URL` | `priors` 캐시를 못 읽고 못 쓴다. 매번 새로 조사 |
 | `INTERNAL_TOKEN` | 기본값으로 뜬다 — 배포에선 반드시 정한다 |
-| `AI_MODEL` | `claude-opus-5` |
+| `AI_MODEL` | `claude-opus-5` (Anthropic 어댑터에만 쓴다) |
+
+**LLM 키는 여기 없다.** 요청의 `caller` 로 온다. 무료 체험용 서버 키를 두는 곳은
+`apps/api` 의 `ANTHROPIC_API_KEY` 다.
 
 ---
 
@@ -166,6 +192,8 @@ pnpm --filter @lastly/ai test
 
 `test_cadence.py` 는 LLM을 안 부른다. 중앙값·이상치 제거·단위 변환처럼
 **틀리면 사용자가 바로 알아채는 계산**만 본다. 45일이 45주가 되는 종류의 사고다.
+
+제공자 어댑터는 아직 덮이지 않았다. 요청 형태와 스키마 변환이 검증 대상이다.
 
 ---
 

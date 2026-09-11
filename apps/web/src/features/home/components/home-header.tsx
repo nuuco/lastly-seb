@@ -77,17 +77,19 @@ function headline(summary: HomeSummary): string {
  * "오늘은 할 게 없다" 가 아니라 "뭔가 안 불러왔다" 로 읽힌다.
  * 방금 다 끝냈을 때(05-B)와 애초에 없던 날(05-E)의 말이 다르다.
  */
-export function AllDoneCard({ summary, justFinished }: { summary: HomeSummary; justFinished?: boolean }) {
+export function AllDoneCard({ justFinished }: { justFinished?: boolean }) {
   return (
     <div className="mt-4 rounded-card border border-line-2 bg-[linear-gradient(180deg,var(--lastly-card-hi-from),var(--lastly-card-hi-to))] px-5 py-[26px] text-center">
       <p className="text-20 font-bold tracking-t3 text-ink">
         {justFinished ? '오늘 할 건 다 하셨어요 🎉' : '오늘 챙길 가사가 없어요 🌿'}
       </p>
-      <p className="mt-2 text-[13.5px] text-ink-2">
-        {summary.nextUp
-          ? `${justFinished ? '' : '편안한 하루 보내세요. '}다음은 ${formatShortDate(summary.nextUp.dueOn)} · ${summary.nextUp.name}예요`
-          : '편안한 하루 보내세요.'}
-      </p>
+      {/**
+       * 다음 항목은 말하지 않는다.
+       *
+       * 챙길 게 없는 날에 다음 일정을 들이미는 건 쉬라는 말과 어긋난다.
+       * 궁금하면 바로 아래 "다가오는 항목" 에 그대로 있다.
+       */}
+      <p className="mt-2 text-[13.5px] text-ink-2">편안한 하루 보내세요.</p>
     </div>
   );
 }

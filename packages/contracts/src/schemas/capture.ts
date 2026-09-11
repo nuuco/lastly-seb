@@ -12,7 +12,7 @@ export const interpretRequestSchema = z.object({
   mode: captureInputModeSchema.default('text'),
   /** 상대 날짜("어제", "지난주 일요일") 해석 기준. 미지정 시 서버 오늘. */
   referenceDate: isoDateSchema.optional(),
-  /** 음성 인식 신뢰도. 낮으면 07-B 재확인 화면으로 유도한다. */
+  /** 음성 인식 신뢰도. 낮으면 재확인 시트로 유도한다. */
   asrConfidence: z.number().min(0).max(1).optional(),
 });
 export type InterpretRequest = z.infer<typeof interpretRequestSchema>;
@@ -34,8 +34,8 @@ export type ItemCandidate = z.infer<typeof itemCandidateSchema>;
 export const interpretOutcomeSchema = z.enum([
   'matched_existing', // 08 · 기존 항목 확인 시트
   'new_item',         // 09 · 새 항목 확인 시트
-  'ambiguous',        // 07-B · "혹시 이건가요?" 후보 목록
-  'unrecognized',     // 07-B · 다시 말하기 / 직접 고치기
+  'ambiguous',        // 재확인 시트 · "혹시 이건가요?" 후보 목록
+  'unrecognized',     // 재확인 시트 · 다시 말하기 / 직접 고치기
   'answered',         // 07-C · 물어본 것에 그 자리에서 답한다
 ]);
 export type InterpretOutcome = z.infer<typeof interpretOutcomeSchema>;

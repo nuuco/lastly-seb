@@ -26,7 +26,7 @@ export class CaptureController {
     summary: '자연어 한 문장 해석 — 화면 06/07 입력이 여기로 온다',
     description:
       'outcome에 따라 프론트가 화면을 고른다. ' +
-      'matched_existing → 08, new_item → 09, ambiguous/unrecognized → 07-B.',
+      'matched_existing → 08, new_item → 09, ambiguous/unrecognized → 07 재확인 시트.',
   })
   interpret(@CurrentUser('id') userId: string, @Body(zodBody(interpretRequestSchema)) body: InterpretRequest) {
     return this.capture.interpret(userId, body);

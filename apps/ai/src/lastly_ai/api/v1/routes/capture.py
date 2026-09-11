@@ -30,5 +30,7 @@ async def embed(req: EmbedRequest, embeddings: EmbeddingsDep) -> EmbedResponse:
     vector = await embeddings.embed(req.text)
     if vector is None:
         # 임베딩 제공자가 없으면 apps/api가 임베딩 없이 진행하도록 알린다.
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "임베딩 제공자가 설정되지 않았습니다.")
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "임베딩 제공자가 설정되지 않았습니다."
+        )
     return EmbedResponse(embedding=vector)

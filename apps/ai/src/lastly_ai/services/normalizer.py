@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from typing import Any
 
 import structlog
 
@@ -148,7 +149,7 @@ class Normalizer:
         lines += ["", f'사용자가 말한 문장: "{req.text}"']
         return "\n".join(lines)
 
-    def _to_response(self, raw: dict, req: ParseRequest) -> ParseResponse:
+    def _to_response(self, raw: dict[str, Any], req: ParseRequest) -> ParseResponse:
         known_ids = {item.id: item for item in req.known_items}
 
         # 미래 날짜는 있을 수 없다. 음수 days_ago는 0으로 자른다.
@@ -164,7 +165,9 @@ class Normalizer:
         candidates = self._to_candidates(raw.get("candidate_ids") or [], known_ids)
 
         stated = raw.get("stated_cadence_days")
-        stated_days = int(stated) if isinstance(stated, (int, float)) and 1 <= stated <= 730 else None
+        stated_days = (
+            int(stated) if isinstance(stated, int | float) and 1 <= stated <= 730 else None
+        )
 
         return ParseResponse(
             intent="query" if raw.get("intent") == "query" else "record",

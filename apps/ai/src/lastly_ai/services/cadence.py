@@ -2,10 +2,11 @@ from datetime import date
 
 import numpy as np
 import structlog
+from numpy.typing import NDArray
 
 from lastly_ai.core.config import Settings
 from lastly_ai.repositories.priors import CadencePrior, PriorsRepository
-from lastly_ai.schemas.capture import CadenceRequest, CadenceResponse, Caller
+from lastly_ai.schemas.capture import CadenceRequest, CadenceResponse, CadenceUnit, Caller
 from lastly_ai.services.providers.factory import LlmError, build_provider
 
 log = structlog.get_logger(__name__)
@@ -107,7 +108,7 @@ class CadenceService:
         )
 
     @staticmethod
-    def _drop_outliers(gaps: np.ndarray) -> np.ndarray:
+    def _drop_outliers(gaps: NDArray[np.float64]) -> NDArray[np.float64]:
         """표준편차 2배를 벗어난 간격을 뺀다. 전부 빠지면 원본을 그대로 쓴다."""
         if gaps.size < 4:
             return gaps
@@ -216,7 +217,7 @@ class CadenceService:
     # 개인화는 그 항목의 실제 이력이 쌓였을 때 _from_history 가 전담한다.
 
     @staticmethod
-    def _to_unit(days: int) -> tuple[str, int]:
+    def _to_unit(days: int) -> tuple[CadenceUnit, int]:
         """
         일수를 사람이 실제로 세는 단위로 옮긴다.
 

@@ -25,13 +25,16 @@ src/
 ├── infra/
 │   ├── supabase/     service_role 클라이언트
 │   ├── ai/           apps/ai HTTP 클라이언트
+│   ├── crypto/       SecretBoxService — 사용자 키 봉인 (AES-256-GCM)
 │   └── push/         웹푸시 발송
 └── modules/
     ├── items/        항목 + 기록
     ├── capture/      자연어 해석 오케스트레이션
     ├── cadence/      주기 계산 (전역)
+    ├── ai-credential/ 사용자 AI 키 보관 · 무료 체험 횟수
     ├── notifications/ 구독 · 알림 액션 · 다이제스트 배치
-    └── profile/      설정 · 내보내기 · 계정 삭제
+    ├── profile/      설정 · 내보내기 · 계정 삭제
+    └── health/       기동 확인 · 외부 연동 진단
 ```
 
 **`items`와 `logs`가 한 모듈인 이유**: 기록은 항목 없이 존재할 수 없고 서로를 참조한다.
@@ -71,6 +74,16 @@ src/
 | `POST /v1/notifications/items/:id/action` | 잠금화면 액션 (완료 · 3일 뒤 · 주말에) |
 | `GET /v1/me` · `GET · PATCH /v1/me/notification-settings` | 프로필 · 알림 설정 |
 | `GET /v1/me/export` · `DELETE /v1/me` | 내보내기 · 계정 삭제 |
+
+### AI 키
+
+| | |
+|---|---|
+| `GET /v1/me/ai-credential` | 등록 상태 + 남은 무료 횟수 |
+| `POST /v1/me/ai-credential` | 등록 — 저장 전에 제공자에게 한 번 물어본다 |
+| `DELETE /v1/me/ai-credential` | 연결 해제 |
+
+원문 키는 **어떤 응답에도 담기지 않는다.** 돌려주는 건 `sk-ant-…4f2a` 같은 가림 문자열뿐이다.
 
 ---
 
@@ -122,6 +135,12 @@ src/
 - 해석 실패 → 트라이그램 검색 결과를 후보로 보여주고 사용자가 고름
 - 주기 제안 실패 → 2주 기본값, 사용자가 저장 전에 수정 가능
 - 임베딩 실패 → 임베딩 없이 저장, 트라이그램 매칭만 동작
+- **부를 키가 없음** (미등록 + 체험 소진) → AI 를 아예 부르지 않고 같은 폴백으로 간다
+
+마지막 경우에도 사용자가 적은 문장은 그대로 저장된다. 해석이 안 됐다고 입력을 버리지 않는다.
+
+무료 체험은 **AI 가 실제로 답한 뒤에만** 센다. 잠든 서버를 깨우다 실패한 것까지 세면
+써 보지도 못하고 횟수가 사라진다.
 
 `capture.service.spec.ts`의 "AI 장애 시" 블록이 이 경로를 검증한다.
 

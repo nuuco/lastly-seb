@@ -8,8 +8,11 @@ import { SEEN_ONBOARDING } from '@/lib/onboarding';
  *
  * 온보딩은 계정을 만들기 전에 보는 화면이고, /auth 는 로그인 과정에서
  * 거치는 자리다. 둘을 막으면 로그인 자체를 할 수 없다.
+ *
+ * /legal 은 약관과 개인정보처리방침이다. 구글 OAuth 동의 화면이 이 주소를
+ * 확인하고, 약관을 읽으려고 계정부터 만들라는 것도 앞뒤가 맞지 않는다.
  */
-const PUBLIC_PATHS = ['/login', '/auth', '/onboarding'];
+const PUBLIC_PATHS = ['/login', '/auth', '/onboarding', '/legal'];
 
 const isPublic = (pathname: string) =>
   PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
