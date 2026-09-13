@@ -11,7 +11,7 @@ import type {
   InterpretResult,
   ItemCandidate,
 } from '@lastly/contracts';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
 import { CadenceService } from '../cadence/cadence.service';
@@ -22,6 +22,7 @@ import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { AiCredentialService } from '../ai-credential/ai-credential.service';
 import { DraftTokenService } from './draft-token.service';
+import { readUtterance } from './utterance-rules';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
 export const MATCH_THRESHOLD = 0.82;
@@ -103,6 +104,16 @@ export class CaptureService {
         }),
       };
     }
+
+    /**
+     * 규칙으로 끝나면 AI 를 부르지 않는다.
+     *
+     * 의도·날짜·주기는 말의 형태만 보면 정해지고, 자주 하던 일을 다시 남기는
+     * 경우에는 이름도 이미 가진 항목에 붙는다. 앱에서 제일 흔한 이 경우에
+     * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
+     */
+    const ruled = await this.byRules(userId, input, referenceDate, known, today);
+    if (ruled) return ruled;
 
     /**
      * AI 는 사용자가 등록한 키로만 부른다. 서버 키를 쓰지 않으므로
@@ -303,6 +314,88 @@ export class CaptureService {
   }
 
   /** 물어본 것에 그 자리에서 답한다 — 설계 07-C. 아무것도 기록하지 않는다. */
+  /**
+   * 규칙만으로 답이 서는 문장을 처리한다. 못 세우면 null 을 돌려 AI 로 넘긴다.
+   *
+   * 넘기는 경우는 두 가지다 — 이름을 못 뽑았거나, 처음 보는 항목인데 주기도
+   * 말하지 않은 경우. 후자는 "얼마마다 하는 일인가" 라는 세상 지식이 필요하고,
+   * 애초에 집안일이 맞는지도 판단해야 한다.
+   */
+  private async byRules(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+  ): Promise<InterpretResult | null> {
+    const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
+    if (!facts.name) return null;
+
+    const matched = await this.findByName(userId, facts.name, known);
+    const doneOn = format(subDays(new Date(`${referenceDate}T00:00:00`), facts.daysAgo), 'yyyy-MM-dd');
+
+    /**
+     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
+     * 무엇을 묻는지 못 짚었으면 평소대로 AI 에게 넘긴다.
+     */
+    if (facts.intent === 'query') {
+      return matched ? this.answer(userId, input, referenceDate, matched.id, today) : null;
+    }
+
+    // 처음 보는 항목인데 주기도 말하지 않았다면 규칙이 줄 수 있는 게 없다.
+    if (!matched && !facts.statedCadenceDays) return null;
+
+    const outcome: InterpretOutcome = matched ? 'matched_existing' : 'new_item';
+    const name = matched ? matched.name : facts.name;
+
+    return {
+      transcript: input.text,
+      outcome,
+      normalizedName: name,
+      doneOn,
+      matchedItemId: matched?.id ?? null,
+      candidates: [],
+      cadence: await this.resolveCadence(
+        userId,
+        outcome,
+        matched?.id ?? null,
+        name,
+        doneOn,
+        facts.statedCadenceDays,
+      ),
+      // 규칙이 짚은 것이라 모델의 확신도와 성격이 다르다. 되묻지 않을 만큼만 준다.
+      confidence: matched ? 0.95 : 0.8,
+      degraded: false,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: name,
+        doneOn,
+        matchedItemId: matched?.id ?? null,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /** 규칙이 뽑은 이름으로 기존 항목을 찾는다. 공백 차이부터 보고, 없으면 DB 유사도를 쓴다. */
+  private async findByName(
+    userId: string,
+    name: string,
+    known: ItemRow[],
+  ): Promise<ItemRow | null> {
+    const squashed = squash(name);
+    const exact = known.find((i) => squash(i.name) === squashed);
+    if (exact) return exact;
+
+    const rows = await this.items.matchByMeaning(userId, name, null, 3).catch(() => []);
+    const top = rows[0];
+    if (!top || top.similarity < MATCH_THRESHOLD) return null;
+
+    return known.find((i) => i.id === top.item_id) ?? null;
+  }
+
   private async answer(
     userId: string,
     input: InterpretRequest,

@@ -194,8 +194,15 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
     ]);
 
-    // 항목 이름과 다른 말이어야 폴백을 탄다. 이름 그대로면 AI 없이 바로 매칭된다.
-    const result = await service.interpret('user-1', { text: '이불 세탁했다', mode: 'text' }, TODAY);
+    /**
+     * 규칙이 풀지 못하는 말이어야 폴백까지 온다.
+     * 기존 항목에 붙거나 주기를 직접 말하면 규칙 선에서 끝난다.
+     */
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 창틀 닦았다', mode: 'text' },
+      TODAY,
+    );
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(1);
@@ -238,7 +245,12 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       trial: true,
     });
 
-    await service.interpret('user-1', { text: '오늘 이불 빨았어', mode: 'voice' }, TODAY);
+    // 규칙이 끝내는 문장은 AI 를 부르지 않아 횟수도 줄지 않는다.
+    await service.interpret(
+      'user-1',
+      { text: '베란다 창틀 닦았어', mode: 'voice' },
+      TODAY,
+    );
     expect(credentials.consumeTrial).toHaveBeenCalledWith('user-1');
   });
 
@@ -287,5 +299,77 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     expect(result.outcome).toBe('new_item');
     expect(result.cadence?.source).toBe('default');
     expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
+  });
+});
+
+describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
+  it('자주 하던 일을 다시 남길 때는 AI를 부르지 않는다', async () => {
+    // 앱에서 제일 흔한 경우다. 여기서 LLM 을 부르면 돈과 시간을 쓰고 같은 답을 받는다.
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 이불 빨았어', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('matched_existing');
+    expect(result.matchedItemId).toBe('item-1');
+    expect(result.degraded).toBe(false);
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('규칙이 날짜를 읽어 기록일을 앞으로 옮긴다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '그저께 이불 빨았어', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.doneOn).toBe('2026-09-04');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('주기를 직접 말한 새 항목은 조사도 하지 않는다', async () => {
+    // 사용자가 말한 주기가 최우선이라 커뮤니티 통계를 물어볼 이유가 없다.
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '세탁조 청소했어 세달에 한번 할래', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('세탁조 청소');
+    expect(result.cadence?.source).toBe('user');
+    expect(result.cadence?.rule).toMatchObject({ unit: 'month', interval: 3 });
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('물어본 것이면 기록하지 않고 답만 돌려준다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '이불 언제 빨았지?', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.itemId).toBe('item-1');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('처음 보는 항목인데 주기도 없으면 AI에게 넘긴다', async () => {
+    // "얼마마다 하는 일인가" 는 세상 지식이고, 애초에 집안일이 맞는지도 판단해야 한다.
+    const { service, ai } = buildService({});
+
+    await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'text' }, TODAY);
+
+    expect(ai.parseUtterance).toHaveBeenCalled();
   });
 });
