@@ -27,6 +27,8 @@ def build_provider(provider: Provider, api_key: str) -> LlmProvider:
         )
     if provider == "gemini":
         return GeminiProvider(
-            api_key, **({"model": settings.gemini_model} if settings.gemini_model else {})
+            api_key,
+            **({"model": settings.gemini_model} if settings.gemini_model else {}),
+            thinking_level=settings.gemini_thinking_level or None,
         )
     raise LlmError(f"알 수 없는 제공자입니다: {provider}")

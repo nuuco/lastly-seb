@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Anthropic 의 effort. 지원하지 않는 모델이 있어(Haiku 는 400) 비우면 보내지 않는다.
     anthropic_effort: str = ""
 
+    # Gemini 의 thinkingLevel. 비우면 보내지 않는다 — 구 모델은 이 값을 400 으로 막는다.
+    gemini_thinking_level: str = "low"
+
     database_url: str = "postgresql://postgres:postgres@localhost:54322/postgres"
 
     # apps/api 만 호출할 수 있게 막는 내부 토큰.
