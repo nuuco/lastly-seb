@@ -82,6 +82,30 @@ export class ProfileService {
    * 화면 13-B의 계정 영구 삭제.
    * auth.users를 지우면 나머지는 on delete cascade로 함께 사라진다.
    */
+  /**
+   * 이 유도를 이미 보여줬다고 남긴다.
+   *
+   * 배열에 없을 때만 덧붙인다. 같은 값을 여러 번 넣어도 결과가 같아야
+   * "나중에 할게요" 를 두 번 눌러도 탈이 없다.
+   */
+  async markSignupPromptSeen(userId: string, prompt: string): Promise<void> {
+    const { data } = await this.supabase.admin
+      .from('profiles')
+      .select('signup_prompts_seen')
+      .eq('id', userId)
+      .maybeSingle<{ signup_prompts_seen: string[] }>();
+
+    const seen = data?.signup_prompts_seen ?? [];
+    if (seen.includes(prompt)) return;
+
+    const { error } = await this.supabase.admin
+      .from('profiles')
+      .update({ signup_prompts_seen: [...seen, prompt] })
+      .eq('id', userId);
+
+    if (error) throw error;
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     const { error } = await this.supabase.admin.auth.admin.deleteUser(userId);
     if (error) throw error;

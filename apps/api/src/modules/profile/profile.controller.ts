@@ -1,7 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  signupPromptSchema,
   updateNotificationSettingsSchema,
+  type SignupPrompt,
   type UpdateNotificationSettingsInput,
 } from '@lastly/contracts';
 
@@ -21,6 +24,19 @@ export class ProfileController {
   @ApiOperation({ summary: '내 프로필' })
   me(@CurrentUser('id') userId: string) {
     return this.profile.get(userId);
+  }
+
+  @Post('signup-prompts')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: '가입 유도를 보여줬다고 표시',
+    description: '같은 이유로 두 번 묻지 않기 위한 것. "나중에 할게요" 를 눌렀을 때 부른다.',
+  })
+  async seenPrompt(
+    @CurrentUser('id') userId: string,
+    @Body(zodBody(z.object({ prompt: signupPromptSchema }))) body: { prompt: SignupPrompt },
+  ): Promise<void> {
+    await this.profile.markSignupPromptSeen(userId, body.prompt);
   }
 
   @Get('notification-settings')

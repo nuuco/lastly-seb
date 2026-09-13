@@ -6,6 +6,8 @@ import { SupabaseService } from '../../infra/supabase/supabase.service';
 export interface AuthenticatedUser {
   id: string;
   email: string | null;
+  /** 익명 계정인지. 가입을 권할지 정하는 기준이라 요청마다 알아야 한다. */
+  isAnonymous: boolean;
 }
 
 export interface RequestWithUser extends Request {
@@ -33,7 +35,11 @@ export class SupabaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('세션이 만료되었습니다. 다시 로그인해 주세요.');
     }
 
-    req.user = { id: data.user.id, email: data.user.email ?? null };
+    req.user = {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      isAnonymous: data.user.is_anonymous ?? false,
+    };
     return true;
   }
 }
