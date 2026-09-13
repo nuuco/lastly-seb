@@ -188,12 +188,12 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     ]);
 
     /**
-     * 규칙이 풀지 못하는 말이어야 폴백까지 온다.
-     * 기존 항목에 붙거나 주기를 직접 말하면 규칙 선에서 끝난다.
+     * 아는 행동이 없는 말이어야 폴백까지 온다.
+     * 행동을 알아보면 규칙이 이름을 세워 새 항목으로 간다.
      */
     const result = await service.interpret(
       'user-1',
-      { text: '베란다 창틀 닦았다', mode: 'text' },
+      { text: '음 그거 있잖아', mode: 'text' },
       TODAY,
     );
 
@@ -237,7 +237,7 @@ describe('CaptureService.interpret — AI 장애 시', () => {
 
     const result = await service.interpret(
       'user-1',
-      { text: '베란다 창틀 닦았어', mode: 'text' },
+      { text: '음 그거 있잖아', mode: 'text' },
       TODAY,
     );
 
@@ -315,5 +315,48 @@ describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
     await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'text' }, TODAY);
 
     expect(ai.parseUtterance).toHaveBeenCalled();
+  });
+});
+
+describe('CaptureService.interpret — AI 가 안 깨어났을 때', () => {
+  /**
+   * 무료 호스팅은 15분 놀면 AI 를 재우고, 깨는 데 30초 넘게 걸린다.
+   * 그 사이에 기록한 사람이 손해를 보면 안 된다.
+   */
+  it('규칙이 이름을 뽑았으면 그걸로 확인 시트를 낸다', async () => {
+    const { service, ai } = buildService({ parse: null });
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '나 어제 화장실 청소했어', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('화장실 청소');
+    expect(result.doneOn).toBe('2026-09-05');
+    // 주기만 기본값이다. 시트에서 고칠 수 있다.
+    expect(result.cadence?.source).toBe('default');
+    expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
+    // 화면이 원인을 알 수 있어야 "또렷하게 말해주세요" 대신 다른 말을 한다.
+    expect(result.degraded).toBe(true);
+    expect(result.draftToken).toBe('signed-token');
+    // 방금 응답하지 않은 상대에게 주기를 또 묻지 않는다.
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('이름조차 못 뽑으면 직접 고르게 한다', async () => {
+    const { service, items } = buildService({ parse: null });
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '음 그러니까 그거', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.normalizedName).toBeNull();
+    expect(result.degraded).toBe(true);
   });
 });

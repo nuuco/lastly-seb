@@ -22,6 +22,13 @@ export interface UtteranceFacts {
   name: string | null;
   /** 날짜·주기를 문장에서 실제로 읽어냈는지. 확신도를 매길 때 쓴다. */
   sawDate: boolean;
+  /**
+   * 아는 행동("빨았어", "닦았다")을 찾아냈는지.
+   *
+   * 못 찾았으면 name 은 그저 남은 말일 뿐이다. "음 그러니까 그거" 같은 문장도
+   * 지우고 나면 뭔가 남으므로, 이 표시가 없으면 이름으로 믿어서는 안 된다.
+   */
+  sawAction: boolean;
 }
 
 /** 한자어 수사. "세달에 한번" 의 "세". */
@@ -245,6 +252,10 @@ function stripCadence(text: string): string {
  * 숫자가 날짜나 이름으로 새어 나가지 않는다.
  */
 export function readName(text: string): string | null {
+  return readNameWithAction(text).name;
+}
+
+export function readNameWithAction(text: string): { name: string | null; sawAction: boolean } {
   let s = stripCadence(text);
 
   /**
@@ -286,20 +297,24 @@ export function readName(text: string): string | null {
   s = s.replace(/(?:했음|했어요|했어|했다|했지|한다|함|해써|했)$/, '').trim();
   s = s.replace(/\s+/g, ' ').trim();
 
-  if (!s && !action) return null;
-  if (!action) return s || null;
-  return s ? `${s} ${action}` : action;
+  const sawAction = action !== null;
+  if (!s && !action) return { name: null, sawAction };
+  if (!action) return { name: s || null, sawAction };
+  return { name: s ? `${s} ${action}` : action, sawAction };
 }
 
 /* ─────────────────────────── 한 번에 ─────────────────────────── */
 
 export function readUtterance(text: string, reference: Date): UtteranceFacts {
   const { daysAgo, saw } = readDaysAgo(text, reference);
+  const { name, sawAction } = readNameWithAction(text);
+
   return {
     intent: readIntent(text),
     daysAgo,
     statedCadenceDays: readCadenceDays(text),
-    name: readName(text),
+    name,
     sawDate: saw,
+    sawAction,
   };
 }
