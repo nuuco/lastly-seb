@@ -92,20 +92,35 @@ PostgREST API 스키마에 노출된다.
 **Node 22 이상**이 필요하다. `@supabase/supabase-js` 가 네이티브 WebSocket 을 쓰는데
 Node 22 부터 들어갔다. 20 에서는 Supabase 클라이언트를 만드는 순간 죽는다.
 
-Supabase는 **Lastly 전용 프로젝트를 새로 만든다.** 절차는 [docs/SETUP.md](docs/SETUP.md)에 있다.
+DB 는 두 가지 길이 있다. 처음이면 **로컬**이 빠르다 — 계정을 만들 필요가 없다.
+
+**로컬 (Docker 필요 · 계정 불필요)**
 
 ```bash
 pnpm install
 cp .env.example .env
 
+pnpm db:start                     # Postgres · Auth · Studio 를 띄운다
+pnpm db:reset                     # 마이그레이션 + 샘플 데이터
+
+# db:start 출력의 anon key / service_role key 를 .env 에 넣는다
+npx web-push generate-vapid-keys  # VAPID_* 두 개를 .env 에 넣는다
+
+cd apps/ai && pip install -e ".[dev]" && cd ../..
+pnpm dev                          # web · api · ai 동시 실행
+```
+
+**클라우드** — 실기기에서 보거나 여러 명이 같은 데이터를 볼 때.
+Supabase 프로젝트를 새로 만든다. 절차는 [docs/SETUP.md](docs/SETUP.md)에 있다.
+
+```bash
 pnpm exec supabase login
 pnpm exec supabase link           # 새로 만든 lastly 프로젝트 선택
 pnpm db:push                      # 마이그레이션 적용
-
-cd apps/ai && pip install -e ".[dev]" && cd ../..
-
-pnpm dev                          # web · api · ai 동시 실행
 ```
+
+`.env` 가 덜 채워져 있으면 API 가 뜨면서 **무엇이 비었는지 이름을 들어 알려준다.**
+그 목록만 채우면 된다.
 
 | 주소 | 무엇 |
 |---|---|
