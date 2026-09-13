@@ -82,12 +82,20 @@ DATABASE_URL=postgresql://postgres.<ref>:<비밀번호>@aws-0-ap-northeast-2.poo
 npx web-push generate-vapid-keys   # VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY
 ```
 
-`ANTHROPIC_API_KEY`는 https://console.anthropic.com 에서 발급한다.
+`GEMINI_API_KEY`는 https://aistudio.google.com/apikey 에서 발급한다.
+카드 없이 무료 등급으로 받을 수 있고, 서버가 모든 사용자의 해석을 이 키로 처리한다.
+없어도 앱은 돌지만 처음 보는 항목의 주기가 기본값 2주가 된다.
+
 `DRAFT_TOKEN_SECRET`은 아무 랜덤 문자열이면 된다 (16자 이상).
+`AI_SERVICE_TOKEN`과 `INTERNAL_TOKEN`은 **같은 값**이어야 한다.
 
-## 5. 소셜 로그인
+## 5. 로그인
 
-화면 12가 카카오·구글 두 가지를 쓴다. **Authentication → Providers**에서 켠다.
+**Authentication → Sign In / Providers** 에서 두 가지를 켠다.
+
+- **Anonymous sign-ins** — 로그인 없이 쓰게 하려면 반드시 켠다.
+  꺼져 있으면 미들웨어가 첫 화면에서 로그인을 요구한다.
+- **Google** — 계정 연결용. 카카오는 콘솔 등록 전이라 버튼을 내려두었다.
 
 콜백 URL은 두 곳 모두 동일하다:
 
