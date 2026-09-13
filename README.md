@@ -42,20 +42,23 @@ web ──HTTP──> api ──HTTP──> ai
 
 ---
 
-## 앱마다 README 가 따로 있다
+## 폴더마다 README 가 따로 있다
 
-세부 사항은 각자 문서에 있다. 손대기 전에 해당 앱 것을 먼저 읽는다.
+세부 사항은 각자 문서에 있다. 손대기 전에 해당 폴더 것을 먼저 읽는다.
 
 | | 무엇 | 문서 |
 |---|---|---|
 | `apps/web` | 화면. Next.js 15, App Router, PWA | [README](apps/web/README.md) |
-| `apps/api` | REST + 알림 배치. NestJS. **화면 분기를 여기서 정한다** | [README](apps/api/README.md) |
+| `apps/api` | REST · 알림 배치 · 규칙 파서. NestJS. **화면 분기를 여기서 정한다** | [README](apps/api/README.md) |
 | `apps/ai` | 문장 해석과 주기 추천. FastAPI | [README](apps/ai/README.md) |
+| `packages/contracts` | web ↔ api 공유 zod 스키마 | [README](packages/contracts/README.md) |
+| `packages/design-tokens` | 설계에서 추출한 색·타이포·그림자 | [README](packages/design-tokens/README.md) |
 
 한 줄로 요약하면 이렇다.
 
 - **web** 은 그리기만 한다. AI를 직접 부르지 않는다.
-- **api** 가 오케스트레이션한다. AI 응답을 받아 **어느 화면으로 보낼지 정한다.**
+- **api** 가 오케스트레이션한다. 규칙으로 풀리면 거기서 끝내고, 아니면 `ai` 에 묻는다.
+  **어느 화면으로 보낼지 정하는 것도 여기다.**
 - **ai** 는 재료만 준다. 죽어도 앱은 돌아야 한다 — 실패는 전부 `null` 로 흡수되고 규칙 기반으로 폴백한다.
 
 마지막 항목이 이 프로젝트에서 제일 자주 오해받는 부분이다.
