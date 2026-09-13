@@ -137,7 +137,7 @@ export class CaptureService {
     if (!parsed) {
       // 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
       return facts.sawAction && facts.name
-        ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts, today)
+        ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
         : this.withoutAi(userId, input, referenceDate, known);
     }
 
@@ -389,7 +389,6 @@ export class CaptureService {
     referenceDate: string,
     name: string,
     facts: UtteranceFacts,
-    today: Date,
   ): Promise<InterpretResult> {
     const doneOn = format(
       subDays(new Date(`${referenceDate}T00:00:00`), facts.daysAgo),
