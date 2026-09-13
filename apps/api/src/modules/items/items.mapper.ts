@@ -29,6 +29,8 @@ export function toItem(row: ItemRow, cadence: CadenceService, today: Date): Item
     daysUntilDue,
     bucket: cadence.bucketFor(daysUntilDue, row.snoozed_until),
     averageIntervalDays: row.average_interval_days,
+    // 상세(findOne)에서만 채운다. 목록에서는 기록을 읽지 않으므로 알 수 없다.
+    cadenceDrift: null,
     logCount: row.log_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
