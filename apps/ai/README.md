@@ -69,7 +69,7 @@ tests/test_cadence.py
 
 이 서비스는 **LLM 키를 보관하지 않는다.** 매 요청의 `caller` 에 제공자와 키가 실려 오고,
 `build_provider()` 가 그것으로 클라이언트를 만들어 한 번 쓰고 버린다.
-사용자가 각자 자기 키를 등록해 자기 몫만 쓰기 때문이다 (정책은 루트 README 참고).
+키를 들고 있는 쪽은 `apps/api` 하나뿐이라, 이 서비스는 공개 주소만 없으면 된다.
 
 제공자마다 다른 건 두 메서드뿐이라, 그 차이만 어댑터가 흡수한다.
 
@@ -79,13 +79,22 @@ tests/test_cadence.py
 | OpenAI | `response_format.json_schema` (strict) | 없음 |
 | Gemini | `generationConfig.responseSchema` | 안 켠다 |
 
+**Gemini 기본값은 `gemini-3.5-flash-lite` 다.** 무료 등급은 모델마다 분당 한도가 따로
+걸리는데 flash 본선은 분당 5회로 빡빡하고 lite 쪽이 여유가 있다. 평가셋 15문장
+정확도는 둘 다 15/15 로 같았다.
+
+그리고 **Gemini 3.x 는 기본으로 생각한 뒤 답한다.** 한 문장에서 슬롯을 뽑는 일에는
+그 시간이 그대로 지연이 된다 — 같은 문장이 9.1초에서 2.5초로 줄었고 결과는 같았다.
+그래서 `thinkingLevel=low` 를 기본으로 보낸다. 이 값을 모르는 구 모델은 400 을 내므로
+`GEMINI_THINKING_LEVEL` 을 비우면 보내지 않는다.
+
 Gemini 는 JSON Schema 를 그대로 받지 않아 `_to_gemini_schema()` 가 옮긴다 —
 타입 이름이 대문자고, nullable 이 별도 필드고, `additionalProperties` 를 모른다.
 
 Gemini 에 검색을 붙이지 않은 건 **검색과 `responseSchema` 를 동시에 켤 수 없어서**다.
 스키마를 택했다. 형식이 깨진 응답은 기록 자체를 막지만, 검색이 없으면 주기 제안만 무뎌진다.
 
-> OpenAI · Gemini 어댑터는 아직 실제 키로 검증되지 않았다. 등록 사용자가 생기면 확인할 것.
+> Gemini 어댑터는 실제 키로 확인했다(평가셋 15/15). OpenAI 는 아직 실행된 적이 없다.
 
 ---
 
@@ -180,8 +189,8 @@ None (apps/api 가 기본값으로 폴백)
 | `ANTHROPIC_MODEL` · `OPENAI_MODEL` · `GEMINI_MODEL` | 어댑터 기본값 사용 |
 | `ANTHROPIC_EFFORT` | 보내지 않음 — Haiku 등은 이 값을 받으면 400 |
 
-**LLM 키는 여기 없다.** 요청의 `caller` 로 온다. 무료 체험용 서버 키를 두는 곳은
-`apps/api` 의 `ANTHROPIC_API_KEY` 다.
+**LLM 키는 여기 없다.** 요청의 `caller` 로 온다. 키를 두는 곳은
+`apps/api` 의 `GEMINI_API_KEY` 다.
 
 ---
 

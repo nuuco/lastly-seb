@@ -29,6 +29,20 @@ export const itemSchema = z.object({
   bucket: itemBucketSchema,
   /** 실제 기록에서 계산한 평균 간격 — "평균 14일마다 하셨어요". */
   averageIntervalDays: z.number().nullable(),
+  /**
+   * 저장된 주기가 실제 리듬과 많이 어긋났을 때의 제안. 상세(화면 11)에서만 채운다.
+   *
+   * 자동으로 바꾸지 않는다. 내가 2주로 정해둔 주기를 시스템이 말없이 3주로
+   * 바꾸면 주기가 내 것이 아니게 된다. 알려만 주고 결정은 사용자가 한다.
+   */
+  cadenceDrift: z
+    .object({
+      /** 실제 간격의 중앙값(일). */
+      observedDays: z.number().int().positive(),
+      rule: cadenceRuleSchema,
+    })
+    .nullable()
+    .default(null),
   logCount: z.number().int().nonnegative(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
@@ -66,8 +80,23 @@ export const homeSummarySchema = z.object({
 });
 export type HomeSummary = z.infer<typeof homeSummarySchema>;
 
+/**
+ * 가입을 권할 자리. 계정이 사주는 것이 아쉬워지는 순간에만 뜬다.
+ *
+ * 같은 이유로 두 번 묻지 않는다. 반복하면 그때부터 광고가 된다.
+ */
+export const signupPromptSchema = z.enum([
+  /** 기록이 쌓였다 — 설계 12-B */
+  'records',
+  /** 알림을 켜려 한다. 익명이면 브라우저를 비우는 순간 끊긴다 */
+  'notifications',
+]);
+export type SignupPrompt = z.infer<typeof signupPromptSchema>;
+
 export const homeFeedSchema = z.object({
   summary: homeSummarySchema,
+  /** 지금 권할 유도. 없으면 null — 이미 계정이 있거나, 아직 때가 아니거나, 이미 물었거나. */
+  signupPrompt: signupPromptSchema.nullable().default(null),
   due: z.array(itemSchema),
   upcoming: z.array(itemSchema),
   later: z.array(itemSchema),

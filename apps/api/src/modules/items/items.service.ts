@@ -16,6 +16,12 @@ import { LogsRepository } from './logs.repository';
 import { toCadenceRule, toItem } from './items.mapper';
 import { ItemsRepository } from './items.repository';
 
+/** 리듬을 볼 때 거슬러 올라가는 기록 수. 오래된 습관까지 끌고 오지 않는다. */
+const DRIFT_LOG_WINDOW = 12;
+
+/** 기록이 이만큼 쌓이면 계정을 권한다 — 설계 12-B 의 "기록 3개째". */
+const RECORDS_PROMPT_AT = 3;
+
 @Injectable()
 export class ItemsService {
   constructor(
@@ -30,12 +36,44 @@ export class ItemsService {
     return rows.map((row) => toItem(row, this.cadence, today));
   }
 
+  /**
+   * 항목 상세(화면 11). 여기서만 실제 리듬과의 어긋남을 함께 계산한다.
+   *
+   * 목록에서 하지 않는 이유는 항목마다 기록을 따로 읽어야 해서다.
+   * 주기를 들여다보는 자리는 상세 하나뿐이므로 거기서만 센다.
+   */
   async findOne(userId: string, itemId: string, today = new Date()): Promise<Item> {
-    return toItem(await this.items.findById(userId, itemId), this.cadence, today);
+    const row = await this.items.findById(userId, itemId);
+    const item = toItem(row, this.cadence, today);
+
+    const logs = await this.logs.listByItem(userId, itemId, DRIFT_LOG_WINDOW).catch(() => []);
+    const drift = this.cadence.driftSuggestion(
+      item.cadence,
+      item.cadenceSource,
+      logs.map((l) => l.done_on),
+    );
+
+    return drift
+      ? {
+          ...item,
+          cadenceDrift: {
+            observedDays: drift.days,
+            rule: { ...drift.rule, notifyTimeLocal: item.cadence.notifyTimeLocal },
+          },
+        }
+      : item;
   }
 
   /** 홈 화면(04/05/05-B) 한 번의 호출로 필요한 전부. */
-  async homeFeed(userId: string, displayName: string | null, today = new Date()): Promise<HomeFeed> {
+  async homeFeed(
+    userId: string,
+    displayName: string | null,
+    today = new Date(),
+    viewer: { isAnonymous: boolean; promptsSeen: string[] } = {
+      isAnonymous: false,
+      promptsSeen: [],
+    },
+  ): Promise<HomeFeed> {
     const all = await this.list(userId, today);
 
     const due = all.filter((i) => i.bucket === 'due');
@@ -54,7 +92,22 @@ export class ItemsService {
       .filter((i) => i.nextDueOn)
       .sort((a, b) => (a.nextDueOn! < b.nextDueOn! ? -1 : 1))[0];
 
+    /**
+     * 기록이 이만큼 쌓이면 한 번 권한다 — 설계 12-B.
+     *
+     * 익명 계정은 이 브라우저의 쿠키가 유일한 열쇠다. 그걸 잃으면 지금까지
+     * 적은 것에 다시 닿을 길이 없다. 아까워질 만큼 쌓였을 때가 말할 때다.
+     */
+    const totalLogs = all.reduce((sum, i) => sum + i.logCount, 0);
+    const signupPrompt =
+      viewer.isAnonymous &&
+      !viewer.promptsSeen.includes('records') &&
+      totalLogs >= RECORDS_PROMPT_AT
+        ? ('records' as const)
+        : null;
+
     return {
+      signupPrompt,
       summary: {
         greetingName: displayName,
         completedThisWeek,

@@ -34,7 +34,6 @@ src/
 │   ├── items/            상세 + 기록 편집
 │   ├── onboarding/       소개 · 설치 안내 · 알림 권한
 │   ├── auth/             개발용 로그인
-│   ├── ai-credential/    AI 키 등록 · 남은 무료 횟수
 │   └── notifications/    웹푸시 구독
 │
 ├── components/ui/    Sheet, Toast

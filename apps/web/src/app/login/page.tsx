@@ -37,15 +37,29 @@ function LoginScreen() {
    */
   const [pending, setPending] = useState<'google' | null>(null);
 
+  /**
+   * 익명으로 쓰던 사람은 로그인이 아니라 "연결"이다.
+   *
+   * linkIdentity 는 지금 계정에 구글 신원을 붙일 뿐이라 user_id 가 그대로다.
+   * 그래서 지금까지 적은 기록이 옮기는 절차 없이 따라온다.
+   * signInWithOAuth 를 쓰면 새 계정으로 갈아타서 익명 기록이 주인을 잃는다.
+   */
   const signIn = async (provider: 'google') => {
     setPending(provider);
+
+    const supabase = createClient();
     const callback = new URL('/auth/callback', window.location.origin);
     callback.searchParams.set('next', next);
+    const options = { redirectTo: callback.toString() };
 
-    const { error } = await createClient().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: callback.toString() },
-    });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = user?.is_anonymous
+      ? await supabase.auth.linkIdentity({ provider, options })
+      : await supabase.auth.signInWithOAuth({ provider, options });
+
     if (error) setPending(null);
   };
 

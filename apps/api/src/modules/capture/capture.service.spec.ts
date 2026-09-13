@@ -72,12 +72,6 @@ function buildService(overrides: {
   const logs = { add: jest.fn() };
   const draft = { sign: jest.fn().mockReturnValue('signed-token'), verify: jest.fn() };
 
-  // 키가 등록된 사용자를 기본으로 둔다. 미등록 상황은 별도 케이스에서 다룬다.
-  const credentials = {
-    resolve: jest.fn().mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-test', trial: false }),
-    consumeTrial: jest.fn().mockResolvedValue(undefined),
-  };
-
   const service = new CaptureService(
     ai as never,
     items as never,
@@ -85,10 +79,9 @@ function buildService(overrides: {
     logs as never,
     new CadenceService(),
     draft as never,
-    credentials as never,
   );
 
-  return { service, ai, items, itemsService, credentials };
+  return { service, ai, items, itemsService };
 }
 
 const TODAY = new Date('2026-09-06T00:00:00Z');
@@ -194,8 +187,15 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
     ]);
 
-    // 항목 이름과 다른 말이어야 폴백을 탄다. 이름 그대로면 AI 없이 바로 매칭된다.
-    const result = await service.interpret('user-1', { text: '이불 세탁했다', mode: 'text' }, TODAY);
+    /**
+     * 규칙이 풀지 못하는 말이어야 폴백까지 온다.
+     * 기존 항목에 붙거나 주기를 직접 말하면 규칙 선에서 끝난다.
+     */
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 창틀 닦았다', mode: 'text' },
+      TODAY,
+    );
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(1);
@@ -230,62 +230,90 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     expect(result.matchedItemId).toBe('item-1');
   });
 
-  it('체험으로 부른 뒤에만 횟수를 센다', async () => {
-    const { service, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue({
-      provider: 'anthropic',
-      apiKey: 'server-key',
-      trial: true,
-    });
+  it('AI 키가 없으면 해석 없이 폴백으로 간다', async () => {
+    // AiClient 가 키 없음을 null 로 알린다. 호출부는 장애와 똑같이 다룬다.
+    const { service, items } = buildService({ parse: null });
+    items.matchByMeaning.mockResolvedValue([]);
 
-    await service.interpret('user-1', { text: '오늘 이불 빨았어', mode: 'voice' }, TODAY);
-    expect(credentials.consumeTrial).toHaveBeenCalledWith('user-1');
-  });
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 창틀 닦았어', mode: 'text' },
+      TODAY,
+    );
 
-  it('AI가 답하지 못하면 체험 횟수를 세지 않는다', async () => {
-    // 잠든 서버를 깨우다 실패한 것까지 세면 써 보지도 못하고 줄어든다.
-    const { service, credentials } = buildService({ parse: null });
-    credentials.resolve.mockResolvedValue({
-      provider: 'anthropic',
-      apiKey: 'server-key',
-      trial: true,
-    });
-
-    await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
-    expect(credentials.consumeTrial).not.toHaveBeenCalled();
-  });
-
-  it('키를 등록하지 않았으면 AI를 부르지 않는다', async () => {
-    // 서버 키를 쓰지 않으므로 미등록 사용자는 해석 단계 자체가 없다.
-    const { service, ai, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue(null);
-
-    const result = await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
-
-    expect(ai.parseUtterance).not.toHaveBeenCalled();
     expect(result.degraded).toBe(true);
-    // 토큰은 발급돼야 사용자가 이름을 정해 그대로 저장할 수 있다.
-    expect(result.draftToken).toBe('signed-token');
-  });
-
-  it('AI도 검색도 결과가 없으면 재시도로 보낸다', async () => {
-    const { service } = buildService({ parse: null });
-
-    const result = await service.interpret('user-1', { text: '알 수 없는 말', mode: 'voice' }, TODAY);
-
     expect(result.outcome).toBe('unrecognized');
   });
+});
 
-  it('주기 제안이 실패하면 2주 기본값으로 진행한다', async () => {
-    const { service, ai } = buildService({
-      parse: parsed({ normalized_name: '새로운 일', matched_item_id: null, candidates: [] }),
-    });
-    ai.suggestCadence.mockResolvedValue(null);
+describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
+  it('자주 하던 일을 다시 남길 때는 AI를 부르지 않는다', async () => {
+    // 앱에서 제일 흔한 경우다. 여기서 LLM 을 부르면 돈과 시간을 쓰고 같은 답을 받는다.
+    const { service, ai } = buildService({});
 
-    const result = await service.interpret('user-1', { text: '새로운 일 했어', mode: 'text' }, TODAY);
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 이불 빨았어', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('matched_existing');
+    expect(result.matchedItemId).toBe('item-1');
+    expect(result.degraded).toBe(false);
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('규칙이 날짜를 읽어 기록일을 앞으로 옮긴다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '그저께 이불 빨았어', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.doneOn).toBe('2026-09-04');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('주기를 직접 말한 새 항목은 조사도 하지 않는다', async () => {
+    // 사용자가 말한 주기가 최우선이라 커뮤니티 통계를 물어볼 이유가 없다.
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '세탁조 청소했어 세달에 한번 할래', mode: 'voice' },
+      TODAY,
+    );
 
     expect(result.outcome).toBe('new_item');
-    expect(result.cadence?.source).toBe('default');
-    expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
+    expect(result.normalizedName).toBe('세탁조 청소');
+    expect(result.cadence?.source).toBe('user');
+    expect(result.cadence?.rule).toMatchObject({ unit: 'month', interval: 3 });
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('물어본 것이면 기록하지 않고 답만 돌려준다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '이불 언제 빨았지?', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.itemId).toBe('item-1');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('처음 보는 항목인데 주기도 없으면 AI에게 넘긴다', async () => {
+    // "얼마마다 하는 일인가" 는 세상 지식이고, 애초에 집안일이 맞는지도 판단해야 한다.
+    const { service, ai } = buildService({});
+
+    await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'text' }, TODAY);
+
+    expect(ai.parseUtterance).toHaveBeenCalled();
   });
 });

@@ -7,11 +7,18 @@ export const notificationSettingsSchema = z.object({
   timezone: z.string().default('Asia/Seoul'),
   weekendEnabled: z.boolean(),
   pushGranted: z.boolean(),
+  /**
+   * 알림을 켤 때 가입을 권할지. 권할 자리가 아니면 null.
+   *
+   * 익명 계정은 이 브라우저의 쿠키가 유일한 열쇠라, 그걸 잃으면 알림도 끊긴다.
+   * 알림을 켜겠다는 건 챙김받고 싶다는 뜻이므로 그때 말하는 것이 맞다.
+   */
+  signupPrompt: z.enum(['notifications']).nullable().default(null),
 });
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
 
 export const updateNotificationSettingsSchema = notificationSettingsSchema
-  .omit({ pushGranted: true })
+  .omit({ pushGranted: true, signupPrompt: true })
   .partial();
 export type UpdateNotificationSettingsInput = z.infer<typeof updateNotificationSettingsSchema>;
 

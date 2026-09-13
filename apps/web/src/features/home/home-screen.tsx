@@ -12,10 +12,11 @@ import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
-import { ConnectBanner } from '@/features/ai-credential/connect-banner';
+import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { CalendarView } from '@/features/calendar/calendar-view';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
+import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { formatMonth, formatShortDate, formatYearMonth, todayIso } from '@/lib/date';
 
@@ -46,6 +47,8 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   const capture = useCapture({ onInterpreted: () => setDraft('') });
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
+  /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
+  const [promptDismissed, setPromptDismissed] = useState(false);
   const [draft, setDraft] = useState('');
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
@@ -172,7 +175,6 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           title={view === 'calendar' ? formatYearMonth(month) : undefined}
         />
 
-        <ConnectBanner />
 
         {isEmpty ? (
           <EmptyState
@@ -261,6 +263,17 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           ) : null
         }
       />
+
+      {feed.data?.signupPrompt && !promptDismissed && capture.step === 'idle' ? (
+        <SignupPromptSheet
+          prompt={feed.data.signupPrompt}
+          onDismiss={() => {
+            setPromptDismissed(true);
+            // 실패해도 이번 화면에서는 닫힌다. 다음에 다시 뜨는 편이 막히는 것보다 낫다.
+            profileApi.markSignupPromptSeen(feed.data!.signupPrompt!).catch(() => undefined);
+          }}
+        />
+      ) : null}
 
       {capture.step === 'confirm' && capture.result ? (
         <ConfirmSheet

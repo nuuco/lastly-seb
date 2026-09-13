@@ -43,11 +43,28 @@ export class AiClient {
   private readonly logger = new Logger(AiClient.name);
   private readonly baseUrl: string;
   private readonly token: string;
+  /**
+   * AI 서비스에 실어 보낼 자격. 서버가 하나만 들고 있으므로 여기서 붙인다.
+   * 없으면 해석을 부르지 않고 null 로 답해, 호출부가 규칙 기반으로 폴백한다.
+   */
+  private readonly caller: AiCaller | null;
   private lastWarmUpAt = 0;
 
   constructor(config: ConfigService) {
     this.baseUrl = config.getOrThrow<string>('AI_SERVICE_URL').replace(/\/$/, '');
     this.token = config.getOrThrow<string>('AI_SERVICE_TOKEN');
+
+    const gemini = config.get<string>('GEMINI_API_KEY');
+    const anthropic = config.get<string>('ANTHROPIC_API_KEY');
+    this.caller = gemini
+      ? { provider: 'gemini', api_key: gemini }
+      : anthropic
+        ? { provider: 'anthropic', api_key: anthropic }
+        : null;
+
+    if (!this.caller) {
+      this.logger.warn('AI 키가 없습니다. 해석 없이 규칙으로만 동작합니다.');
+    }
   }
 
   /**
@@ -67,12 +84,14 @@ export class AiClient {
     );
   }
 
-  parseUtterance(body: AiParseRequest, caller: AiCaller) {
-    return this.post<AiParseResponse>('/v1/parse', { ...body, caller });
+  parseUtterance(body: AiParseRequest) {
+    if (!this.caller) return Promise.resolve(null);
+    return this.post<AiParseResponse>('/v1/parse', { ...body, caller: this.caller });
   }
 
-  suggestCadence(body: AiCadenceRequest, caller: AiCaller) {
-    return this.post<AiCadenceResponse>('/v1/cadence/suggest', { ...body, caller });
+  suggestCadence(body: AiCadenceRequest) {
+    if (!this.caller) return Promise.resolve(null);
+    return this.post<AiCadenceResponse>('/v1/cadence/suggest', { ...body, caller: this.caller });
   }
 
   embed(text: string) {

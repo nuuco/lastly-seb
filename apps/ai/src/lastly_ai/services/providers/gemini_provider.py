@@ -5,7 +5,14 @@ import httpx
 
 from lastly_ai.services.providers.base import LlmError
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+# 무료 등급은 모델마다 분당 한도가 따로 걸린다. flash 본선은 분당 5회로 빡빡하고
+# lite 쪽이 여유가 있다. 평가셋 15건 기준 정확도는 같았다(15/15, 중앙 2.1초).
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
+
+# Gemini 3.x 는 기본으로 답하기 전에 생각한다. 한 문장에서 슬롯을 뽑는 일에는
+# 그 시간이 그대로 지연이 된다 — 같은 문장이 9.1초에서 2.5초로 줄었고 결과는 같았다.
+# 지원하지 않는 모델이 있어 비우면 보내지 않는다.
+DEFAULT_THINKING_LEVEL = "low"
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
@@ -20,9 +27,25 @@ class GeminiProvider:
     형식이 깨진 응답은 기록 자체를 막지만 검색이 없는 것은 주기 제안만 무뎌진다.
     """
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_MODEL,
+        thinking_level: str | None = DEFAULT_THINKING_LEVEL,
+    ) -> None:
         self._api_key = api_key
         self._model = model
+        self._thinking_level = thinking_level or None
+
+    def _generation_config(self, schema: dict[str, Any], max_tokens: int) -> dict[str, Any]:
+        config: dict[str, Any] = {
+            "maxOutputTokens": max_tokens,
+            "responseMimeType": "application/json",
+            "responseSchema": _to_gemini_schema(schema),
+        }
+        if self._thinking_level:
+            config["thinkingConfig"] = {"thinkingLevel": self._thinking_level}
+        return config
 
     async def complete_json(
         self,
@@ -35,11 +58,7 @@ class GeminiProvider:
         payload = {
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": user}]}],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "responseMimeType": "application/json",
-                "responseSchema": _to_gemini_schema(schema),
-            },
+            "generationConfig": self._generation_config(schema, max_tokens),
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
