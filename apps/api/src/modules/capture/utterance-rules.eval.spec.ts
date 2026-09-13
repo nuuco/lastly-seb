@@ -38,6 +38,7 @@ const CASES: Array<[string, string | null, number, number | null, string, string
   ['침구 빨래 했어', null, 0, null, 'record', '이불 빨래'],
   ['오늘 베란다 창틀 닦았어', '베란다 창틀 청소', 0, null, 'record', null],
   ['오늘 이불 빨았어 한달에 한번 빨거야', '이불 빨래', 0, 30, 'record', '이불 빨래'],
+  ['오늘 이불 빨았어 일주일마다 알려줘', '이불 빨래', 0, 7, 'record', '이불 빨래'],
   ['세탁조 청소했어 세달에 한번 할래', '세탁조 청소', 0, 90, 'record', null],
   ['에어컨 필터 청소함 45일마다 할거야', null, 0, 45, 'record', '에어컨 필터 청소'],
   ['3일 전에 정수기 필터 갈았어', '정수기 필터 교체', 3, null, 'record', '정수기 필터 교체'],

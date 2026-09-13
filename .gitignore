@@ -22,3 +22,7 @@ supabase/.branches/
 supabase/.temp/
 
 .vercel
+
+# 온디바이스 Gemma 가중치. 700MB라 저장소에 넣지 않는다.
+apps/web/public/models/*.task
+apps/web/public/models/*.litertlm

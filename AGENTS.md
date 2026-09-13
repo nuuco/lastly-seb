@@ -10,6 +10,9 @@
 - AI 포트: 호스트 8000·8002가 다른 컨테이너와 겹쳐 로컬만 8003 사용
 - 테스트 계정: `dev@lastly.local` / `lastly-dev-1234` 시드
 - 개발 서버: web :3000 · api :4000 · ai :8003 기동
+- 온디바이스 실험: Gemma 3 1B int4를 `/dev/on-device`에서 브라우저 WebGPU로 해석. 모델은 `pnpm download:ondevice-model`
+- 온디바이스 후보 비교: Gemma 1B WebGPU 40/48, Qwen 1.5B 38/48, Qwen 0.5B 31/48, Gemma 270M 0/48
+- 온디바이스 골든셋: `/dev/on-device`에 발화 79문장. 원천은 `eval-fixtures.ts`. Gemma 출력은 규칙으로 보정. 매칭은 유일 일치만. 이름은 `만` 절·미래 동사·군더더기를 걷어 규칙이 79문장 빗나가지 않음. 규칙 rev 2가 아니면 웹 하드 새로고침. `규칙만 채점`으로 Gemma 없이 확인
 
 ## 다시 실행
 

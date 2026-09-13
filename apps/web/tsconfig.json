@@ -22,12 +22,13 @@
     },
     "isolatedModules": true
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
+    "include": [
+      "next-env.d.ts",
+      "**/*.ts",
+      "**/*.tsx",
+      ".next/types/**/*.ts",
+      "../api/src/modules/capture/utterance-rules.ts"
+    ],
   "exclude": [
     "node_modules"
   ]
