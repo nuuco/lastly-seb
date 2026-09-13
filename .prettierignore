@@ -4,3 +4,7 @@ dist/
 .turbo/
 pnpm-lock.yaml
 docs/
+
+# 마크다운은 건드리지 않는다.
+# prettier 가 표를 정렬하는데 한글은 한 글자가 두 칸이라 오히려 어긋난다.
+*.md

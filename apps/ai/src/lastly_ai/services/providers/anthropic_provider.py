@@ -1,8 +1,9 @@
 import json
-from typing import Any
+from typing import Any, Literal, cast
 
 import anthropic
 import structlog
+from anthropic.types import OutputConfigParam
 
 from lastly_ai.services.providers.base import LlmError
 
@@ -10,18 +11,36 @@ log = structlog.get_logger(__name__)
 
 DEFAULT_MODEL = "claude-opus-5"
 
+Effort = Literal["low", "medium", "high", "xhigh", "max"]
+EFFORTS: frozenset[str] = frozenset(("low", "medium", "high", "xhigh", "max"))
+
 
 class AnthropicProvider:
     """
     Anthropic Messages API.
 
     구조화 출력(output_config.format)으로 JSON 스키마를 강제해 파싱 실패를 없앤다.
-    이 서비스의 호출은 전부 짧은 문장 한 개를 다루므로 effort 는 낮게 잡는다.
+
+    effort 는 지원하지 않는 모델이 있다. Haiku 4.5 에 보내면
+    "This model does not support the effort parameter" 로 400 이 난다.
+    그래서 기본은 보내지 않고, 설정으로 켠 경우에만 싣는다.
     """
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL) -> None:
+    def __init__(
+        self, api_key: str, model: str = DEFAULT_MODEL, effort: str | None = None
+    ) -> None:
         self._client = anthropic.AsyncAnthropic(api_key=api_key)
         self._model = model
+        # 설정에서 온 문자열이므로 오타가 그대로 API 까지 가지 않게 여기서 거른다.
+        self._effort: Effort | None = cast(Effort, effort) if effort in EFFORTS else None
+        if effort and self._effort is None:
+            log.warning("anthropic.unknown_effort", value=effort)
+
+    def _output_config(self, schema: dict[str, Any]) -> OutputConfigParam:
+        config: OutputConfigParam = {"format": {"type": "json_schema", "schema": schema}}
+        if self._effort:
+            config["effort"] = self._effort
+        return config
 
     async def complete_json(
         self,
@@ -36,10 +55,7 @@ class AnthropicProvider:
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
-            output_config={
-                "effort": "low",
-                "format": {"type": "json_schema", "schema": schema},
-            },
+            output_config=self._output_config(schema),
         )
 
         if response.stop_reason == "refusal":
@@ -62,10 +78,7 @@ class AnthropicProvider:
             system=system,
             messages=[{"role": "user", "content": user}],
             tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 3}],
-            output_config={
-                "effort": "medium",
-                "format": {"type": "json_schema", "schema": schema},
-            },
+            output_config=self._output_config(schema),
         )
 
         if response.stop_reason == "refusal":

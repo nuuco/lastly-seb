@@ -163,6 +163,36 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
           </button>
         </div>
 
+        {/**
+         * 저장된 주기가 실제 리듬과 어긋났을 때만 뜬다.
+         *
+         * 서버가 바꾸지 않고 물어보기만 한다. 내가 정해둔 주기를 말없이 고치면
+         * 다음 예정일이 왜 달라졌는지 알 수 없게 된다.
+         */}
+        {data.cadenceDrift ? (
+          <div className="mt-4 rounded-row border border-line bg-card px-4 py-3.5">
+            <p className="break-keep text-13.5 leading-[1.7] text-ink-2">
+              실제로는 <strong className="font-semibold text-ink">{data.cadenceDrift.observedDays}일</strong>
+              마다 하고 계세요. 주기를 <strong className="font-semibold text-ink">
+                {describeCadence(data.cadenceDrift.rule)}
+              </strong>로 맞출까요?
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                await itemsApi.update(itemId, {
+                  cadence: data.cadenceDrift!.rule,
+                  cadenceSource: 'user',
+                });
+                await invalidate();
+              }}
+              className="mt-3 h-10 w-full rounded-md border border-line bg-surface text-14 font-semibold text-accent-ink"
+            >
+              이 주기로 맞추기
+            </button>
+          </div>
+        ) : null}
+
         <section className="mt-5">
           <h2 className="mb-2 px-1 text-12.5 tracking-[.06em] text-ink-3">지난 기록</h2>
 

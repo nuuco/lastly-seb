@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("ai.db_unavailable", error=str(exc), effect="주기 사전 캐시 없이 동작")
     app.state.embeddings = build_provider(settings)
 
-    log.info("ai.started", model=settings.ai_model)
+    log.info("ai.started")
     try:
         yield
     finally:

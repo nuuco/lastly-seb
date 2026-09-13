@@ -12,7 +12,6 @@ import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
-import { ConnectBanner } from '@/features/ai-credential/connect-banner';
 import { CalendarView } from '@/features/calendar/calendar-view';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
@@ -121,6 +120,21 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
   }, [listening, transcript, resetSpeech]);
 
   /**
+   * 기록 흐름이 시작되면 듣기를 끝낸다.
+   *
+   * 보내기를 누른 뒤에도 마이크가 잡혀 있으면 사용자는 앱이 계속 엿듣는다고 느낀다.
+   * 지금 화면에서는 듣는 중에 보내기 버튼이 숨겨져 여기까지 오는 길이 좁지만,
+   * "다시 말하기" 로 다시 듣기 시작한 뒤 말하지 않고 넘어가는 경우가 있다.
+   * 인식 객체를 놓아주는 책임을 onend 하나에만 두지 않는다.
+   */
+  const { stop: stopSpeech } = speech;
+  const flowStarted = capture.step !== 'idle';
+
+  useEffect(() => {
+    if (flowStarted) stopSpeech();
+  }, [flowStarted, stopSpeech]);
+
+  /**
    * "다시 말하기" — 시트를 닫는 데서 그치지 않고 곧바로 다시 듣기 시작한다.
    * 사용자는 말을 고치려는 것이지 입력창으로 돌아가려는 게 아니다.
    * 클릭이 사용자 제스처이므로 같은 틱에서 start()를 불러야 브라우저가 마이크를 허용한다.
@@ -157,7 +171,6 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           title={view === 'calendar' ? formatYearMonth(month) : undefined}
         />
 
-        <ConnectBanner />
 
         {isEmpty ? (
           <EmptyState
