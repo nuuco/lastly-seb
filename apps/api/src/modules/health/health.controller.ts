@@ -26,7 +26,6 @@ export class HealthController {
        * 무료 체험 키를 lastly-ai 에만 넣고 lastly-api 에 빠뜨려 하루를 쓴 적이 있다.
        */
       integrations: {
-        credentialSecret: Boolean(this.config.get('CREDENTIALS_SECRET')),
         serverAiKey: Boolean(
           this.config.get('GEMINI_API_KEY') ?? this.config.get('ANTHROPIC_API_KEY'),
         ),

@@ -72,12 +72,6 @@ function buildService(overrides: {
   const logs = { add: jest.fn() };
   const draft = { sign: jest.fn().mockReturnValue('signed-token'), verify: jest.fn() };
 
-  // 키가 등록된 사용자를 기본으로 둔다. 미등록 상황은 별도 케이스에서 다룬다.
-  const credentials = {
-    resolve: jest.fn().mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-test', trial: false }),
-    consumeTrial: jest.fn().mockResolvedValue(undefined),
-  };
-
   const service = new CaptureService(
     ai as never,
     items as never,
@@ -85,10 +79,9 @@ function buildService(overrides: {
     logs as never,
     new CadenceService(),
     draft as never,
-    credentials as never,
   );
 
-  return { service, ai, items, itemsService, credentials };
+  return { service, ai, items, itemsService };
 }
 
 const TODAY = new Date('2026-09-06T00:00:00Z');
@@ -237,23 +230,9 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     expect(result.matchedItemId).toBe('item-1');
   });
 
-  it('키를 등록하지 않아도 서버 키로 해석한다', async () => {
-    // 등록을 요구하면 대부분 그 자리에서 떠난다. 서버가 무료 등급 키를 대신 낸다.
-    const { service, ai, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue({ provider: 'gemini', apiKey: 'server-key' });
-
-    await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'voice' }, TODAY);
-
-    expect(ai.parseUtterance).toHaveBeenCalledWith(
-      expect.anything(),
-      { provider: 'gemini', api_key: 'server-key' },
-    );
-  });
-
-  it('부를 키가 아무것도 없으면 폴백으로 간다', async () => {
-    // 서버 키도 없고 등록도 안 한 상태. 해석 없이 직접 고르게 한다.
-    const { service, ai, items, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue(null);
+  it('AI 키가 없으면 해석 없이 폴백으로 간다', async () => {
+    // AiClient 가 키 없음을 null 로 알린다. 호출부는 장애와 똑같이 다룬다.
+    const { service, items } = buildService({ parse: null });
     items.matchByMeaning.mockResolvedValue([]);
 
     const result = await service.interpret(
@@ -263,7 +242,7 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     );
 
     expect(result.degraded).toBe(true);
-    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(result.outcome).toBe('unrecognized');
   });
 });
 

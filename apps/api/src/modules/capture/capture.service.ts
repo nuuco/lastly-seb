@@ -20,7 +20,6 @@ import type { ItemRow } from '../items/items.repository';
 import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
-import { AiCredentialService } from '../ai-credential/ai-credential.service';
 import { DraftTokenService } from './draft-token.service';
 import { readUtterance } from './utterance-rules';
 
@@ -60,7 +59,6 @@ export class CaptureService {
     private readonly logs: LogsService,
     private readonly cadence: CadenceService,
     private readonly draft: DraftTokenService,
-    private readonly credentials: AiCredentialService,
   ) {}
 
   async interpret(userId: string, input: InterpretRequest, today = new Date()): Promise<InterpretResult> {
@@ -115,26 +113,15 @@ export class CaptureService {
     const ruled = await this.byRules(userId, input, referenceDate, known, today);
     if (ruled) return ruled;
 
-    /**
-     * 사용자가 등록한 키가 있으면 그것으로, 없으면 서버 기본 키로 부른다.
-     * 둘 다 없을 때만 해석 없이 폴백으로 간다.
-     */
-    const caller = await this.credentials.resolve(userId);
-
-    const parsed = caller
-      ? await this.ai.parseUtterance(
-          {
-            text: input.text,
-            reference_date: referenceDate,
-            known_items: known.map((i) => ({
-              id: i.id,
-              name: i.name,
-              last_done_on: i.last_done_on,
-            })),
-          },
-          { provider: caller.provider, api_key: caller.apiKey },
-        )
-      : null;
+    const parsed = await this.ai.parseUtterance({
+      text: input.text,
+      reference_date: referenceDate,
+      known_items: known.map((i) => ({
+        id: i.id,
+        name: i.name,
+        last_done_on: i.last_done_on,
+      })),
+    });
 
     // AI가 응답하지 않으면 해석을 포기하되, 이름이 비슷한 항목은 직접 고르게 한다.
     if (!parsed) {
@@ -477,17 +464,11 @@ export class CaptureService {
 
     if (!normalizedName) return null;
 
-    const caller = await this.credentials.resolve(userId);
-    const suggested = caller
-      ? await this.ai.suggestCadence(
-          {
-            item_name: normalizedName,
-            history: [],
-            user_average_interval_days: await this.itemsService.userAverageInterval(userId),
-          },
-          { provider: caller.provider, api_key: caller.apiKey },
-        )
-      : null;
+    const suggested = await this.ai.suggestCadence({
+      item_name: normalizedName,
+      history: [],
+      user_average_interval_days: await this.itemsService.userAverageInterval(userId),
+    });
 
     if (!suggested) {
       this.logger.warn(`주기 제안 실패, 폴백 사용: ${normalizedName}`);

@@ -6,13 +6,6 @@ export const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
   /**
-   * 사용자 AI 키를 암호화하는 비밀값. base64 로 인코딩한 32바이트.
-   *   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-   * 이 값을 잃으면 저장된 키를 아무도 풀 수 없다. 사용자가 다시 등록해야 한다.
-   */
-  CREDENTIALS_SECRET: z.string().min(44),
-
-  /**
    * 서버가 제공하는 기본 키. 이게 있으면 사용자는 아무것도 등록하지 않아도 된다.
    *
    * Gemini 무료 등급을 쓴다 — 셋 중 유일하게 카드 없이 발급되고,

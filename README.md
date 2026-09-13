@@ -73,7 +73,6 @@ web ──HTTP──> api ──HTTP──> ai
 | `item_aliases` | "이불 빨래" ← "이불 세탁", "이불 빨았어" — 학습된 표현 |
 | `cadence_priors` | "보통 사람들은 얼마마다 하는가" 공용 사전이자 AI 조사 결과 캐시 |
 | `push_subscriptions` · `notifications` | 웹푸시 |
-| `ai_credentials` | 사용자가 등록한 AI 키. 암호화 저장, 정책 없는 RLS 로 `service_role` 만 읽는다 |
 
 **모든 사용자 데이터 테이블은 RLS로 격리한다.**
 확장(`vector`, `pg_trgm`)은 `extensions` 스키마에 둔다 — `public`에 두면 확장이 만든 타입이
@@ -113,14 +112,11 @@ pnpm dev                          # web · api · ai 동시 실행
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `ANON_KEY` | 필수 | 웹앱이 인증 불가 |
 | `SUPABASE_SERVICE_ROLE_KEY` | 필수 | API 기동 실패 |
-| `CREDENTIALS_SECRET` | 필수 | API 기동 실패. base64 32바이트 |
 | `VAPID_*` | 필수 | API 기동 실패 (`npx web-push generate-vapid-keys`) |
 | `GEMINI_API_KEY` | 권장 | 사용자가 각자 키를 등록해야만 해석이 동작한다 |
 | `DATABASE_URL` | 권장 | AI는 뜨지만 주기 사전 캐시가 꺼져 매번 조사한다 |
 | `VOYAGE_API_KEY` | 선택 | 의미 기반 매칭 꺼짐, 트라이그램만 동작 |
 
-`CREDENTIALS_SECRET` 은 **한 번 정하면 바꾸지 않는다.** 이 값으로 사용자 키를 봉인하므로,
-잃거나 바꾸면 저장된 키를 아무도 풀 수 없고 전원이 다시 등록해야 한다.
 
 ### 계정이 있어야 쓸 수 있다
 
@@ -142,7 +138,7 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
 [`dev-sign-in.tsx`](apps/web/src/features/auth/dev-sign-in.tsx)는
 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true` 일 때만 렌더된다.
 
-### AI 키는 서버가 낸다. 등록은 선택이다
+### AI 키는 서버가 낸다
 
 해석에 필요한 LLM 호출은 **서버가 들고 있는 Gemini 무료 등급 키로 처리한다.**
 사용자는 아무것도 등록하지 않는다.
@@ -151,21 +147,8 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
 먼저 처리해, LLM 까지 가는 문장은 "처음 보는 항목인데 주기도 말하지 않은 경우" 뿐이다.
 그마저 `cadence_priors` 에 캐시되어 같은 항목은 두 번 조사하지 않는다.
 
-자기 키로 쓰고 싶거나 다른 제공자를 쓰고 싶으면 설정에서 등록할 수 있다 —
-Claude · GPT · Gemini 중 하나. 등록하면 그 키가 서버 키보다 우선한다.
-
-| | 저장 | 노출 |
-|---|---|---|
-| 원문 키 | AES-256-GCM 으로 봉인해 `ai_credentials` 에 둔다 | 어떤 응답에도 담기지 않는다 |
-| 가림 문자열 | `sk-ant-…4f2a` 형태로 함께 둔다 | 사용자 본인에게만 |
-
-키를 꺼내는 곳은 AI 를 실제로 부르는 자리 하나뿐이고, 로그에 남기지 않는다.
-`ai_credentials` 는 **정책을 하나도 두지 않은 RLS** 로 막아 `service_role` 외에는 읽지 못한다.
-
-제공자마다 다른 건 두 메서드(`complete_json`, `complete_json_with_search`)뿐이라
-[`apps/ai/…/providers/`](apps/ai/src/lastly_ai/services/providers/) 에 어댑터로 갈라 두었다.
-구조화 출력을 켜는 방법이 셋 다 달라서(Anthropic `output_config`, OpenAI `response_format`,
-Gemini `responseSchema`) 그 차이만 어댑터가 흡수한다.
+키가 없으면 `AiClient` 가 해석을 부르지 않고 `null` 을 돌려주며, 앱은 규칙만으로
+계속 동작한다 — 이름을 직접 정하면 저장된다.
 
 ---
 
