@@ -18,13 +18,17 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>('intro');
 
   /**
-   * 본 표시를 남기고 로그인으로 보낸다.
-   * 남기지 않으면 미들웨어가 다시 온보딩으로 돌려보내 무한히 맴돈다.
-   * 로그인 전이라 서버에 저장할 곳이 없어 쿠키를 쓴다.
+   * 본 표시를 남기고 홈으로 보낸다.
+   *
+   * 가입은 시키지 않는다. 미들웨어가 익명 계정을 만들어 그대로 들여보내고,
+   * 기록이 쌓였을 때 구글 계정으로 넘기자고 권한다.
+   *
+   * 표시를 남기지 않으면 미들웨어가 다시 온보딩으로 돌려보내 무한히 맴돈다.
+   * 계정이 생기기 전이라 서버에 둘 곳이 없어 쿠키를 쓴다.
    */
   const finish = () => {
     markOnboardingSeen();
-    router.replace('/login');
+    router.replace('/');
   };
 
   if (step === 'intro') return <Intro onNext={() => setStep('install')} onSkip={finish} />;

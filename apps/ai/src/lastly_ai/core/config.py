@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     # 모델은 제공자마다 이름 체계가 달라 하나로 묶을 수 없다.
     # 비워 두면 각 어댑터의 기본값을 쓴다.
     anthropic_model: str = ""
-    openai_model: str = ""
     gemini_model: str = ""
 
     # Anthropic 의 effort. 지원하지 않는 모델이 있어(Haiku 는 400) 비우면 보내지 않는다.

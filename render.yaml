@@ -18,7 +18,7 @@ services:
     healthCheckPath: /healthz
     envVars:
       # 모델은 어댑터 기본값을 쓴다. 바꿀 때만 여기에 적는다.
-      #   ANTHROPIC_MODEL / OPENAI_MODEL / GEMINI_MODEL
+      #   GEMINI_MODEL / ANTHROPIC_MODEL
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: DATABASE_URL

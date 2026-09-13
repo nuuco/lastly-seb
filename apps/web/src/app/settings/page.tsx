@@ -1,11 +1,14 @@
 'use client';
 
+import type { SignupPrompt } from '@lastly/contracts';
+
 import { todayIso } from '@/lib/date';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
+import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { usePushSubscription } from '@/features/notifications/use-push-subscription';
 import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -17,6 +20,8 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const push = usePushSubscription();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  /** 알림을 켠 직후에만 띄운다. 설정 화면을 열었다는 이유로 권하지는 않는다. */
+  const [signupPrompt, setSignupPrompt] = useState<SignupPrompt | null>(null);
 
   const settings = useQuery({
     queryKey: queryKeys.notificationSettings,
@@ -65,7 +70,18 @@ export default function SettingsPage() {
           ) : (
             <button
               type="button"
-              onClick={() => push.subscribe()}
+              onClick={async () => {
+                await push.subscribe();
+                /**
+                 * 알림을 켜겠다는 건 챙김받고 싶다는 뜻이다.
+                 * 익명이면 이 브라우저를 비우는 순간 그 알림이 끊기므로 지금 말한다.
+                 */
+                const fresh = await queryClient.fetchQuery({
+                  queryKey: queryKeys.notificationSettings,
+                  queryFn: profileApi.notificationSettings,
+                });
+                if (fresh.signupPrompt) setSignupPrompt(fresh.signupPrompt);
+              }}
               className="rounded-[9px] bg-accent-soft px-[11px] py-1.5 text-13 font-bold text-accent-ink"
             >
               {push.status === 'requesting' ? '요청 중…' : '알림 켜기'}
@@ -108,6 +124,16 @@ export default function SettingsPage() {
       <p className="mt-8 text-center text-12 text-ink-disabled">Lastly · 1.0.3</p>
 
       {deleteOpen ? <DeleteAccountSheet onClose={() => setDeleteOpen(false)} /> : null}
+
+      {signupPrompt ? (
+        <SignupPromptSheet
+          prompt={signupPrompt}
+          onDismiss={() => {
+            setSignupPrompt(null);
+            profileApi.markSignupPromptSeen(signupPrompt).catch(() => undefined);
+          }}
+        />
+      ) : null}
     </main>
   );
 }

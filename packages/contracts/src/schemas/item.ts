@@ -80,8 +80,23 @@ export const homeSummarySchema = z.object({
 });
 export type HomeSummary = z.infer<typeof homeSummarySchema>;
 
+/**
+ * 가입을 권할 자리. 계정이 사주는 것이 아쉬워지는 순간에만 뜬다.
+ *
+ * 같은 이유로 두 번 묻지 않는다. 반복하면 그때부터 광고가 된다.
+ */
+export const signupPromptSchema = z.enum([
+  /** 기록이 쌓였다 — 설계 12-B */
+  'records',
+  /** 알림을 켜려 한다. 익명이면 브라우저를 비우는 순간 끊긴다 */
+  'notifications',
+]);
+export type SignupPrompt = z.infer<typeof signupPromptSchema>;
+
 export const homeFeedSchema = z.object({
   summary: homeSummarySchema,
+  /** 지금 권할 유도. 없으면 null — 이미 계정이 있거나, 아직 때가 아니거나, 이미 물었거나. */
+  signupPrompt: signupPromptSchema.nullable().default(null),
   due: z.array(itemSchema),
   upcoming: z.array(itemSchema),
   later: z.array(itemSchema),

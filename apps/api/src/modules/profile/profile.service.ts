@@ -6,6 +6,7 @@ import { SupabaseService } from '../../infra/supabase/supabase.service';
 export interface ProfileRow {
   id: string;
   display_name: string | null;
+  signup_prompts_seen: string[];
   timezone: string;
   digest_time: string;
   weekend_enabled: boolean;
@@ -19,7 +20,9 @@ export class ProfileService {
   async get(userId: string): Promise<ProfileRow> {
     const { data, error } = await this.supabase.admin
       .from('profiles')
-      .select('id, display_name, timezone, digest_time, weekend_enabled, onboarded_at')
+      .select(
+        'id, display_name, timezone, digest_time, weekend_enabled, onboarded_at, signup_prompts_seen',
+      )
       .eq('id', userId)
       .maybeSingle();
 
@@ -29,7 +32,10 @@ export class ProfileService {
   }
 
   /** 화면 13의 알림 설정. pushGranted는 구독 존재 여부로 판단한다. */
-  async getNotificationSettings(userId: string): Promise<NotificationSettings> {
+  async getNotificationSettings(
+    userId: string,
+    isAnonymous = false,
+  ): Promise<NotificationSettings> {
     const profile = await this.get(userId);
     const { count } = await this.supabase.admin
       .from('push_subscriptions')
@@ -41,6 +47,10 @@ export class ProfileService {
       timezone: profile.timezone,
       weekendEnabled: profile.weekend_enabled,
       pushGranted: (count ?? 0) > 0,
+      signupPrompt:
+        isAnonymous && !profile.signup_prompts_seen.includes('notifications')
+          ? 'notifications'
+          : null,
     };
   }
 
@@ -82,6 +92,30 @@ export class ProfileService {
    * 화면 13-B의 계정 영구 삭제.
    * auth.users를 지우면 나머지는 on delete cascade로 함께 사라진다.
    */
+  /**
+   * 이 유도를 이미 보여줬다고 남긴다.
+   *
+   * 배열에 없을 때만 덧붙인다. 같은 값을 여러 번 넣어도 결과가 같아야
+   * "나중에 할게요" 를 두 번 눌러도 탈이 없다.
+   */
+  async markSignupPromptSeen(userId: string, prompt: string): Promise<void> {
+    const { data } = await this.supabase.admin
+      .from('profiles')
+      .select('signup_prompts_seen')
+      .eq('id', userId)
+      .maybeSingle<{ signup_prompts_seen: string[] }>();
+
+    const seen = data?.signup_prompts_seen ?? [];
+    if (seen.includes(prompt)) return;
+
+    const { error } = await this.supabase.admin
+      .from('profiles')
+      .update({ signup_prompts_seen: [...seen, prompt] })
+      .eq('id', userId);
+
+    if (error) throw error;
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     const { error } = await this.supabase.admin.auth.admin.deleteUser(userId);
     if (error) throw error;

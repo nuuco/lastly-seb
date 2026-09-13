@@ -1,6 +1,6 @@
 from typing import Any, Literal, Protocol
 
-Provider = Literal["anthropic", "openai", "gemini"]
+Provider = Literal["anthropic", "gemini"]
 
 
 class LlmError(RuntimeError):

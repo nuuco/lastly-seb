@@ -51,6 +51,6 @@ export interface AiEmbedResponse {
  * AI 서비스는 서버 키를 쓰지 않고 이 값으로만 제공자를 부른다.
  */
 export interface AiCaller {
-  provider: 'anthropic' | 'openai' | 'gemini';
+  provider: 'anthropic' | 'gemini';
   api_key: string;
 }

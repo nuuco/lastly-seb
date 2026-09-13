@@ -77,10 +77,13 @@ https://supabase.com/dashboard → `lastly` 프로젝트 →
 → 나온 주소의 `[YOUR-PASSWORD]` 자리에 프로젝트 만들 때 정한 비밀번호를 넣는다.
 이게 `DATABASE_URL`이다. 비밀번호를 잊었으면 같은 화면에서 **Reset database password**.
 
-### 1-4. Anthropic 키
+### 1-4. Gemini 키
 
-https://console.anthropic.com → **API Keys** → **Create Key**
-→ `ANTHROPIC_API_KEY`로 메모. (한 번만 보여주니 꼭 복사할 것)
+https://aistudio.google.com/apikey → **API 키 만들기**
+→ 프로젝트는 **Default Gemini Project** 를 고른다 (무료 등급).
+→ `GEMINI_API_KEY`로 메모.
+
+서버가 모든 사용자의 해석을 이 키 하나로 처리한다. 사용자는 아무것도 등록하지 않는다.
 
 ---
 
@@ -106,10 +109,10 @@ AI를 먼저 올린다. API가 AI 주소를 알아야 하기 때문이다.
 
    | Key | Value |
    |---|---|
-   | `AI_MODEL` | `claude-opus-5` |
-   | `ANTHROPIC_API_KEY` | 1-4에서 메모한 값 |
    | `DATABASE_URL` | 1-3에서 만든 주소 |
    | `INTERNAL_TOKEN` | 1-1에서 메모한 값 |
+
+   AI 서비스는 LLM 키를 보관하지 않는다. 요청마다 `apps/api` 가 실어 보낸다.
 
 6. **Deploy Web Service** 클릭. 3~5분 걸린다.
 7. 다 되면 위쪽에 주소가 뜬다 (`https://lastly-ai-xxxx.onrender.com`).
@@ -143,6 +146,7 @@ AI를 먼저 올린다. API가 AI 주소를 알아야 하기 때문이다.
    | `ENABLE_CRON` | `false` |
    | `AI_SERVICE_URL` | 2번에서 메모한 AI 주소 |
    | `AI_SERVICE_TOKEN` | `INTERNAL_TOKEN`과 **같은 값** |
+   | `GEMINI_API_KEY` | 1-4에서 메모한 값 |
    | `NEXT_PUBLIC_SUPABASE_URL` | `SUPABASE_URL` |
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role 키 |
    | `CRON_SECRET` | 1-1에서 메모한 값 |

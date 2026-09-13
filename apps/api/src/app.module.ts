@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TerminusModule } from '@nestjs/terminus';
 
-import { envSchema } from './config/env.schema';
+import { parseEnv } from './config/env.schema';
 import { AiModule } from './infra/ai/ai.module';
 import { PushModule } from './infra/push/push.module';
 import { SupabaseModule } from './infra/supabase/supabase.module';
@@ -19,7 +19,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env', '../../.env'],
-      validate: (raw) => envSchema.parse(raw),
+      validate: parseEnv,
     }),
     ScheduleModule.forRoot(),
     TerminusModule,

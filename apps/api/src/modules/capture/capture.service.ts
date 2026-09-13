@@ -21,7 +21,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
-import { readUtterance } from './utterance-rules';
+import { readUtterance, type UtteranceFacts } from './utterance-rules';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
 export const MATCH_THRESHOLD = 0.82;
@@ -110,7 +110,8 @@ export class CaptureService {
      * 경우에는 이름도 이미 가진 항목에 붙는다. 앱에서 제일 흔한 이 경우에
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
-    const ruled = await this.byRules(userId, input, referenceDate, known, today);
+    const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
+    const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
     if (ruled) return ruled;
 
     const parsed = await this.ai.parseUtterance({
@@ -123,9 +124,21 @@ export class CaptureService {
       })),
     });
 
-    // AI가 응답하지 않으면 해석을 포기하되, 이름이 비슷한 항목은 직접 고르게 한다.
+    /**
+     * AI 가 응답하지 않았을 때.
+     *
+     * 규칙이 이미 이름을 뽑아 뒀다면 그걸 쓴다. AI 에게 물어본 것은 주기 하나인데,
+     * 그걸 못 받았다고 이름까지 내려놓고 "알아보기 어려워요" 라고 하면
+     * 손에 든 답을 버리는 셈이다. 주기만 기본값으로 두고 시트에서 고치게 한다.
+     *
+     * 무료 호스팅은 15분 놀면 AI 를 재우고 깨는 데 30초 넘게 걸린다.
+     * 그 사이에 기록한 사람이 이 길로 온다.
+     */
     if (!parsed) {
-      return this.withoutAi(userId, input, referenceDate, known);
+      // 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
+      return facts.sawAction && facts.name
+        ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
+        : this.withoutAi(userId, input, referenceDate, known);
     }
 
     const candidates = this.toCandidates(parsed.candidates, known, today);
@@ -311,8 +324,8 @@ export class CaptureService {
     referenceDate: string,
     known: ItemRow[],
     today: Date,
+    facts: UtteranceFacts,
   ): Promise<InterpretResult | null> {
-    const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
     if (!facts.name) return null;
 
     const matched = await this.findByName(userId, facts.name, known);
@@ -357,6 +370,61 @@ export class CaptureService {
         normalizedName: name,
         doneOn,
         matchedItemId: matched?.id ?? null,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /**
+   * AI 없이 규칙이 뽑은 것만으로 새 항목 확인 시트를 만든다.
+   *
+   * 여기까지 온 것은 규칙이 이름을 뽑았고, 기존 항목에도 안 붙었고, AI 도
+   * 답하지 않은 경우다. 이름과 날짜는 확실하므로 주기만 기본값으로 둔다.
+   * 시트에서 주기를 눌러 고칠 수 있고, 고친 값이 그대로 저장된다.
+   */
+  private async fromRulesOnly(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    name: string,
+    facts: UtteranceFacts,
+  ): Promise<InterpretResult> {
+    const doneOn = format(
+      subDays(new Date(`${referenceDate}T00:00:00`), facts.daysAgo),
+      'yyyy-MM-dd',
+    );
+
+    return {
+      transcript: input.text,
+      outcome: 'new_item',
+      normalizedName: name,
+      doneOn,
+      matchedItemId: null,
+      candidates: [],
+      /**
+       * 주기는 기본값으로 둔다. resolveCadence 를 부르면 AI 에게 또 물어보는데,
+       * 방금 응답하지 않은 상대라 45초를 더 기다리게 된다.
+       * (주기를 말한 경우라면 byRules 에서 이미 끝났으므로 여기엔 오지 않는다.)
+       */
+      cadence: {
+        rule: FALLBACK_CADENCE,
+        source: 'default',
+        confidence: 0.3,
+        rationale: '우선 2주로 잡아뒀어요. 저장 전에 바꿔도 돼요.',
+        nextDueOn: this.cadence.nextDueOn(doneOn, FALLBACK_CADENCE) ?? doneOn,
+      },
+      // 규칙만으로 세운 것이라 모델이 확인해 준 결과보다는 낮게 둔다.
+      confidence: 0.7,
+      // 화면이 "또렷하게 말해주세요" 대신 다른 말을 하도록 원인을 알려준다.
+      degraded: true,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: name,
+        doneOn,
+        matchedItemId: null,
         mode: input.mode,
         issuedAt: Date.now(),
       }),

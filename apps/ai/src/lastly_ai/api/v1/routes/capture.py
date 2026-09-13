@@ -29,8 +29,12 @@ async def suggest_cadence(req: CadenceRequest, cadence: CadenceDep) -> CadenceRe
 async def embed(req: EmbedRequest, embeddings: EmbeddingsDep) -> EmbedResponse:
     vector = await embeddings.embed(req.text)
     if vector is None:
-        # 임베딩 제공자가 없으면 apps/api가 임베딩 없이 진행하도록 알린다.
+        # 임베딩 제공자가 없으면 apps/api 가 임베딩 없이 진행하도록 알린다.
+        #
+        # 503 을 쓰면 안 된다. 무료 호스팅은 잠든 컨테이너에도 503 을 내려서
+        # apps/api 가 "깨어나는 중" 으로 보고 45초 동안 다시 부른다.
+        # 이건 기다려도 달라지지 않는 상태이므로 501 로 알린다.
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "임베딩 제공자가 설정되지 않았습니다."
+            status.HTTP_501_NOT_IMPLEMENTED, "임베딩 제공자가 설정되지 않았습니다."
         )
     return EmbedResponse(embedding=vector)

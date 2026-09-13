@@ -15,7 +15,7 @@ class Caller(BaseModel):
     이 서비스는 키를 보관하지 않는다 — 한 번 쓰고 버린다.
     """
 
-    provider: Literal["anthropic", "openai", "gemini"]
+    provider: Literal["anthropic", "gemini"]
     api_key: str = Field(min_length=10, max_length=400)
 
 
