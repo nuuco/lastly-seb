@@ -116,8 +116,8 @@ export class CaptureService {
     if (ruled) return ruled;
 
     /**
-     * AI 는 사용자가 등록한 키로만 부른다. 서버 키를 쓰지 않으므로
-     * 키가 없으면 해석 단계 자체가 없다 — 폴백으로 바로 간다.
+     * 사용자가 등록한 키가 있으면 그것으로, 없으면 서버 기본 키로 부른다.
+     * 둘 다 없을 때만 해석 없이 폴백으로 간다.
      */
     const caller = await this.credentials.resolve(userId);
 
@@ -140,9 +140,6 @@ export class CaptureService {
     if (!parsed) {
       return this.withoutAi(userId, input, referenceDate, known);
     }
-
-    // 답을 받은 뒤에만 센다. 깨우다 실패한 것까지 세면 써 보지도 못하고 줄어든다.
-    if (caller?.trial) await this.credentials.consumeTrial(userId);
 
     const candidates = this.toCandidates(parsed.candidates, known, today);
 
@@ -480,7 +477,6 @@ export class CaptureService {
 
     if (!normalizedName) return null;
 
-    // 주기 제안은 해석과 같은 요청 안에서 이어지므로 체험 횟수를 또 세지 않는다.
     const caller = await this.credentials.resolve(userId);
     const suggested = caller
       ? await this.ai.suggestCadence(

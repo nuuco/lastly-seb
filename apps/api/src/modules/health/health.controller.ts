@@ -27,7 +27,9 @@ export class HealthController {
        */
       integrations: {
         credentialSecret: Boolean(this.config.get('CREDENTIALS_SECRET')),
-        trialKey: Boolean(this.config.get('ANTHROPIC_API_KEY')),
+        serverAiKey: Boolean(
+          this.config.get('GEMINI_API_KEY') ?? this.config.get('ANTHROPIC_API_KEY'),
+        ),
         push: Boolean(this.config.get('VAPID_PRIVATE_KEY')),
       },
     };

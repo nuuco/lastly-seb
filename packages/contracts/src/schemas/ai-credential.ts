@@ -3,8 +3,8 @@ import { z } from 'zod';
 /**
  * 사용자가 직접 등록하는 AI 제공자 키.
  *
- * 이 앱은 수익이 없어 서버가 모든 사용자의 AI 비용을 대신 낼 수 없다.
- * 각자 자기 키를 등록해 자기 몫만 쓴다.
+ * 등록은 선택이다. 서버가 무료 등급 키를 두고 있어 등록하지 않아도 동작한다.
+ * 자기 키를 쓰고 싶거나 다른 제공자를 쓰고 싶은 사람을 위한 길이다.
  */
 export const aiProviderSchema = z.enum(['anthropic', 'openai', 'gemini']);
 export type AiProvider = z.infer<typeof aiProviderSchema>;
@@ -24,13 +24,13 @@ export const aiCredentialSchema = z.object({
 });
 export type AiCredential = z.infer<typeof aiCredentialSchema>;
 
-/** 등록 전이면 credential 이 null. 화면이 "AI 연결 필요" 안내를 띄우는 기준이다. */
 export const aiCredentialStatusSchema = z.object({
+  /** 등록한 키. 없으면 서버 키로 동작한다. */
   credential: aiCredentialSchema.nullable(),
   /**
-   * 키를 등록하기 전에 서버 키로 더 쓸 수 있는 횟수.
-   * 키를 등록했으면 의미가 없으므로 0 으로 내려간다.
+   * 등록하지 않아도 쓸 수 있는지.
+   * false 면 서버에 키가 없다는 뜻이라, 각자 등록해야 해석이 동작한다.
    */
-  trialRemaining: z.number().int().min(0),
+  serverKeyAvailable: z.boolean(),
 });
 export type AiCredentialStatus = z.infer<typeof aiCredentialStatusSchema>;

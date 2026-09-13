@@ -115,7 +115,7 @@ pnpm dev                          # web · api · ai 동시 실행
 | `SUPABASE_SERVICE_ROLE_KEY` | 필수 | API 기동 실패 |
 | `CREDENTIALS_SECRET` | 필수 | API 기동 실패. base64 32바이트 |
 | `VAPID_*` | 필수 | API 기동 실패 (`npx web-push generate-vapid-keys`) |
-| `ANTHROPIC_API_KEY` | 선택 | 무료 체험 꺼짐. 첫 화면부터 키 등록을 요구한다 |
+| `GEMINI_API_KEY` | 권장 | 사용자가 각자 키를 등록해야만 해석이 동작한다 |
 | `DATABASE_URL` | 권장 | AI는 뜨지만 주기 사전 캐시가 꺼져 매번 조사한다 |
 | `VOYAGE_API_KEY` | 선택 | 의미 기반 매칭 꺼짐, 트라이그램만 동작 |
 
@@ -142,15 +142,17 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
 [`dev-sign-in.tsx`](apps/web/src/features/auth/dev-sign-in.tsx)는
 `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true` 일 때만 렌더된다.
 
-### AI 키는 각자 등록한다
+### AI 키는 서버가 낸다. 등록은 선택이다
 
-수익이 없는 앱이라 서버가 모든 사용자의 AI 비용을 대신 낼 수 없다.
-그래서 **각자 자기 키를 등록해 자기 몫만 쓴다.** Claude · GPT · Gemini 중 하나면 된다.
+해석에 필요한 LLM 호출은 **서버가 들고 있는 Gemini 무료 등급 키로 처리한다.**
+사용자는 아무것도 등록하지 않는다.
 
-키부터 만들어 오라고 하면 대부분 그 자리에서 떠나므로, 등록 전 **3번은 서버 키로 돌려준다.**
-`ANTHROPIC_API_KEY` 가 그 체험용이고, 비워두면 체험 없이 등록부터 요구한다.
+무료 등급으로 버티는 이유는 **호출이 드물어서다.** 규칙 파서가 의도·날짜·주기·이름을
+먼저 처리해, LLM 까지 가는 문장은 "처음 보는 항목인데 주기도 말하지 않은 경우" 뿐이다.
+그마저 `cadence_priors` 에 캐시되어 같은 항목은 두 번 조사하지 않는다.
 
-셋 중 Gemini 만 무료 등급이 있어 카드 없이 키를 받을 수 있다. 화면 기본값이 Gemini 인 이유다.
+자기 키로 쓰고 싶거나 다른 제공자를 쓰고 싶으면 설정에서 등록할 수 있다 —
+Claude · GPT · Gemini 중 하나. 등록하면 그 키가 서버 키보다 우선한다.
 
 | | 저장 | 노출 |
 |---|---|---|

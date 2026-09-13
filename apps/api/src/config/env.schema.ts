@@ -13,9 +13,14 @@ export const envSchema = z.object({
   CREDENTIALS_SECRET: z.string().min(44),
 
   /**
-   * 무료 체험용 서버 키. 없으면 체험 없이 각자 키만 쓴다.
-   * 사용자가 자기 키를 등록하기 전 몇 번만 이 키로 대신 부른다.
+   * 서버가 제공하는 기본 키. 이게 있으면 사용자는 아무것도 등록하지 않아도 된다.
+   *
+   * Gemini 무료 등급을 쓴다 — 셋 중 유일하게 카드 없이 발급되고,
+   * 규칙이 대부분을 처리해 남는 호출이 드물어 한도 안에 들어간다.
    */
+  GEMINI_API_KEY: z.string().optional(),
+
+  /** 예전 기본 키. GEMINI_API_KEY 가 없을 때만 쓴다. */
   ANTHROPIC_API_KEY: z.string().optional(),
 
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),

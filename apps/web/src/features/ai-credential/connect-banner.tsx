@@ -6,18 +6,18 @@ import Link from 'next/link';
 import { aiCredentialApi } from '@/lib/api/ai-credential';
 
 /**
- * 무료 체험을 다 썼을 때만 뜬다.
+ * 부를 AI 가 아무것도 없을 때만 뜬다.
  *
- * 남아 있는 동안에는 아무 말도 하지 않는다. 아직 필요 없는 일을 미리 시키면
+ * 서버 기본 키가 살아 있으면 아무 말도 하지 않는다. 필요 없는 일을 미리 시키면
  * 앱을 써 보기도 전에 설정으로 내몰게 된다.
  *
- * 키가 없어도 기록 자체는 계속 된다 — 이름을 직접 정하면 저장된다.
+ * 이 상태에서도 기록 자체는 된다 — 이름을 직접 정하면 저장된다.
  * 그래서 막는 문구가 아니라 권하는 문구로 쓴다.
  */
 export function ConnectBanner() {
   const status = useQuery({ queryKey: ['ai-credential'], queryFn: aiCredentialApi.status });
 
-  const needsKey = status.data && !status.data.credential && status.data.trialRemaining === 0;
+  const needsKey = status.data && !status.data.credential && !status.data.serverKeyAvailable;
   if (!needsKey) return null;
 
   return (
@@ -27,7 +27,7 @@ export function ConnectBanner() {
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[13.5px] font-bold text-action-pressed">
-          무료 체험을 다 쓰셨어요
+          AI 연결이 필요해요
         </span>
         <span className="mt-1 block break-keep text-12.5 leading-[1.6] text-ink-2">
           AI를 연결하면 말한 문장을 다시 알아서 정리해드려요.

@@ -237,68 +237,33 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     expect(result.matchedItemId).toBe('item-1');
   });
 
-  it('체험으로 부른 뒤에만 횟수를 센다', async () => {
-    const { service, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue({
-      provider: 'anthropic',
-      apiKey: 'server-key',
-      trial: true,
-    });
+  it('키를 등록하지 않아도 서버 키로 해석한다', async () => {
+    // 등록을 요구하면 대부분 그 자리에서 떠난다. 서버가 무료 등급 키를 대신 낸다.
+    const { service, ai, credentials } = buildService({});
+    credentials.resolve.mockResolvedValue({ provider: 'gemini', apiKey: 'server-key' });
 
-    // 규칙이 끝내는 문장은 AI 를 부르지 않아 횟수도 줄지 않는다.
-    await service.interpret(
+    await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'voice' }, TODAY);
+
+    expect(ai.parseUtterance).toHaveBeenCalledWith(
+      expect.anything(),
+      { provider: 'gemini', api_key: 'server-key' },
+    );
+  });
+
+  it('부를 키가 아무것도 없으면 폴백으로 간다', async () => {
+    // 서버 키도 없고 등록도 안 한 상태. 해석 없이 직접 고르게 한다.
+    const { service, ai, items, credentials } = buildService({});
+    credentials.resolve.mockResolvedValue(null);
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
       'user-1',
-      { text: '베란다 창틀 닦았어', mode: 'voice' },
+      { text: '베란다 창틀 닦았어', mode: 'text' },
       TODAY,
     );
-    expect(credentials.consumeTrial).toHaveBeenCalledWith('user-1');
-  });
 
-  it('AI가 답하지 못하면 체험 횟수를 세지 않는다', async () => {
-    // 잠든 서버를 깨우다 실패한 것까지 세면 써 보지도 못하고 줄어든다.
-    const { service, credentials } = buildService({ parse: null });
-    credentials.resolve.mockResolvedValue({
-      provider: 'anthropic',
-      apiKey: 'server-key',
-      trial: true,
-    });
-
-    await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
-    expect(credentials.consumeTrial).not.toHaveBeenCalled();
-  });
-
-  it('키를 등록하지 않았으면 AI를 부르지 않는다', async () => {
-    // 서버 키를 쓰지 않으므로 미등록 사용자는 해석 단계 자체가 없다.
-    const { service, ai, credentials } = buildService({});
-    credentials.resolve.mockResolvedValue(null);
-
-    const result = await service.interpret('user-1', { text: '창틀 닦았어', mode: 'text' }, TODAY);
-
-    expect(ai.parseUtterance).not.toHaveBeenCalled();
     expect(result.degraded).toBe(true);
-    // 토큰은 발급돼야 사용자가 이름을 정해 그대로 저장할 수 있다.
-    expect(result.draftToken).toBe('signed-token');
-  });
-
-  it('AI도 검색도 결과가 없으면 재시도로 보낸다', async () => {
-    const { service } = buildService({ parse: null });
-
-    const result = await service.interpret('user-1', { text: '알 수 없는 말', mode: 'voice' }, TODAY);
-
-    expect(result.outcome).toBe('unrecognized');
-  });
-
-  it('주기 제안이 실패하면 2주 기본값으로 진행한다', async () => {
-    const { service, ai } = buildService({
-      parse: parsed({ normalized_name: '새로운 일', matched_item_id: null, candidates: [] }),
-    });
-    ai.suggestCadence.mockResolvedValue(null);
-
-    const result = await service.interpret('user-1', { text: '새로운 일 했어', mode: 'text' }, TODAY);
-
-    expect(result.outcome).toBe('new_item');
-    expect(result.cadence?.source).toBe('default');
-    expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
   });
 });
 

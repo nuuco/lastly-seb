@@ -12,8 +12,8 @@ import { PROVIDERS } from './provider-guide';
 /**
  * AI 연결.
  *
- * 이 앱은 수익이 없어 서버가 모든 사용자의 AI 비용을 대신 낼 수 없다.
- * 각자 자기 키를 등록해 자기 몫만 쓴다.
+ * 등록은 선택이다. 서버가 무료 등급 키를 두고 있어 아무것도 하지 않아도 동작한다.
+ * 자기 키로 쓰고 싶거나 다른 제공자를 쓰고 싶은 사람을 위한 화면이다.
  *
  * 키는 저장된 뒤 다시 화면으로 내려오지 않는다. 사용자가 볼 수 있는 것은
  * "내가 넣은 그 키가 맞나" 를 확인할 만큼의 가림 문자열뿐이다.
@@ -26,7 +26,7 @@ export function AiConnect({ onDone }: { onDone?: () => void }) {
 
   const status = useQuery({ queryKey: ['ai-credential'], queryFn: aiCredentialApi.status });
   const current = status.data?.credential ?? null;
-  const trialLeft = status.data?.trialRemaining ?? 0;
+  const serverKey = status.data?.serverKeyAvailable ?? false;
 
   const save = useMutation({
     mutationFn: () => aiCredentialApi.save({ provider, apiKey: apiKey.trim() }),
@@ -69,27 +69,24 @@ export function AiConnect({ onDone }: { onDone?: () => void }) {
   return (
     <div>
       {/**
-       * 남은 체험 횟수를 먼저 말한다. 아직 여유가 있으면 지금 키를 만들러
-       * 나갈 필요가 없다는 뜻이고, 다 썼으면 왜 등록해야 하는지가 설명된다.
+       * 등록하지 않아도 된다는 말을 가장 먼저 한다.
+       * 이 화면에 들어온 사람은 대개 "해야 하나?" 를 확인하러 온 것이다.
        */}
       <div
         className={cn(
           'mb-4 rounded-md border px-4 py-3.5',
-          trialLeft > 0 ? 'border-line bg-card' : 'border-line bg-accent-soft',
+          serverKey ? 'border-line bg-card' : 'border-line bg-accent-soft',
         )}
       >
         <p
-          className={cn(
-            'text-[14.5px] font-bold',
-            trialLeft > 0 ? 'text-ink' : 'text-action-pressed',
-          )}
+          className={cn('text-[14.5px] font-bold', serverKey ? 'text-ink' : 'text-action-pressed')}
         >
-          {trialLeft > 0 ? `무료로 ${trialLeft}번 더 써볼 수 있어요` : '무료 체험을 다 쓰셨어요'}
+          {serverKey ? '연결하지 않아도 쓸 수 있어요' : 'AI 연결이 필요해요'}
         </p>
         <p className="mt-1.5 break-keep text-13 leading-[1.7] text-ink-2">
-          {trialLeft > 0
-            ? '먼저 써보시고, 계속 쓰고 싶어지면 그때 키를 연결하셔도 돼요.'
-            : '이제부터는 각자 키로 동작해요. 아래에서 하나 골라 연결해 주세요.'}
+          {serverKey
+            ? '기본 제공되는 AI 로 동작하고 있어요. 내 키로 쓰고 싶을 때만 아래에서 연결하세요.'
+            : '지금은 기본 AI 가 꺼져 있어요. 아래에서 하나 골라 연결해 주세요.'}
         </p>
       </div>
 
@@ -156,8 +153,8 @@ export function AiConnect({ onDone }: { onDone?: () => void }) {
       </button>
 
       <p className="mt-3 break-keep text-12 leading-[1.7] text-ink-3">
-        키는 암호화해서 보관하고, 저장한 뒤에는 다시 보여드리지 않아요. 요금은 각자
-        계정으로 청구돼요.
+        키는 암호화해서 보관하고, 저장한 뒤에는 다시 보여드리지 않아요. 연결하면 요금은
+        각자 계정으로 청구돼요.
       </p>
     </div>
   );
