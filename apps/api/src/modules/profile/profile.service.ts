@@ -6,6 +6,7 @@ import { SupabaseService } from '../../infra/supabase/supabase.service';
 export interface ProfileRow {
   id: string;
   display_name: string | null;
+  signup_prompts_seen: string[];
   timezone: string;
   digest_time: string;
   weekend_enabled: boolean;
@@ -19,7 +20,9 @@ export class ProfileService {
   async get(userId: string): Promise<ProfileRow> {
     const { data, error } = await this.supabase.admin
       .from('profiles')
-      .select('id, display_name, timezone, digest_time, weekend_enabled, onboarded_at')
+      .select(
+        'id, display_name, timezone, digest_time, weekend_enabled, onboarded_at, signup_prompts_seen',
+      )
       .eq('id', userId)
       .maybeSingle();
 
@@ -29,7 +32,10 @@ export class ProfileService {
   }
 
   /** 화면 13의 알림 설정. pushGranted는 구독 존재 여부로 판단한다. */
-  async getNotificationSettings(userId: string): Promise<NotificationSettings> {
+  async getNotificationSettings(
+    userId: string,
+    isAnonymous = false,
+  ): Promise<NotificationSettings> {
     const profile = await this.get(userId);
     const { count } = await this.supabase.admin
       .from('push_subscriptions')
@@ -41,6 +47,10 @@ export class ProfileService {
       timezone: profile.timezone,
       weekendEnabled: profile.weekend_enabled,
       pushGranted: (count ?? 0) > 0,
+      signupPrompt:
+        isAnonymous && !profile.signup_prompts_seen.includes('notifications')
+          ? 'notifications'
+          : null,
     };
   }
 

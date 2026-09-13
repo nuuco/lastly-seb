@@ -9,6 +9,7 @@ import {
 } from '@lastly/contracts';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/guards/supabase-auth.guard';
 import { zodBody } from '../../common/pipes/zod-validation.pipe';
 import { SupabaseAuthGuard } from '../../common/guards/supabase-auth.guard';
 import { ProfileService } from './profile.service';
@@ -41,8 +42,8 @@ export class ProfileController {
 
   @Get('notification-settings')
   @ApiOperation({ summary: '알림 설정 조회 (화면 13)' })
-  settings(@CurrentUser('id') userId: string) {
-    return this.profile.getNotificationSettings(userId);
+  settings(@CurrentUser() user: AuthenticatedUser) {
+    return this.profile.getNotificationSettings(user.id, user.isAnonymous);
   }
 
   @Patch('notification-settings')
