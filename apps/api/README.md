@@ -28,7 +28,8 @@ src/
 │   └── push/         웹푸시 발송
 └── modules/
     ├── items/        항목 + 기록
-    ├── capture/      자연어 해석 오케스트레이션 + 규칙 파서
+    ├── capture/      자연어 해석 오케스트레이션
+    │                 └ utterance-rules.ts — LLM 없이 문장에서 뽑는 규칙
     ├── cadence/      주기 계산 (전역)
     ├── notifications/ 구독 · 알림 액션 · 다이제스트 배치
     ├── profile/      설정 · 내보내기 · 계정 삭제
@@ -48,6 +49,7 @@ src/
 |---|---|
 | `POST /v1/capture/interpret` | 자연어 한 문장 → 항목 · 날짜 · 주기 제안 |
 | `POST /v1/capture/commit` | 확인 시트의 "이대로 저장하기" |
+| `POST /v1/capture/cadence` | 이름만으로 주기 미리보기 — 설계 08-B |
 
 `interpret`은 재해석 없이 저장할 수 있도록 **서명된 초안 토큰**을 함께 준다.
 `commit`이 그 토큰을 검증하므로 AI를 두 번 부르지 않는다 (유효기간 10분).
@@ -58,8 +60,11 @@ src/
 |---|---|
 | `GET /v1/home/feed` | 홈 한 번에 (요약 + due · upcoming · later 세 섹션) |
 | `GET · POST /v1/items` | 목록 · 생성 |
+| `GET /v1/items/search` | 항목명 + 기록 메모에서 찾기 — 설계 05-D |
+| `GET /v1/items/calendar` | 월별 예정일과 완료 이력 — 설계 05-C |
 | `GET · PATCH · DELETE /v1/items/:id` | 상세 · 수정 · 삭제 |
 | `POST /v1/items/:id/complete` | "오늘 했어요" — 되돌리기 토큰 포함 |
+| `POST /v1/items/:id/restore` | 삭제 토스트의 되돌리기 |
 | `GET · POST /v1/items/:id/logs` | 지난 기록 · 추가 (과거 날짜 지정 가능) |
 | `PATCH · DELETE /v1/logs/:id` | 기록 수정 · 삭제 |
 | `POST /v1/logs/undo` | 완료 토스트의 되돌리기 |
@@ -72,6 +77,7 @@ src/
 | `POST /v1/notifications/items/:id/action` | 잠금화면 액션 (완료 · 3일 뒤 · 주말에) |
 | `GET /v1/me` · `GET · PATCH /v1/me/notification-settings` | 프로필 · 알림 설정 |
 | `GET /v1/me/export` · `DELETE /v1/me` | 내보내기 · 계정 삭제 |
+| `POST /v1/internal/dispatch-digests` | 알림 배치. `CRON_SECRET` 으로 지킨다 |
 
 ---
 
