@@ -38,7 +38,7 @@ src/lastly_ai/
 │   └── v1/routes/       health.py, capture.py
 ├── schemas/capture.py   요청·응답 모델 (pydantic)
 ├── services/
-│   ├── providers/       제공자 어댑터 (anthropic · openai · gemini)
+│   ├── providers/       제공자 어댑터 (gemini · anthropic)
 │   ├── normalizer.py    문장 → 항목 + 날짜
 │   ├── cadence.py       주기 계산·추천
 │   └── embeddings.py    이름 임베딩
@@ -76,7 +76,6 @@ tests/test_cadence.py
 | | 구조화 출력을 켜는 방법 | 웹 검색 |
 |---|---|---|
 | Anthropic | `output_config.format` | `web_search_20260209` 서버 툴 |
-| OpenAI | `response_format.json_schema` (strict) | 없음 |
 | Gemini | `generationConfig.responseSchema` | 안 켠다 |
 
 **Gemini 기본값은 `gemini-3.5-flash-lite` 다.** 무료 등급은 모델마다 분당 한도가 따로
@@ -94,7 +93,7 @@ Gemini 는 JSON Schema 를 그대로 받지 않아 `_to_gemini_schema()` 가 옮
 Gemini 에 검색을 붙이지 않은 건 **검색과 `responseSchema` 를 동시에 켤 수 없어서**다.
 스키마를 택했다. 형식이 깨진 응답은 기록 자체를 막지만, 검색이 없으면 주기 제안만 무뎌진다.
 
-> Gemini 어댑터는 실제 키로 확인했다(평가셋 15/15). OpenAI 는 아직 실행된 적이 없다.
+> Gemini 어댑터는 실제 키로 확인했다 — 평가셋 15문장 전부 통과.
 
 ---
 
@@ -186,7 +185,7 @@ None (apps/api 가 기본값으로 폴백)
 | `VOYAGE_API_KEY` | 임베딩 없이 트라이그램만 |
 | `DATABASE_URL` | `priors` 캐시를 못 읽고 못 쓴다. 매번 새로 조사 |
 | `INTERNAL_TOKEN` | 기본값으로 뜬다 — 배포에선 반드시 정한다 |
-| `ANTHROPIC_MODEL` · `OPENAI_MODEL` · `GEMINI_MODEL` | 어댑터 기본값 사용 |
+| `ANTHROPIC_MODEL` · `GEMINI_MODEL` | 어댑터 기본값 사용 |
 | `ANTHROPIC_EFFORT` | 보내지 않음 — Haiku 등은 이 값을 받으면 400 |
 
 **LLM 키는 여기 없다.** 요청의 `caller` 로 온다. 키를 두는 곳은

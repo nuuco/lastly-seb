@@ -2,7 +2,6 @@ from lastly_ai.core.config import get_settings
 from lastly_ai.services.providers.anthropic_provider import AnthropicProvider
 from lastly_ai.services.providers.base import LlmError, LlmProvider, Provider
 from lastly_ai.services.providers.gemini_provider import GeminiProvider
-from lastly_ai.services.providers.openai_provider import OpenAiProvider
 
 __all__ = ["LlmError", "LlmProvider", "Provider", "build_provider"]
 
@@ -20,10 +19,6 @@ def build_provider(provider: Provider, api_key: str) -> LlmProvider:
             api_key,
             **({"model": settings.anthropic_model} if settings.anthropic_model else {}),
             **({"effort": settings.anthropic_effort} if settings.anthropic_effort else {}),
-        )
-    if provider == "openai":
-        return OpenAiProvider(
-            api_key, **({"model": settings.openai_model} if settings.openai_model else {})
         )
     if provider == "gemini":
         return GeminiProvider(

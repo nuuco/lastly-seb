@@ -91,30 +91,3 @@ export function SnoozePicker({
     </>
   );
 }
-
-/** 주기 시트 하단에 붙는 진입 행. */
-export function SnoozeEntry({
-  snoozedUntil,
-  onClick,
-}: {
-  snoozedUntil: string | null;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'mt-5 flex w-full items-center justify-between border-t border-line pt-5 text-left',
-      )}
-    >
-      <span className="text-15.5 font-semibold text-ink-2">
-        {snoozedUntil ? '쉬는 중' : '당분간 쉬어갈래요'}
-      </span>
-      <span className="flex items-center gap-2.5 text-13 text-ink-3">
-        {snoozedUntil ? `${formatShortDate(snoozedUntil)}까지` : null}
-        <Chevron className="border-[1.6px] border-b-0 border-l-0" />
-      </span>
-    </button>
-  );
-}
