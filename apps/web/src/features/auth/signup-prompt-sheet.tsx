@@ -14,14 +14,24 @@ import { createClient } from '@/lib/supabase/client';
  *
  * 같은 요청이므로 상황이 달라도 같은 모양으로 낸다. 배지와 제목만 갈린다.
  */
-const COPY: Record<SignupPrompt, { badge: string; title: string[] }> = {
+const COPY: Record<SignupPrompt, { badge: string; title: string[]; body: string[] }> = {
   records: {
     badge: '기록 3개째',
     title: ['잘 쌓이고 있어요.', '이 기록, 안전하게 보관할까요?'],
+    body: ['계정을 연결해두면 폰을 바꾸거나 앱을 지워도', '지금까지의 기록이 그대로 남아요.'],
   },
+  /**
+   * 계정이 없어도 알림은 온다. 익명도 진짜 계정이라 배치가 그대로 집어간다.
+   * 그러니 "계정이 있어야 알림을 받는다" 고 말하면 거짓말이 된다.
+   *
+   * 진짜 문제는 이 브라우저의 쿠키가 유일한 열쇠라는 것이다. 그걸 잃으면
+   * 계정과 함께 알림도 끊기는데, 주기가 2주·한 달인 앱이라 한동안 안 여는 것이
+   * 정상이라 더 그렇다.
+   */
   notifications: {
     badge: '알림 설정',
-    title: ['알림을 받으시려면', '계정을 연결해 주세요.'],
+    title: ['알림은 지금도 받으실 수 있어요.', '다만 이 기기에서만요.'],
+    body: ['브라우저를 비우거나 폰을 바꾸면 알림이 끊겨요.', '계정을 연결해두면 그대로 이어집니다.'],
   },
 };
 
@@ -33,7 +43,7 @@ export function SignupPromptSheet({
   onDismiss: () => void;
 }) {
   const [pending, setPending] = useState(false);
-  const { badge, title } = COPY[prompt];
+  const { badge, title, body } = COPY[prompt];
 
   /**
    * 익명으로 쓰던 계정에 구글 신원을 붙인다.
@@ -73,9 +83,9 @@ export function SignupPromptSheet({
       </h2>
 
       <p className="mt-2.5 break-keep text-14 leading-[1.75] text-ink-2">
-        계정을 연결해두면 폰을 바꾸거나 앱을 지워도
+        {body[0]}
         <br />
-        지금까지의 기록이 그대로 남아요.
+        {body[1]}
       </p>
 
       {/* 카카오는 콘솔 등록 전이라 내려두었다. 등록이 끝나면 여기에 한 줄 더한다. */}
