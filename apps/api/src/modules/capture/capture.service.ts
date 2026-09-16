@@ -22,6 +22,7 @@ import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
 import { readUtterance, type UtteranceFacts } from './utterance-rules';
+import { appToday } from '../../common/clock';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
 export const MATCH_THRESHOLD = 0.82;
@@ -61,7 +62,7 @@ export class CaptureService {
     private readonly draft: DraftTokenService,
   ) {}
 
-  async interpret(userId: string, input: InterpretRequest, today = new Date()): Promise<InterpretResult> {
+  async interpret(userId: string, input: InterpretRequest, today = appToday()): Promise<InterpretResult> {
     const referenceDate = input.referenceDate ?? format(today, 'yyyy-MM-dd');
     const known = await this.items.listActive(userId);
 
@@ -193,7 +194,7 @@ export class CaptureService {
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
-  async commit(userId: string, req: CommitRequest, today = new Date()): Promise<CommitResult> {
+  async commit(userId: string, req: CommitRequest, today = appToday()): Promise<CommitResult> {
     const payload = this.draft.verify(req.draftToken, userId);
     const source = payload.mode === 'voice' ? 'voice' : 'text';
 

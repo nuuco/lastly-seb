@@ -10,6 +10,14 @@ export const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
   /**
+   * 날짜를 셀 때 기준이 되는 시간대. 서버 시계가 아니라 이 값을 쓴다.
+   *
+   * 배포 서버는 UTC 로 돈다. 한국 기준으로 자정부터 아침 9시까지는 UTC 날짜가
+   * 하루 뒤처져서, 그 시간에 남긴 기록이 어제 것이 된다.
+   */
+  APP_TIMEZONE: z.string().default('Asia/Seoul'),
+
+  /**
    * 서버가 제공하는 기본 키. 이게 있으면 사용자는 아무것도 등록하지 않아도 된다.
    *
    * Gemini 무료 등급을 쓴다 — 셋 중 유일하게 카드 없이 발급되고,

@@ -15,6 +15,7 @@ import { CadenceService } from '../cadence/cadence.service';
 import { LogsRepository } from './logs.repository';
 import { toCadenceRule, toItem } from './items.mapper';
 import { ItemsRepository } from './items.repository';
+import { appToday } from '../../common/clock';
 
 /** 리듬을 볼 때 거슬러 올라가는 기록 수. 오래된 습관까지 끌고 오지 않는다. */
 const DRIFT_LOG_WINDOW = 12;
@@ -31,7 +32,7 @@ export class ItemsService {
     private readonly ai: AiClient,
   ) {}
 
-  async list(userId: string, today = new Date()): Promise<Item[]> {
+  async list(userId: string, today = appToday()): Promise<Item[]> {
     const rows = await this.items.listActive(userId);
     return rows.map((row) => toItem(row, this.cadence, today));
   }
@@ -42,7 +43,7 @@ export class ItemsService {
    * 목록에서 하지 않는 이유는 항목마다 기록을 따로 읽어야 해서다.
    * 주기를 들여다보는 자리는 상세 하나뿐이므로 거기서만 센다.
    */
-  async findOne(userId: string, itemId: string, today = new Date()): Promise<Item> {
+  async findOne(userId: string, itemId: string, today = appToday()): Promise<Item> {
     const row = await this.items.findById(userId, itemId);
     const item = toItem(row, this.cadence, today);
 
@@ -68,7 +69,7 @@ export class ItemsService {
   async homeFeed(
     userId: string,
     displayName: string | null,
-    today = new Date(),
+    today = appToday(),
     viewer: { isAnonymous: boolean; promptsSeen: string[] } = {
       isAnonymous: false,
       promptsSeen: [],
@@ -122,7 +123,7 @@ export class ItemsService {
     };
   }
 
-  async create(userId: string, input: CreateItemInput, today = new Date()): Promise<Item> {
+  async create(userId: string, input: CreateItemInput, today = appToday()): Promise<Item> {
     if (await this.items.findByName(userId, input.name)) {
       throw new ConflictException('같은 이름의 항목이 이미 있어요.');
     }
@@ -145,7 +146,7 @@ export class ItemsService {
     return toItem(row, this.cadence, today);
   }
 
-  async update(userId: string, itemId: string, input: UpdateItemInput, today = new Date()): Promise<Item> {
+  async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
     const patch: Record<string, unknown> = {};
 
     if (input.name !== undefined) patch.name = input.name;
@@ -183,7 +184,7 @@ export class ItemsService {
    * 메모를 같이 찾는 게 요점이다. "필터 두 장 남음" 처럼 그때 적어둔 말은
    * 항목 이름에는 없지만 사용자가 기억하는 단서다.
    */
-  async search(userId: string, query: string, today = new Date()): Promise<SearchResult> {
+  async search(userId: string, query: string, today = appToday()): Promise<SearchResult> {
     const q = query.trim();
     if (!q) return { items: [], notes: [] };
 
@@ -210,7 +211,7 @@ export class ItemsService {
    * 예정일은 각 항목의 다음 한 번만 찍는다. 주기로 앞날을 계속 그려내면
    * 아직 일어나지 않은 일이 사실처럼 보이는데, 주기는 기록이 쌓이면 바뀐다.
    */
-  async calendar(userId: string, month: string, today = new Date()): Promise<CalendarMonth> {
+  async calendar(userId: string, month: string, today = appToday()): Promise<CalendarMonth> {
     const from = `${month}-01`;
     const to = format(endOfMonth(parseISO(from)), 'yyyy-MM-dd');
     const todayIso = format(today, 'yyyy-MM-dd');
