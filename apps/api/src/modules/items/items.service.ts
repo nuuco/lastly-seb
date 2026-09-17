@@ -108,6 +108,7 @@ export class ItemsService {
         : null;
 
     return {
+      today: format(today, 'yyyy-MM-dd'),
       signupPrompt,
       summary: {
         greetingName: displayName,
