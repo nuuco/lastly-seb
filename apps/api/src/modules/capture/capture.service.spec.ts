@@ -360,3 +360,30 @@ describe('CaptureService.interpret — AI 가 안 깨어났을 때', () => {
     expect(result.degraded).toBe(true);
   });
 });
+
+describe('CaptureService.interpret — 기준일 기본값', () => {
+  /**
+   * today 를 넘기지 않으면 한국 날짜로 잡히는지 본다.
+   *
+   * 배포 서버는 UTC 라서, 예전에는 한국 새벽에 남긴 기록이 어제 날짜로 저장됐다.
+   * 시계를 그 시각으로 고정해 실제 호출 경로에서 확인한다.
+   */
+  beforeAll(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-16T17:04:00Z'));
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  it('UTC 로는 어제인 시각에도 한국 날짜로 기록한다', async () => {
+    const { service } = buildService({ parse: null, items: [] });
+
+    const result = await service.interpret('user-1', {
+      text: '오늘 베란다 창틀 닦았어',
+      mode: 'text',
+    });
+
+    expect(result.doneOn).toBe('2026-09-17');
+  });
+});

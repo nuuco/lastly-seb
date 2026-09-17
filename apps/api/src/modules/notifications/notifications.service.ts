@@ -10,6 +10,7 @@ import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CadenceService } from '../cadence/cadence.service';
 import { ItemsRepository } from '../items/items.repository';
 import { LogsService } from '../items/logs.service';
+import { appToday } from '../../common/clock';
 
 interface DigestRow {
   user_id: string;
@@ -64,7 +65,7 @@ export class NotificationsService {
    * 알림 액션 처리 (화면 14).
    * complete는 오늘 날짜로 기록하고, snooze는 예정일만 미룬다.
    */
-  async handleAction(userId: string, itemId: string, action: NotificationAction, today = new Date()) {
+  async handleAction(userId: string, itemId: string, action: NotificationAction, today = appToday()) {
     if (action === 'complete') {
       return this.logs.completeToday(userId, itemId, today);
     }

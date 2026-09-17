@@ -1,6 +1,8 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { format } from 'date-fns';
 
+import { appToday } from '../../common/clock';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/guards/supabase-auth.guard';
 import { SupabaseAuthGuard } from '../../common/guards/supabase-auth.guard';
@@ -31,7 +33,7 @@ export class HomeController {
       .eq('id', user.id)
       .maybeSingle<{ display_name: string | null; signup_prompts_seen: string[] }>();
 
-    return this.items.homeFeed(user.id, data?.display_name ?? null, new Date(), {
+    return this.items.homeFeed(user.id, data?.display_name ?? null, appToday(), {
       isAnonymous: user.isAnonymous,
       promptsSeen: data?.signup_prompts_seen ?? [],
     });
@@ -42,6 +44,6 @@ export class HomeController {
   calendar(@CurrentUser('id') userId: string, @Query('month') month?: string) {
     // 값이 없거나 형식이 어긋나면 이번 달을 본다.
     const valid = month && /^\d{4}-\d{2}$/.test(month);
-    return this.items.calendar(userId, valid ? month : new Date().toISOString().slice(0, 7));
+    return this.items.calendar(userId, valid ? month : format(appToday(), 'yyyy-MM'));
   }
 }
