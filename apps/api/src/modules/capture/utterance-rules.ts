@@ -251,6 +251,20 @@ function stripCadence(text: string): string {
  * 지우는 순서가 중요하다. 주기("한달에 한번")를 먼저 지워야 그 안의 "달"과
  * 숫자가 날짜나 이름으로 새어 나가지 않는다.
  */
+/**
+ * 미래 관형형인지. "뺄 거야" 의 "뺄", "갈 거야" 의 "갈" 을 가리킨다.
+ *
+ * ㄹ 받침으로 끝나는 글자가 그 형태다. 이걸 못 알아보면 "거야" 만 떨어져 나가고
+ * 동사가 홀로 남아 이름에 붙는다 — 실제로 "운동화 앞으로 뺄 빨래" 가 되어 나왔다.
+ *
+ * "이불" 처럼 ㄹ 받침으로 끝나는 명사도 있지만, 바로 뒤에 "거야" 가 오는 자리에서는
+ * 앞말이 명사일 일이 거의 없다.
+ */
+function endsWithFutureEnding(word: string): boolean {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code < 11172 && code % 28 === 8;
+}
+
 export function readName(text: string): string | null {
   return readNameWithAction(text).name;
 }
@@ -266,7 +280,10 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
    */
   s = s.replace(/할\s*(?:래|거|게)\s*[가-힣]*/g, ' ');
   s = s.replace(/하려고[가-힣]*|할\s*생각[가-힣]*/g, ' ');
-  s = s.replace(/\S*(?:거|게)\s*야/g, ' ');
+  s = s.replace(/앞으로|이제부터|다음부터/g, ' ');
+  s = s.replace(/([가-힣]+)?\s*(?:거|게)\s*야/g, (_m, word?: string) =>
+    word && endsWithFutureEnding(word) ? ' ' : word ? ` ${word} ` : ' ',
+  );
 
   s = s.replace(DONE_MARKERS, ' ');
   s = s.replace(FIRST_PERSON, ' ');
