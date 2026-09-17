@@ -15,6 +15,7 @@ import { format, subDays } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
 import { CadenceService } from '../cadence/cadence.service';
+import { PriorsRepository } from '../cadence/priors.repository';
 import { toCadenceRule, toItem } from '../items/items.mapper';
 import type { ItemRow } from '../items/items.repository';
 import { ItemsRepository } from '../items/items.repository';
@@ -59,6 +60,7 @@ export class CaptureService {
     private readonly itemsService: ItemsService,
     private readonly logs: LogsService,
     private readonly cadence: CadenceService,
+    private readonly priors: PriorsRepository,
     private readonly draft: DraftTokenService,
   ) {}
 
@@ -404,11 +406,11 @@ export class CaptureService {
       matchedItemId: null,
       candidates: [],
       /**
-       * 주기는 기본값으로 둔다. resolveCadence 를 부르면 AI 에게 또 물어보는데,
-       * 방금 응답하지 않은 상대라 45초를 더 기다리게 된다.
+       * AI 는 부르지 않는다. 방금 응답하지 않은 상대라 45초를 더 기다리게 된다.
+       * 대신 사전은 본다 — DB 한 번이라 빠르고, "빨래를 2주마다" 같은 엉뚱한 기본값을 막는다.
        * (주기를 말한 경우라면 byRules 에서 이미 끝났으므로 여기엔 오지 않는다.)
        */
-      cadence: {
+      cadence: (await this.cadenceFromPrior(name, doneOn)) ?? {
         rule: FALLBACK_CADENCE,
         source: 'default',
         confidence: 0.3,
@@ -489,6 +491,27 @@ export class CaptureService {
     };
   }
 
+  /**
+   * 주기 사전에서 찾는다. 없으면 null.
+   *
+   * 사전은 AI 가 조사한 답이 쌓이는 곳이기도 하다. 그래서 같은 항목을 두 번째 만나는
+   * 사람부터는 AI 없이 즉시 답이 나간다.
+   */
+  private async cadenceFromPrior(name: string, doneOn: string): Promise<CadenceSuggestion | null> {
+    const prior = await this.priors.find(name);
+    if (!prior) return null;
+
+    const rule = { ...this.cadence.toRule(prior.days), notifyTimeLocal: null };
+
+    return {
+      rule,
+      source: 'community',
+      confidence: prior.confidence,
+      rationale: prior.rationale ?? `보통 ${this.cadence.describe(rule)} 하는 일이에요.`,
+      nextDueOn: this.cadence.nextDueOn(doneOn, rule) ?? doneOn,
+    };
+  }
+
   private async resolveCadence(
     userId: string,
     outcome: InterpretOutcome,
@@ -533,6 +556,13 @@ export class CaptureService {
 
     if (!normalizedName) return null;
 
+    /**
+     * 사전을 먼저 본다. 흔한 항목은 여기서 끝나 AI 를 부르지 않는다 —
+     * 40밀리초면 되고, apps/ai 가 잠들어 있어도 제대로 된 주기가 나간다.
+     */
+    const fromPrior = await this.cadenceFromPrior(normalizedName, doneOn);
+    if (fromPrior) return fromPrior;
+
     const suggested = await this.ai.suggestCadence({
       item_name: normalizedName,
       history: [],
@@ -540,7 +570,7 @@ export class CaptureService {
     });
 
     if (!suggested) {
-      this.logger.warn(`주기 제안 실패, 폴백 사용: ${normalizedName}`);
+      this.logger.warn(`사전에 없고 AI 도 응답하지 않음, 폴백 사용: ${normalizedName}`);
       return {
         rule: FALLBACK_CADENCE,
         source: 'default',
