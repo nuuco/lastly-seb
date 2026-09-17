@@ -40,6 +40,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # 서버는 UTC 로 돈다. 날짜 계산은 이 시간대를 기준으로 한다.
+      - key: APP_TIMEZONE
+        value: Asia/Seoul
       # 서버 안의 시계는 끈다. 무료 플랜은 자는 동안 그 시간을 흘려보낸다.
       - key: ENABLE_CRON
         value: 'false'

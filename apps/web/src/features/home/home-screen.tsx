@@ -2,6 +2,7 @@
 
 import type { HomeFeed, Item } from '@lastly/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { parseISO } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 
 import { Toast } from '@/components/ui/toast';
@@ -34,14 +35,18 @@ interface HomeScreenProps {
 /** 화면 04 / 05 / 05-B / 07 / 07-C / 08 / 09 / 10 — 단일 홈 구조의 전부. */
 export function HomeScreen({ initialFeed }: HomeScreenProps) {
   const queryClient = useQueryClient();
-  const today = new Date();
-
   const feed = useQuery({
     queryKey: queryKeys.home,
     queryFn: itemsApi.homeFeed,
     // initialData가 있으면 첫 렌더에 그대로 그리고, staleTime이 지나기 전까진 다시 안 부른다.
     initialData: initialFeed ?? undefined,
   });
+  /**
+   * 서버가 본 오늘을 쓴다. 기기 시계를 쓰면 맨 윗줄만 따로 움직인다 —
+   * 폰 날짜를 바꾸면 날짜는 바뀌는데 항목은 그대로였다.
+   */
+  const today = parseISO(feed.data?.today ?? todayIso());
+
   const speech = useSpeechRecognition();
   // 해석이 끝나야 입력창을 비운다. 기다리는 동안 보낸 문장이 남아 있어야 한다.
   const capture = useCapture({ onInterpreted: () => setDraft('') });

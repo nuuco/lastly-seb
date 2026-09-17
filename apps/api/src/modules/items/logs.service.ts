@@ -4,6 +4,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 
 import { ItemsRepository } from './items.repository';
 import { LogsRepository, type LogRow } from './logs.repository';
+import { appToday } from '../../common/clock';
 
 @Injectable()
 export class LogsService {
@@ -33,7 +34,7 @@ export class LogsService {
   }
 
   /** "오늘 했어요" — 화면 05/11/14의 주 액션. */
-  async completeToday(userId: string, itemId: string, today = new Date()): Promise<CompleteItemResult> {
+  async completeToday(userId: string, itemId: string, today = appToday()): Promise<CompleteItemResult> {
     const doneOn = format(today, 'yyyy-MM-dd');
     const row = await this.logs.insert(userId, itemId, { doneOn, note: null }, 'manual');
 

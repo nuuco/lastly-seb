@@ -94,6 +94,13 @@ export const signupPromptSchema = z.enum([
 export type SignupPrompt = z.infer<typeof signupPromptSchema>;
 
 export const homeFeedSchema = z.object({
+  /**
+   * 서버가 본 오늘. 화면 맨 위 날짜는 이 값을 쓴다.
+   *
+   * 기기 시계를 쓰면 화면이 갈린다 — 날짜는 18일인데 항목은 17일 기준으로 보인다.
+   * 실제로 폰 날짜를 바꿔 보다가 드러났다. 밀림 여부를 정하는 쪽과 같은 날짜여야 한다.
+   */
+  today: isoDateSchema,
   summary: homeSummarySchema,
   /** 지금 권할 유도. 없으면 null — 이미 계정이 있거나, 아직 때가 아니거나, 이미 물었거나. */
   signupPrompt: signupPromptSchema.nullable().default(null),

@@ -42,6 +42,8 @@ const parsed = (over: Partial<AiParseResponse> = {}): AiParseResponse => ({
 function buildService(overrides: {
   parse?: AiParseResponse | null;
   items?: ItemRow[];
+  /** 주기 사전에 있는 항목이면 일수. 기본은 "사전에 없음". */
+  priorDays?: number | null;
 }) {
   const rows = overrides.items ?? [itemRow()];
 
@@ -69,6 +71,14 @@ function buildService(overrides: {
   };
 
   const itemsService = { userAverageInterval: jest.fn().mockResolvedValue(14) };
+
+  const priors = {
+    find: jest.fn().mockResolvedValue(
+      overrides.priorDays
+        ? { name: '사전 항목', days: overrides.priorDays, confidence: 0.8, rationale: '사전 근거' }
+        : null,
+    ),
+  };
   const logs = { add: jest.fn() };
   const draft = { sign: jest.fn().mockReturnValue('signed-token'), verify: jest.fn() };
 
@@ -78,10 +88,11 @@ function buildService(overrides: {
     itemsService as never,
     logs as never,
     new CadenceService(),
+    priors as never,
     draft as never,
   );
 
-  return { service, ai, items, itemsService };
+  return { service, ai, items, itemsService, priors };
 }
 
 const TODAY = new Date('2026-09-06T00:00:00Z');
@@ -358,5 +369,81 @@ describe('CaptureService.interpret — AI 가 안 깨어났을 때', () => {
     expect(result.outcome).toBe('unrecognized');
     expect(result.normalizedName).toBeNull();
     expect(result.degraded).toBe(true);
+  });
+});
+
+describe('CaptureService.interpret — 기준일 기본값', () => {
+  /**
+   * today 를 넘기지 않으면 한국 날짜로 잡히는지 본다.
+   *
+   * 배포 서버는 UTC 라서, 예전에는 한국 새벽에 남긴 기록이 어제 날짜로 저장됐다.
+   * 시계를 그 시각으로 고정해 실제 호출 경로에서 확인한다.
+   */
+  beforeAll(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-16T17:04:00Z'));
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  it('UTC 로는 어제인 시각에도 한국 날짜로 기록한다', async () => {
+    const { service } = buildService({ parse: null, items: [] });
+
+    const result = await service.interpret('user-1', {
+      text: '오늘 베란다 창틀 닦았어',
+      mode: 'text',
+    });
+
+    expect(result.doneOn).toBe('2026-09-17');
+  });
+});
+
+describe('CaptureService.interpret — 주기 사전', () => {
+  /**
+   * 사전은 AI 가 조사한 답이 쌓이는 곳이다. 두 번째로 같은 항목을 만나면
+   * AI 를 부르지 않고 끝나야 한다 — 빠르고, AI 가 자고 있어도 정확하다.
+   */
+  it('사전에 있으면 AI 에게 주기를 묻지 않는다', async () => {
+    const { service, ai } = buildService({
+      parse: parsed({ normalized_name: '옷 빨래', matched_item_id: null, candidates: [] }),
+      priorDays: 3,
+    });
+
+    const result = await service.interpret('user-1', { text: '오늘 옷 빨았어', mode: 'text' }, TODAY);
+
+    expect(result.cadence?.rule).toMatchObject({ unit: 'day', interval: 3 });
+    expect(result.cadence?.source).toBe('community');
+    expect(result.cadence?.rationale).toBe('사전 근거');
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('사전에 없으면 AI 에게 묻는다', async () => {
+    const { service, ai } = buildService({
+      parse: parsed({ normalized_name: '운동화 빨래', matched_item_id: null, candidates: [] }),
+    });
+
+    await service.interpret('user-1', { text: '오늘 운동화 빨았어', mode: 'text' }, TODAY);
+
+    expect(ai.suggestCadence).toHaveBeenCalled();
+  });
+
+  /**
+   * 실기기에서 나온 문제다 — AI 가 잠든 사이 "옷 빨래" 가 2주마다로 저장됐다.
+   * 사전에 답이 있는데도 못 읽어서 생긴 일이라, 이 경로에서도 사전을 본다.
+   */
+  it('AI 가 안 깨어나도 사전에 있으면 그 주기를 쓴다', async () => {
+    const { service, ai } = buildService({ parse: null, priorDays: 3 });
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '어제 세탁했어 옷', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.cadence?.rule).toMatchObject({ unit: 'day', interval: 3 });
+    expect(result.cadence?.source).toBe('community');
+    // 사전은 DB 한 번이라 빠르다. 자고 있는 AI 는 여전히 부르지 않는다.
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
   });
 });
