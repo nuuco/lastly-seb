@@ -1,0 +1,45 @@
+name: 백엔드 깨워두기
+
+# 무료 호스팅은 15분 요청이 없으면 서버를 재우고, 다시 깨우는 데 20초 넘게 걸린다.
+# 그동안 사용자는 빈 화면을 본다. 그래서 낮 시간에는 10분마다 찔러 깨워 둔다.
+#
+# 하루 종일 깨워두면 안 된다. 무료 한도가 워크스페이스 전체에 월 750시간인데,
+# 한 서비스를 24시간 돌리면 그것만으로 744시간이라 AI 서비스 몫이 안 남는다.
+# 한도를 넘기면 그 달 남은 기간 동안 무료 서비스가 전부 정지된다.
+#
+#   깨워두는 시간   16시간 × 31일          = 496시간
+#   알림 배치가 깨우는 시간 (그 밖 8시간)    =  62시간
+#   ────────────────────────────────────────────────
+#   백엔드 합계                            = 558시간   → AI 서비스 몫 약 190시간
+#
+# AI 서비스는 일부러 깨우지 않는다. 사람이 홈 화면을 열면 백엔드가 미리 깨워 둔다.
+on:
+  schedule:
+    # UTC 23시 ~ 14시 = 한국 시간 08시 ~ 24시. 10분 간격.
+    - cron: '*/10 0-14,23 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-awake
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: 백엔드 찔러보기
+        run: |
+          # 자고 있었다면 이 요청이 깨운다. 깨어나는 데 시간이 걸리므로 넉넉히 기다린다.
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            --max-time 90 --retry 2 --retry-delay 15 --retry-connrefused \
+            https://lastly-api.onrender.com/v1/health)
+
+          echo "응답 $status"
+
+          # 실패해도 작업을 실패로 만들지 않는다. 깨어나는 중에는 502 가 정상이고,
+          # 매번 메일이 오면 진짜 장애를 알아보지 못하게 된다.
+          if [ "$status" != "200" ]; then
+            echo "::warning::백엔드가 $status 로 답했습니다."
+          fi
