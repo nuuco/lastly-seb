@@ -5,6 +5,7 @@ import type { SignupPrompt } from '@lastly/contracts';
 import { todayIso } from '@/lib/date';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
@@ -14,7 +15,7 @@ import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { cn } from '@/lib/cn';
 import { createClient } from '@/lib/supabase/client';
-import { useSignedIn } from '@/lib/supabase/use-signed-in';
+import { useAnonymous, useSignedIn } from '@/lib/supabase/use-signed-in';
 
 /** 설계 13 / 13-B. */
 export default function SettingsPage() {
@@ -29,6 +30,8 @@ export default function SettingsPage() {
    * 알림을 켜는 순간 계정이 만들어지고 그 값이 서버에 저장된다.
    */
   const signedIn = useSignedIn();
+  const anonymous = useAnonymous();
+  const router = useRouter();
 
   const settings = useQuery({
     queryKey: queryKeys.notificationSettings,
@@ -137,9 +140,28 @@ export default function SettingsPage() {
         <ActionRow divider onClick={() => void downloadExport()}>
           기록 내보내기
         </ActionRow>
-        <ActionRow divider onClick={() => void createClient().auth.signOut()}>
-          로그아웃
-        </ActionRow>
+        {/*
+          * 익명 사용자에게는 로그아웃을 보여주지 않는다.
+          *
+          * 이 브라우저의 토큰이 그 계정으로 가는 유일한 열쇠다. 로그아웃은 그 열쇠를
+          * 버리는 일이라, 지금까지 적은 것에 다시 닿을 방법이 없어진다.
+          * 먼저 계정을 연결해 잃을 것이 없게 만든 뒤에 쓰게 한다.
+          */}
+        {anonymous === false ? (
+          <ActionRow
+            divider
+            onClick={async () => {
+              await createClient().auth.signOut();
+              router.replace('/login');
+            }}
+          >
+            로그아웃
+          </ActionRow>
+        ) : (
+          <ActionRow divider onClick={() => router.push('/login')}>
+            구글 계정 연결하기
+          </ActionRow>
+        )}
         <ActionRow danger onClick={() => setDeleteOpen(true)}>
           계정 삭제
         </ActionRow>

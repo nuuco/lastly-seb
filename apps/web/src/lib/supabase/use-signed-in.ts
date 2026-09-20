@@ -27,3 +27,28 @@ export function useSignedIn(): boolean | null {
 
   return signedIn;
 }
+
+/**
+ * 익명 계정인지. 확인 전에는 null.
+ *
+ * 익명은 이 브라우저의 토큰이 유일한 열쇠라, 로그아웃처럼 그 열쇠를 버리는 길을
+ * 열어두면 안 된다. 화면이 그 구분을 할 수 있어야 한다.
+ */
+export function useAnonymous(): boolean | null {
+  const [anonymous, setAnonymous] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!alive) return;
+        setAnonymous(data.user ? Boolean(data.user.is_anonymous) : null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return anonymous;
+}
