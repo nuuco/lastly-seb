@@ -9,13 +9,18 @@ WORKDIR /repo
 # 의존성 목록만 먼저 복사해 캐시를 살린다. 소스가 바뀌어도 install을 다시 하지 않는다.
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/parser/package.json ./packages/parser/
 COPY apps/api/package.json ./apps/api/
 RUN pnpm install --frozen-lockfile --filter @lastly/api...
 
 COPY packages/contracts ./packages/contracts
+COPY packages/parser ./packages/parser
 COPY apps/api ./apps/api
-# '...' 를 붙여 의존 패키지(contracts)까지 함께 빌드한다.
-# contracts는 런타임 값(zod 스키마)이라 dist가 없으면 api가 실행 시 죽는다.
+# '...' 를 붙여 의존 패키지(contracts · parser)까지 함께 빌드한다.
+# 둘 다 런타임 값(zod 스키마 · 규칙 표)이라 dist가 없으면 api가 실행 시 죽는다.
+#
+# 워크스페이스 패키지를 새로 만들면 여기 두 줄(package.json 과 소스)을 반드시 더한다.
+# 빠뜨리면 --frozen-lockfile 이 락파일과 워크스페이스가 다르다며 install 에서 멈춘다.
 RUN pnpm --filter @lastly/api... build
 
 
