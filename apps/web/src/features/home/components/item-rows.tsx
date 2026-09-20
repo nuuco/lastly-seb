@@ -10,7 +10,12 @@ import { cycleProgress, describeCadence, formatDueBadge, formatShortDate } from 
 /**
  * 설계 05는 버킷마다 행 모양이 다르다. 하나로 합치면 화면이 평평해진다.
  *  - 다가오는 항목: 이름 + D-n 크게, 아래에 경과 진행 막대
- *  - 여유 있는 항목: 목록이 아니라 "가장 가까운 건 ○○" 한 줄
+ *  - 여유 있는 항목: 한 줄짜리 옅은 행
+ *
+ * 설계와 한 군데 다르다. 여유 있는 항목을 "가장 가까운 건 ○○" 한 줄로 접어 두었는데,
+ * 실기기에서 그 줄이 눌러서 펼치는 것으로 읽히지 않았다 — 상세로 넘어가는 줄 알았다.
+ * 게다가 펼치면 그 항목이 어차피 맨 위라 같은 말을 두 번 하는 셈이었다.
+ * 그래서 앞의 몇 개를 그대로 보여주고 "+ 더보기" 로 나머지를 펼친다.
  */
 
 /** 항목들을 묶는 둥근 카드. 행 사이는 구분선으로만 나눈다. */
@@ -72,44 +77,64 @@ export function UpcomingRow({ item, last }: { item: Item; last: boolean }) {
  * 쉬어가기는 "잊혀질 자리를 만들지 않는다" 는 것이 요점이므로,
  * 쉬는 게 있으면 접힌 줄에서도 그 사실이 보여야 한다.
  */
-export function LaterGroup({ items }: { items: Item[] }) {
+/** 접힌 채로 몇 개만 보여주고, 나머지는 눌러서 펼친다. */
+function Collapsible({
+  count,
+  preview,
+  children,
+}: {
+  count: number;
+  /** 접혀 있을 때 보여줄 개수. */
+  preview: number;
+  children: (visible: number) => React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
-  const nearest = items.find((i) => !i.snoozedUntil) ?? items[0];
-  if (!nearest) return null;
-
-  if (open) {
-    return (
-      <div className="mt-2 rounded-card border border-line bg-card px-4 shadow-card">
-        {items.map((item, i) => (
-          <LaterRow key={item.id} item={item} last={i === items.length - 1} />
-        ))}
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="w-full px-0.5 py-3 text-13 font-semibold text-accent-ink"
-        >
-          접기
-        </button>
-      </div>
-    );
-  }
+  const hidden = count - preview;
 
   return (
     <div className="mt-2 rounded-card border border-line bg-card px-4 shadow-card">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2.5 px-0.5 py-3.5 text-left transition-colors active:bg-surface-alt"
-      >
-        <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-2">
-          가장 가까운 건 {nearest.name}
-        </span>
-        <span className="shrink-0 text-12.5 font-semibold tracking-[-.02em] text-ink-3">
-          {formatDueBadge(nearest.daysUntilDue)}
-        </span>
-        <Chevron />
-      </button>
+      {children(open ? count : preview)}
+
+      {hidden > 0 ? (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="w-full px-0.5 py-3 text-13 font-semibold text-accent-ink transition-colors active:bg-surface-alt"
+        >
+          {open ? '접기' : `+ 더보기 ${hidden}개`}
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+/** 다가오는 항목. 곧 할 일이라 넉넉히 보여준다. */
+export function UpcomingGroup({ items }: { items: Item[] }) {
+  return (
+    <Collapsible count={items.length} preview={5}>
+      {(visible) =>
+        items
+          .slice(0, visible)
+          .map((item, i) => (
+            <UpcomingRow key={item.id} item={item} last={i === Math.min(visible, items.length) - 1} />
+          ))
+      }
+    </Collapsible>
+  );
+}
+
+/** 여유 있는 항목. 한참 남은 것들이라 조금만 보여준다. */
+export function LaterGroup({ items }: { items: Item[] }) {
+  return (
+    <Collapsible count={items.length} preview={3}>
+      {(visible) =>
+        items
+          .slice(0, visible)
+          .map((item, i) => (
+            <LaterRow key={item.id} item={item} last={i === Math.min(visible, items.length) - 1} />
+          ))
+      }
+    </Collapsible>
   );
 }
 

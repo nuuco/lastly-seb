@@ -25,7 +25,7 @@ import { EmptyState } from './components/empty-state';
 import { HomeError, HomeSkeleton } from './components/home-states';
 import { HeroCarousel } from './components/hero-carousel';
 import { AllDoneCard, HomeHeader } from './components/home-header';
-import { LaterGroup, RowGroup, SectionHeader, UpcomingRow } from './components/item-rows';
+import { LaterGroup, SectionHeader, UpcomingGroup } from './components/item-rows';
 
 interface HomeScreenProps {
   /** 서버에서 미리 가져온 피드. 없으면(비로그인 등) 클라이언트가 다시 가져온다. */
@@ -206,11 +206,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
             {upcoming.length > 0 ? (
               <>
                 <SectionHeader label="다가오는 항목" count={upcoming.length} />
-                <RowGroup>
-                  {upcoming.map((item, i) => (
-                    <UpcomingRow key={item.id} item={item} last={i === upcoming.length - 1} />
-                  ))}
-                </RowGroup>
+                <UpcomingGroup items={upcoming} />
               </>
             ) : null}
 
