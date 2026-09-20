@@ -15,6 +15,7 @@ import {
   ensureEngine,
   hasWebGpu,
   parseOnDevice,
+  parseOnDeviceModelOnly,
   probeModel,
   subscribeEngineProgress,
 } from '@/features/on-device/engine';
@@ -159,6 +160,35 @@ export default function OnDeviceLabPage() {
         const started = performance.now();
         try {
           const parsed = await parseOnDevice(row.text, GOLDEN_REF_DATE, GOLDEN_KNOWN_ITEMS);
+          const ms = Math.round(performance.now() - started);
+          setResult(parsed);
+          setElapsedMs(ms);
+          setRuns((prev) => ({ ...prev, [row.n]: { n: row.n, ms, result: parsed, error: null } }));
+        } catch (err) {
+          const ms = Math.round(performance.now() - started);
+          const message = err instanceof Error ? err.message : String(err);
+          setRuns((prev) => ({ ...prev, [row.n]: { n: row.n, ms, result: null, error: message } }));
+        }
+      }
+    } finally {
+      setBusy(null);
+      setBatchLabel(null);
+    }
+  };
+
+  const parseModelOnlyKind = async (kind: GoldenKind | 'all') => {
+    const rows = casesForKind(kind);
+    setBusy('batch');
+    setError(null);
+    try {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]!;
+        setBatchLabel(`${i + 1}/${rows.length}`);
+        setGolden(row);
+        setText(row.text);
+        const started = performance.now();
+        try {
+          const parsed = await parseOnDeviceModelOnly(row.text, GOLDEN_REF_DATE, GOLDEN_KNOWN_ITEMS);
           const ms = Math.round(performance.now() - started);
           setResult(parsed);
           setElapsedMs(ms);
@@ -342,6 +372,7 @@ export default function OnDeviceLabPage() {
         onParseOne={parseGolden}
         onParseKind={parseKind}
         onScoreRules={scoreRulesKind}
+        onParseModelOnly={parseModelOnlyKind}
         rulesRev={UTTERANCE_RULES_REV}
         runs={runs}
       />

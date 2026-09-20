@@ -27,6 +27,8 @@ interface Props {
   onParseKind: (kind: GoldenKind | 'all') => void;
   /** Gemma 없이 규칙만. 번들 갱신 확인용. */
   onScoreRules: (kind: GoldenKind | 'all') => void;
+  /** 규칙 보정 없이 모델 출력 그대로. 모델 단독 실력 확인용. */
+  onParseModelOnly: (kind: GoldenKind | 'all') => void;
   rulesRev: number;
   runs: Record<number, GoldenRun>;
 }
@@ -38,6 +40,7 @@ export function GoldenSetPanel({
   onParseOne,
   onParseKind,
   onScoreRules,
+  onParseModelOnly,
   rulesRev,
   runs,
 }: Props) {
@@ -117,6 +120,14 @@ export function GoldenSetPanel({
           className="flex h-11 min-w-[30%] flex-1 items-center justify-center rounded-lg border border-line bg-card text-14 font-semibold text-ink disabled:opacity-40"
         >
           규칙만 채점
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onParseModelOnly(kind)}
+          className="flex h-11 min-w-[30%] flex-1 items-center justify-center rounded-lg border border-line bg-card text-14 font-semibold text-ink disabled:opacity-40"
+        >
+          모델만 채점
         </button>
       </div>
 

@@ -97,11 +97,29 @@ export async function parseOnDevice(
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
 ): Promise<OnDeviceParseResult> {
+  const raw = await generateRaw(text, referenceDate, knownItems);
+  return overlayWithRules(text, referenceDate, knownItems, parseModelJson(raw));
+}
+
+/** 규칙 보정 없이 모델 출력 그대로. 모델 단독 실력을 볼 때만 쓴다. */
+export async function parseOnDeviceModelOnly(
+  text: string,
+  referenceDate: string,
+  knownItems: OnDeviceKnownItem[],
+): Promise<OnDeviceParseResult> {
+  const raw = await generateRaw(text, referenceDate, knownItems);
+  return parseModelJson(raw);
+}
+
+async function generateRaw(
+  text: string,
+  referenceDate: string,
+  knownItems: OnDeviceKnownItem[],
+): Promise<string> {
   await ensureEngine();
   const prompt = buildParsePrompt(text, referenceDate, knownItems);
   const w = getWorker();
-  const raw = (await request(w, { type: 'generate', prompt })) as string;
-  return overlayWithRules(text, referenceDate, knownItems, parseModelJson(raw));
+  return (await request(w, { type: 'generate', prompt })) as string;
 }
 
 function getWorker(): Worker {
