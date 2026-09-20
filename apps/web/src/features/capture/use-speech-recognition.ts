@@ -136,15 +136,31 @@ export function useSpeechRecognition() {
     recognition.onresult = (event) => {
       let text = '';
       let confidence = 0;
+      let done = false;
 
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i]!;
         const alternative = result[0]!;
         text += alternative.transcript;
-        if (result.isFinal) confidence = alternative.confidence;
+        if (result.isFinal) {
+          confidence = alternative.confidence;
+          done = true;
+        }
       }
 
       setState((prev) => ({ ...prev, transcript: text, confidence }));
+
+      /**
+       * 말이 끝났으면 그 자리에서 마이크를 놓는다.
+       *
+       * onend 를 기다리면 안 된다. 아이폰은 결과를 준 뒤에도 그 신호를 한참 늦게 주거나
+       * 아예 주지 않아서, 글자가 화면에 뜬 뒤에도 마이크가 켜진 채로 남는다.
+       * 들을 말이 끝났는데 계속 잡고 있을 이유가 없다.
+       */
+      if (done) {
+        release();
+        setState((prev) => ({ ...prev, listening: false }));
+      }
     };
 
     recognition.onerror = (event) => {
