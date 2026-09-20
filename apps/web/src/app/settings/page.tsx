@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
+import { OnDeviceSettings } from '@/features/on-device/on-device-settings';
 import { usePushSubscription } from '@/features/notifications/use-push-subscription';
 import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -154,6 +155,8 @@ export default function SettingsPage() {
           </Link>
         </p>
       ) : null}
+
+      <OnDeviceSettings />
 
       <SectionLabel>계정</SectionLabel>
       <Card>

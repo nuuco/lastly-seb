@@ -35,6 +35,8 @@ interface SpeechRecognitionEventLike {
 
 /** 말이 없어도 이 시간이 지나면 스스로 끊는다. onend 가 오지 않는 경우가 있다. */
 const MAX_LISTEN_MS = 15_000;
+/** 마지막 글자 뒤로 이만큼 조용하면 한 마디가 끝난 것으로 본다. */
+const SILENCE_MS = 1_400;
 
 function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null;
@@ -56,6 +58,7 @@ export interface SpeechState {
 export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [state, setState] = useState<SpeechState>({
     supported: false,
@@ -75,6 +78,10 @@ export function useSpeechRecognition() {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+    if (silenceRef.current) {
+      clearTimeout(silenceRef.current);
+      silenceRef.current = null;
     }
 
     const recognition = recognitionRef.current;
@@ -129,42 +136,51 @@ export function useSpeechRecognition() {
 
     const recognition = new Ctor();
     recognition.lang = 'ko-KR';
-    recognition.continuous = false;
+    /**
+     * 한 조각이 확정돼도 마이크를 유지한다. false 로 두면 첫 어절에서
+     * 글자가 끊기고, 받아쓰기가 한 글자도 안 보이는 것처럼 느껴진다.
+     */
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+
+    const finish = () => {
+      if (silenceRef.current) {
+        clearTimeout(silenceRef.current);
+        silenceRef.current = null;
+      }
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    };
+
+    const bumpSilence = () => {
+      if (silenceRef.current) clearTimeout(silenceRef.current);
+      silenceRef.current = setTimeout(finish, SILENCE_MS);
+    };
 
     recognition.onresult = (event) => {
       let text = '';
       let confidence = 0;
-      let done = false;
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      for (let i = 0; i < event.results.length; i += 1) {
         const result = event.results[i]!;
         const alternative = result[0]!;
         text += alternative.transcript;
-        if (result.isFinal) {
-          confidence = alternative.confidence;
-          done = true;
-        }
+        if (result.isFinal) confidence = alternative.confidence;
       }
 
       setState((prev) => ({ ...prev, transcript: text, confidence }));
-
-      /**
-       * 말이 끝났으면 그 자리에서 마이크를 놓는다.
-       *
-       * onend 를 기다리면 안 된다. 아이폰은 결과를 준 뒤에도 그 신호를 한참 늦게 주거나
-       * 아예 주지 않아서, 글자가 화면에 뜬 뒤에도 마이크가 켜진 채로 남는다.
-       * 들을 말이 끝났는데 계속 잡고 있을 이유가 없다.
-       */
-      if (done) {
-        release();
-        setState((prev) => ({ ...prev, listening: false }));
-      }
+      bumpSilence();
     };
 
     recognition.onerror = (event) => {
       const message = describeError(event.error);
+      // aborted 는 우리가 끊은 것이다. 오류로 적지 않는다.
+      if (event.error === 'aborted') {
+        release();
+        setState((prev) => ({ ...prev, listening: false }));
+        return;
+      }
       release();
       // no-speech 는 잘못이 아니라 그냥 조용했던 것이다. 오류로 적지 않는다.
       setState((prev) => ({
@@ -175,6 +191,18 @@ export function useSpeechRecognition() {
     };
 
     recognition.onend = () => {
+      /**
+       * continuous 에서도 브라우저가 중간에 onend 를 낸다.
+       * 침묵 타이머가 아직이면 한 마디가 끝난 게 아니므로 다시 듣는다.
+       */
+      if (silenceRef.current && recognitionRef.current === recognition) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          // fall through
+        }
+      }
       release();
       setState((prev) => ({ ...prev, listening: false }));
     };
@@ -198,6 +226,10 @@ export function useSpeechRecognition() {
 
   /** 사용자가 멈춤을 눌렀을 때. 지금까지 들은 것은 살린다. */
   const stop = useCallback(() => {
+    if (silenceRef.current) {
+      clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
     const recognition = recognitionRef.current;
     if (!recognition) return;
 

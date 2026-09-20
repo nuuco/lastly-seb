@@ -15,6 +15,14 @@ import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { CalendarView } from '@/features/calendar/calendar-view';
+import {
+  getModelConsent,
+  hasModelConsent,
+  setModelConsent,
+} from '@/features/on-device/consent';
+import { ensureEngine, hasWebGpu } from '@/features/on-device/engine';
+import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
+import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { profileApi } from '@/lib/api/profile';
@@ -98,6 +106,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   /** 이 화면이 그리는 목록. 서버 것이 없으면 기기에 복사해 둔 것. */
   const shown = feed.data ?? cached?.feed;
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
   /**
    * 낡은 것을 보여주는 중인지. 알려주지 않으면 최신으로 착각한다.
    *
@@ -125,13 +135,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   const processPending = () => {
     const next = pending.takeRaw();
-    if (next) capture.interpret({ text: next.text, mode: next.mode });
+    if (next) capture.interpret({ text: next.text, mode: next.mode, knownItems: knownFrom(shown) });
   };
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [draft, setDraft] = useState('');
+  const [consentOpen, setConsentOpen] = useState(false);
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
@@ -163,6 +174,12 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     setDeleted(takeDeletedNotice());
   }, []);
 
+  useEffect(() => {
+    if (!hasWebGpu()) return;
+    if (getModelConsent() === null) setConsentOpen(true);
+    if (hasModelConsent()) void ensureEngine().catch(() => undefined);
+  }, []);
+
   const restore = useMutation({
     mutationFn: (id: string) => itemsApi.restore(id),
     onSuccess: async () => {
@@ -184,8 +201,11 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   };
 
   /**
-   * 음성 인식이 끝나면 바로 보내지 않고 입력창에 채운다.
-   * 잘못 들었을 때 사용자가 고쳐서 보낼 수 있어야 한다.
+   * 말이 끝나면(침묵 1.4초) 마이크를 놓고 바로 이해한다.
+   * 입력창에만 두고 보내기를 기다리지 않는다.
+   *
+   * 목록(shown)은 ref 로만 읽는다. 피드가 갱신될 때마다 effect 가 다시 돌면
+   * 듣기 끝과 겹쳐 같은 말을 두 번 보낼 수 있다.
    */
   const wasListening = useRef(false);
   // speech 는 렌더마다 새 객체라 의존성에 두면 효과가 매번 돈다. 필요한 값만 본다.
@@ -200,10 +220,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     const text = transcript.trim();
     if (text) {
       setDraft(text);
-      inputRef.current?.focus();
+      capture.interpret({
+        text,
+        mode: 'voice',
+        knownItems: knownFrom(shownRef.current),
+      });
     }
     resetSpeech();
-  }, [listening, transcript, resetSpeech]);
+  }, [listening, transcript, resetSpeech, capture.interpret]);
 
   /**
    * 기록 흐름이 시작되면 듣기를 끝낸다.
@@ -234,7 +258,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const submitDraft = (mode: 'voice' | 'text') => {
     const text = draft.trim();
     if (!text || capture.interpreting) return;
-    capture.interpret({ text, mode });
+    capture.interpret({ text, mode, knownItems: knownFrom(shown) });
   };
 
   if (feed.isPending) return <HomeSkeleton />;
@@ -398,7 +422,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           onCadenceChange={capture.setCadenceOverride}
           onConfirm={capture.commit}
           onRetry={retryWithVoice}
+          onCancel={capture.cancel}
           committing={capture.committing}
+          mode={capture.lastMode}
         />
       ) : null}
 
@@ -453,7 +479,22 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         <Toast message={capture.pendingSaved} onDismiss={capture.dismissPendingSaved} durationMs={6000} />
       ) : null}
 
+      {capture.deferredMessage ? (
+        <Toast message={capture.deferredMessage} onDismiss={capture.dismissDeferred} />
+      ) : null}
 
+      <ModelConsentSheet
+        open={consentOpen}
+        onAccept={() => {
+          setModelConsent('granted');
+          setConsentOpen(false);
+          void ensureEngine().catch(() => undefined);
+        }}
+        onLater={() => {
+          setModelConsent('declined');
+          setConsentOpen(false);
+        }}
+      />
 
       {capture.committed ? (
         <Toast
@@ -482,5 +523,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
       ) : null}
     </main>
   );
+}
+
+function knownFrom(feed: HomeFeed | undefined | null): OnDeviceKnownItem[] {
+  if (!feed) return [];
+  return [...feed.due, ...feed.upcoming, ...feed.later].map((item) => ({
+    id: item.id,
+    name: item.name,
+    lastDoneOn: item.lastDoneOn,
+  }));
 }
 

@@ -4,16 +4,19 @@ import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contrac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
+import { parseCaptureLocally, toClientSlots } from '@/features/on-device/parse-local';
+import type { OnDeviceKnownItem } from '@/features/on-device/types';
+import { speak } from '@/features/on-device/voice-guidance';
 import { captureApi } from '@/lib/api/capture';
+import { itemsApi } from '@/lib/api/items';
+import { queryKeys } from '@/lib/api/query-keys';
+import { todayIso } from '@/lib/date';
 import { applyLocalLog } from '@/lib/offline/feed-cache';
 import { addNewItem, addResolved } from '@/lib/offline/pending-captures';
 import { resolveOffline } from '@/lib/offline/resolve-offline';
 
 /** 주기를 정하지 않고 저장했을 때. 서버의 FALLBACK_CADENCE 와 같은 값이다. */
 const FALLBACK_RULE: CadenceRule = { unit: 'week', interval: 2, weekdays: [], notifyTimeLocal: null };
-import { itemsApi } from '@/lib/api/items';
-import { todayIso } from '@/lib/date';
-import { queryKeys } from '@/lib/api/query-keys';
 
 /**
  * 입력 → 해석 → 확인 → 저장의 한 사이클을 담는다.
@@ -49,6 +52,8 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const abandoned = useRef(false);
   /** 연결이 끊겨 적어만 둔 문장. 토스트로 알려준 뒤 비운다. */
   const [pendingSaved, setPendingSaved] = useState<string | null>(null);
+  /** 예정·못 함처럼 저장하지 않는 말. */
+  const [deferredMessage, setDeferredMessage] = useState<string | null>(null);
 
   const interpret = useMutation({
     /**
@@ -59,20 +64,46 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
      * 실패로 떨어져야 아래 onError 에서 문장을 적어 둘 수 있다.
      */
     networkMode: 'always',
-    mutationFn: (input: { text: string; mode: 'voice' | 'text'; asrConfidence?: number }) =>
-      captureApi.interpret(input),
+    mutationFn: async (input: {
+      text: string;
+      mode: 'voice' | 'text';
+      asrConfidence?: number;
+      knownItems?: OnDeviceKnownItem[];
+    }) => {
+      const parsed = await parseCaptureLocally(
+        input.text,
+        todayIso(),
+        input.knownItems ?? [],
+      );
+
+      if (parsed && !parsed.willSave && parsed.intent === 'record') {
+        return { deferred: '아직 안 한 일은 기록하지 않아요' as const };
+      }
+
+      return captureApi.interpret({
+        text: input.text,
+        mode: input.mode,
+        asrConfidence: input.asrConfidence,
+        slots: parsed ? toClientSlots(parsed) : undefined,
+      });
+    },
     onMutate: (input) => {
       abandoned.current = false;
       setLastMode(input.mode);
       setStep('interpreting');
     },
     onSuccess: (data) => {
-      // 기다리다 그냥 남겼으면 뒤늦게 온 해석 결과로 시트를 열지 않는다.
       if (abandoned.current) return;
+      if ('deferred' in data) {
+        setDeferredMessage(data.deferred);
+        setStep('idle');
+        speak(data.deferred);
+        onInterpreted?.();
+        return;
+      }
       setResult(data);
       setCadenceOverride(null);
       setStep(stepForOutcome(data));
-      // 결과가 나온 뒤에야 입력창을 비운다 — 기다리는 동안 무엇을 보냈는지 보여야 한다.
       onInterpreted?.();
     },
     onError: (_error, input) => {
@@ -264,6 +295,8 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     /** 연결이 끊겨 적어만 둔 문장. 토스트로 알린다. */
     pendingSaved,
     dismissPendingSaved: () => setPendingSaved(null),
+    deferredMessage,
+    dismissDeferred: () => setDeferredMessage(null),
     cancel,
     dismissToast,
     undo: undo.mutate,
