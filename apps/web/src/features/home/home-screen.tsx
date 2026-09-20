@@ -10,6 +10,8 @@ import { AnswerCard } from '@/features/capture/components/answer-card';
 import { CaptureBar } from '@/features/capture/components/capture-bar';
 import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
+import { RejectedCard } from '@/features/capture/components/rejected-card';
+import { ModelConsentBanner } from '@/features/capture/on-device/model-consent-banner';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
@@ -43,13 +45,18 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
     initialData: initialFeed ?? undefined,
   });
   const speech = useSpeechRecognition();
+  const [draft, setDraft] = useState('');
+  const knownItems = [
+    ...(feed.data?.due ?? []),
+    ...(feed.data?.upcoming ?? []),
+    ...(feed.data?.later ?? []),
+  ].map((item) => ({ id: item.id, name: item.name, lastDoneOn: item.lastDoneOn }));
   // 해석이 끝나야 입력창을 비운다. 기다리는 동안 보낸 문장이 남아 있어야 한다.
-  const capture = useCapture({ onInterpreted: () => setDraft('') });
+  const capture = useCapture({ onInterpreted: () => setDraft(''), knownItems });
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
   const [promptDismissed, setPromptDismissed] = useState(false);
-  const [draft, setDraft] = useState('');
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
@@ -175,6 +182,7 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
           title={view === 'calendar' ? formatYearMonth(month) : undefined}
         />
 
+        <ModelConsentBanner />
 
         {isEmpty ? (
           <EmptyState
@@ -260,6 +268,8 @@ export function HomeScreen({ initialFeed }: HomeScreenProps) {
               }}
               onDismiss={capture.cancel}
             />
+          ) : capture.step === 'rejected' && capture.result ? (
+            <RejectedCard result={capture.result} onDismiss={capture.cancel} />
           ) : null
         }
       />

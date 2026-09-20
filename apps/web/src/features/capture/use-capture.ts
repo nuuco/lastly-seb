@@ -4,10 +4,15 @@ import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contrac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
+import { isEngineReady } from '@/features/capture/on-device/engine';
+import { needsNameReview } from '@/features/capture/on-device/match';
+import { reviewItemName } from '@/features/capture/on-device/name-review';
 import { captureApi } from '@/lib/api/capture';
 import { itemsApi } from '@/lib/api/items';
 import { todayIso } from '@/lib/date';
 import { queryKeys } from '@/lib/api/query-keys';
+import { readIntent, readName } from '../../../../api/src/modules/capture/utterance-rules';
+import { shouldRecordLog } from '../../../../api/src/modules/capture/save-gate';
 
 /**
  * 입력 → 해석 → 확인 → 저장의 한 사이클을 담는다.
@@ -17,6 +22,7 @@ import { queryKeys } from '@/lib/api/query-keys';
  *   new_item         → confirm (화면 09)
  *   ambiguous        → disambiguate (07 재확인 시트)
  *   unrecognized     → retry (07 재확인 시트)
+ *   rejected         → rejected (예정·못 함 안내)
  */
 export type CaptureStep =
   | 'idle'
@@ -25,9 +31,17 @@ export type CaptureStep =
   | 'disambiguate'
   | 'retry'
   /** 07-C — 물어본 것에 답만 하고 끝난다. 아무것도 기록하지 않는다. */
-  | 'answered';
+  | 'answered'
+  /** 예정·못 함 — 저장하지 않는다. */
+  | 'rejected';
 
-export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {}) {
+export function useCapture({
+  onInterpreted,
+  knownItems = [],
+}: {
+  onInterpreted?: () => void;
+  knownItems?: Array<{ id: string; name: string; lastDoneOn?: string | null }>;
+} = {}) {
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState<CaptureStep>('idle');
@@ -43,8 +57,17 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const abandoned = useRef(false);
 
   const interpret = useMutation({
-    mutationFn: (input: { text: string; mode: 'voice' | 'text'; asrConfidence?: number }) =>
-      captureApi.interpret(input),
+    mutationFn: async (input: {
+      text: string;
+      mode: 'voice' | 'text';
+      asrConfidence?: number;
+    }) => {
+      const itemNameHint = await maybeReviewName(input.text, knownItems);
+      return captureApi.interpret({
+        ...input,
+        ...(itemNameHint ? { itemNameHint } : {}),
+      });
+    },
     onMutate: (input) => {
       abandoned.current = false;
       setLastMode(input.mode);
@@ -102,16 +125,32 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     },
   });
 
-  /** 재확인 시트에서 후보를 골랐을 때 — 바로 저장으로 넘어간다. */
+  /** 재확인 시트에서 후보를 골랐을 때. 조회면 답만 다시 묻고, 기록이면 저장한다. */
   const chooseCandidate = useCallback(
-    (itemId: string) => commit.mutate({ itemId }),
-    [commit],
+    (itemId: string) => {
+      if (result && readIntent(result.transcript) === 'query') {
+        const picked = result.candidates.find((c) => c.itemId === itemId);
+        if (picked) {
+          interpret.mutate({ text: `${picked.name} 언제 했어?`, mode: lastMode });
+          return;
+        }
+      }
+      commit.mutate({ itemId });
+    },
+    [commit, interpret, lastMode, result],
   );
 
-  /** 재확인 시트에서 "새 항목으로 만들기". 이름은 원문을 그대로 쓴다. */
+  /** 재확인 시트에서 "새 항목으로 만들기". 조회에는 쓰지 않는다. */
   const createAsNew = useCallback(
-    (name: string) => commit.mutate({ newItemName: name }),
-    [commit],
+    (name: string) => {
+      if (result && readIntent(result.transcript) === 'query') {
+        setStep('idle');
+        setResult(null);
+        return;
+      }
+      commit.mutate({ newItemName: name });
+    },
+    [commit, result],
   );
 
   /**
@@ -179,6 +218,30 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   };
 }
 
+/**
+ * 규칙이 저장 가능하고, 이름이 애매하며, 기기 모델이 준비됐을 때만 이름 검수.
+ * 실패하면 hint 없이 서버·규칙 경로로 간다.
+ */
+async function maybeReviewName(
+  text: string,
+  knownItems: Array<{ id: string; name: string; lastDoneOn?: string | null }>,
+): Promise<string | undefined> {
+  // 조회는 이름 검수·저장 경로를 타지 않는다.
+  if (readIntent(text) === 'query') return undefined;
+  if (!shouldRecordLog(text)) return undefined;
+  if (!isEngineReady()) return undefined;
+
+  const draft = readName(text);
+  if (!needsNameReview(draft, knownItems)) return undefined;
+
+  try {
+    const reviewed = await reviewItemName(text, draft, knownItems);
+    return reviewed ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function stepForOutcome(result: InterpretResult): CaptureStep {
   switch (result.outcome) {
     case 'matched_existing':
@@ -186,6 +249,8 @@ function stepForOutcome(result: InterpretResult): CaptureStep {
       return 'confirm';
     case 'answered':
       return 'answered';
+    case 'rejected':
+      return 'rejected';
     case 'ambiguous':
       return 'disambiguate';
     case 'unrecognized':

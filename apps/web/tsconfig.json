@@ -27,7 +27,8 @@
       "**/*.ts",
       "**/*.tsx",
       ".next/types/**/*.ts",
-      "../api/src/modules/capture/utterance-rules.ts"
+      "../api/src/modules/capture/utterance-rules.ts",
+      "../api/src/modules/capture/save-gate.ts"
     ],
   "exclude": [
     "node_modules"

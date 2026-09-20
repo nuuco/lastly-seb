@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { Sheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
+import { readIntent } from '../../../../../api/src/modules/capture/utterance-rules';
 
 interface DisambiguateSheetProps {
   open: boolean;
@@ -23,12 +24,8 @@ interface DisambiguateSheetProps {
 /**
  * 못 알아들었거나 후보가 여럿일 때.
  *
- * 어떤 경우에도 사용자가 적은 것은 남길 수 있어야 한다. AI 가 못 알아들었다고
- * 해서 방금 한 일이 없던 일이 되는 건 아니다. 그래서 이름을 고쳐 쓸 수 있는
- * 칸을 두고, 그대로 저장하는 길을 항상 연다.
- *
- * 안내 문구는 원인에 따라 갈린다. AI 가 대답을 못 한 것을 사용자 탓으로
- * 돌리지 않기 위해서다.
+ * 기록은 이름을 고쳐 그대로 남길 수 있어야 한다. 조회("했나", "언제")는
+ * 물어본 것이라 새 항목으로 만들면 안 된다.
  */
 export function DisambiguateSheet({
   open,
@@ -41,13 +38,14 @@ export function DisambiguateSheet({
   mode,
 }: DisambiguateSheetProps) {
   const candidates = result.candidates;
+  const isQuery = readIntent(result.transcript) === 'query';
   const [name, setName] = useState(result.normalizedName ?? result.transcript);
-  const notice = describeNotice(result.degraded, candidates.length > 0, mode);
+  const notice = describeNotice(result.degraded, candidates.length > 0, mode, isQuery);
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 고르기">
       <div className="flex items-center justify-between">
-        <span className="text-16 font-semibold text-ink">기록하기</span>
+        <span className="text-16 font-semibold text-ink">{isQuery ? '물어보기' : '기록하기'}</span>
         <button type="button" onClick={onDismiss} className="text-14 text-ink-3">
           취소
         </button>
@@ -87,32 +85,31 @@ export function DisambiguateSheet({
         </>
       ) : null}
 
-      {/**
-       * 여기가 막다른 길을 여는 자리다.
-       * 후보가 없어도, AI 가 죽어 있어도 이 칸을 고쳐 그대로 저장할 수 있다.
-       */}
-      <p className="mt-[22px] text-12.5 tracking-wide4 text-ink-3">
-        {candidates.length > 0 ? '아니면 새 항목으로' : '이름을 정해 남겨주세요'}
-      </p>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        aria-label="항목 이름"
-        maxLength={60}
-        placeholder="예: 이불 빨래"
-        className="mt-2.5 w-full rounded-row border-[1.5px] border-line bg-card px-[18px] py-4 text-17 font-bold tracking-t3 text-ink outline-none focus:border-action placeholder:font-normal placeholder:text-ink-3"
-      />
+      {!isQuery ? (
+        <>
+          <p className="mt-[22px] text-12.5 tracking-wide4 text-ink-3">
+            {candidates.length > 0 ? '아니면 새 항목으로' : '이름을 정해 남겨주세요'}
+          </p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="항목 이름"
+            maxLength={60}
+            placeholder="예: 이불 빨래"
+            className="mt-2.5 w-full rounded-row border-[1.5px] border-line bg-card px-[18px] py-4 text-17 font-bold tracking-t3 text-ink outline-none focus:border-action placeholder:font-normal placeholder:text-ink-3"
+          />
 
-      <button
-        type="button"
-        disabled={committing || !name.trim()}
-        onClick={() => onCreateNew(name.trim())}
-        className="mt-3 flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
-      >
-        {committing ? '저장하는 중…' : '이 이름으로 기록하기'}
-      </button>
+          <button
+            type="button"
+            disabled={committing || !name.trim()}
+            onClick={() => onCreateNew(name.trim())}
+            className="mt-3 flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
+          >
+            {committing ? '저장하는 중…' : '이 이름으로 기록하기'}
+          </button>
+        </>
+      ) : null}
 
-      {/* 말로 들어왔을 때만. 적어서 들어온 사람에게 "다시 말하기" 는 뜬금없다. */}
       {mode === 'voice' ? (
         <button
           type="button"
@@ -134,8 +131,19 @@ function describeNotice(
   degraded: boolean,
   hasCandidates: boolean,
   mode: 'voice' | 'text',
+  isQuery: boolean,
 ): { title: string; body: string } {
-  // 서버가 대답을 못 한 것이다. 사용자가 잘못 말한 게 아니므로 고쳐 말하라고 하지 않는다.
+  if (isQuery) {
+    return {
+      title: hasCandidates ? '어떤 항목을 물으신 건가요?' : '무엇을 물으신 건지 모르겠어요',
+      body: hasCandidates
+        ? '아래에서 고르면 언제 하셨는지 바로 알려 드릴게요.'
+        : mode === 'voice'
+          ? '항목 이름을 넣어 다시 말해 주세요. 예: 화장실 청소 했나'
+          : '항목 이름을 넣어 다시 적어 주세요. 예: 화장실 청소 했나',
+    };
+  }
+
   if (degraded) {
     return {
       title: '지금은 자동으로 알아보기 어려워요',
@@ -157,6 +165,6 @@ function describeNotice(
     body:
       mode === 'voice'
         ? '이름을 정해 남기시거나, 다시 말해주세요.'
-        : '이름을 정해주시면 그대로 남겨드릴게요.',
+        : '이름을 정해 남겨주세요.',
   };
 }

@@ -14,6 +14,11 @@ export const interpretRequestSchema = z.object({
   referenceDate: isoDateSchema.optional(),
   /** 음성 인식 신뢰도. 낮으면 재확인 시트로 유도한다. */
   asrConfidence: z.number().min(0).max(1).optional(),
+  /**
+   * 기기 Gemma가 검수한 항목 이름.
+   * 있으면 규칙·서버 이름보다 우선한다. 의도·날짜·주기는 서버 규칙이 맡는다.
+   */
+  itemNameHint: z.string().min(1).max(60).optional(),
 });
 export type InterpretRequest = z.infer<typeof interpretRequestSchema>;
 
@@ -37,6 +42,7 @@ export const interpretOutcomeSchema = z.enum([
   'ambiguous',        // 재확인 시트 · "혹시 이건가요?" 후보 목록
   'unrecognized',     // 재확인 시트 · 다시 말하기 / 직접 고치기
   'answered',         // 07-C · 물어본 것에 그 자리에서 답한다
+  'rejected',         // 예정·못 함 · 로그로 남기지 않음
 ]);
 export type InterpretOutcome = z.infer<typeof interpretOutcomeSchema>;
 
@@ -81,6 +87,8 @@ export const interpretResultSchema = z.object({
   degraded: z.boolean().default(false),
   /** 재해석 없이 그대로 커밋할 수 있는 서명된 토큰. */
   draftToken: z.string(),
+  /** rejected일 때 사용자에게 보여줄 짧은 안내. */
+  rejectReason: z.string().nullable().default(null),
 });
 export type InterpretResult = z.infer<typeof interpretResultSchema>;
 

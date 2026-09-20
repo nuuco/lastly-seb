@@ -173,17 +173,32 @@ const DONE_IN_TEXT =
   /(?:했어|했다|했음|빨았어|빨아놨어|갈았어|닦았어|돌렸어|버렸어|끝냈어|시켰어|청소했어)/;
 
 /**
+ * 물음 어미. "?" 없이도 묻는 말이다.
+ * "오늘 에어컨 청소 했나" → 조회. "청소 했어" → 기록.
+ */
+const QUESTION_ENDING =
+  /(?:했|빨았|갈았|닦았|돌렸|버렸|시켰|청소했|끝냈)(?:나|지|니|을까|으려나)|한\s*건가/;
+
+const QUESTION_MARKERS =
+  /(?:\?|？|언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇)|알려\s*줘|알려줄래)/;
+
+/**
  * 기록인가 질문인가.
  *
  * 같은 입력창에 "이불 빨았어"(기록)와 "이불 언제 빨았어?"(조회)가 함께 들어온다.
  * 둘을 구분하지 못하면 물어본 것을 기록으로 남겨 없던 일이 생긴다.
  */
 export function readIntent(text: string): Intent {
-  if (/알려\s*줘|알려줄래/.test(text) && DONE_IN_TEXT.test(text) && !/(?:\?|？|언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇))/.test(text)) {
+  // 물음 어미가 있으면 조회. "빨았어 알려줘" 기록 예외보다 먼저 본다.
+  if (QUESTION_ENDING.test(text)) return 'query';
+  if (
+    /알려\s*줘|알려줄래/.test(text) &&
+    DONE_IN_TEXT.test(text) &&
+    !/(?:\?|？|언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇))/.test(text)
+  ) {
     return 'record';
   }
-  if (/\?|？/.test(text)) return 'query';
-  if (/언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|알려줄래/.test(text)) return 'query';
+  if (QUESTION_MARKERS.test(text)) return 'query';
   // "간 지 됐어" 처럼 묻는 꼴
   if (/지\s*(얼마|몇)/.test(text)) return 'query';
   return 'record';

@@ -21,6 +21,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
+import { shouldRecordLog } from './save-gate';
 import { readUtterance, type UtteranceFacts } from './utterance-rules';
 import { appToday } from '../../common/clock';
 
@@ -92,6 +93,7 @@ export class CaptureService {
         confidence: 1,
         degraded: false,
         answer: null,
+        rejectReason: null,
         draftToken: this.draft.sign({
           userId,
           rawInput: input.text,
@@ -112,8 +114,38 @@ export class CaptureService {
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
+    if (input.itemNameHint?.trim()) {
+      facts.name = input.itemNameHint.trim();
+      facts.sawAction = true;
+    }
+
+    /**
+     * 예정·못 함은 로그로 남기지 않는다. 조회는 아래 규칙·AI 경로에서 답만 준다.
+     */
+    if (facts.intent !== 'query' && !shouldRecordLog(input.text)) {
+      return this.reject(userId, input, referenceDate, facts.name);
+    }
+
     const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
     if (ruled) return ruled;
+
+    /**
+     * 기기에서 이름만 검수해 온 경우. 주기·매칭이 비어도 서버 LLM을 또 부르지 않는다.
+     * 주기는 확인 시트 기본값으로 두고 사용자가 고친다.
+     * 조회는 기록 시트로 보내지 않는다 — 이름을 골라도 답만 한다.
+     */
+    if (input.itemNameHint?.trim() && facts.name) {
+      const matched = await this.findByName(userId, facts.name, known);
+      if (matched) {
+        facts.name = matched.name;
+        const again = await this.byRules(userId, input, referenceDate, known, today, facts);
+        if (again) return again;
+      }
+      if (facts.intent === 'query') {
+        return this.resolveQuery(userId, input, referenceDate, known, today, facts);
+      }
+      return this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
+    }
 
     const parsed = await this.ai.parseUtterance({
       text: input.text,
@@ -134,8 +166,13 @@ export class CaptureService {
      *
      * 무료 호스팅은 15분 놀면 AI 를 재우고 깨는 데 30초 넘게 걸린다.
      * 그 사이에 기록한 사람이 이 길로 온다.
+     *
+     * 조회는 예외다. 이름을 알았다고 해서 물어본 것을 새 기록 시트로 보내면 안 된다.
      */
     if (!parsed) {
+      if (facts.intent === 'query') {
+        return this.resolveQuery(userId, input, referenceDate, known, today, facts);
+      }
       // 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
       return facts.sawAction && facts.name
         ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
@@ -152,11 +189,13 @@ export class CaptureService {
 
     /**
      * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
-     * 어느 항목을 묻는지 알아야 답할 수 있으므로, 못 짚었으면 평소대로 되묻는다.
+     * 규칙이 조회로 본 경우도 모델이 record 로 내려도 조회를 지킨다.
+     * 어느 항목을 묻는지 못 짚었으면 후보·재확인으로 보내고, 기록 시트로는 보내지 않는다.
      */
-    if (parsed.intent === 'query') {
+    if (facts.intent === 'query' || parsed.intent === 'query') {
       const target = claimed ?? candidates[0]?.itemId ?? null;
       if (target) return this.answer(userId, input, referenceDate, target, today);
+      return this.resolveQuery(userId, input, referenceDate, known, today, facts);
     }
 
     const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
@@ -181,6 +220,7 @@ export class CaptureService {
       confidence: parsed.confidence,
       degraded: false,
       answer: null,
+      rejectReason: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
@@ -327,18 +367,18 @@ export class CaptureService {
     today: Date,
     facts: UtteranceFacts,
   ): Promise<InterpretResult | null> {
+    /**
+     * 묻는 말은 규칙만으로 끝낸다. AI·기록 시트로 넘기지 않는다 — 설계 07-C.
+     * 이름이 애매하면 후보를 고르게 하고, 없으면 재확인만 한다.
+     */
+    if (facts.intent === 'query') {
+      return this.resolveQuery(userId, input, referenceDate, known, today, facts);
+    }
+
     if (!facts.name) return null;
 
     const matched = await this.findByName(userId, facts.name, known);
     const doneOn = format(subDays(new Date(`${referenceDate}T00:00:00`), facts.daysAgo), 'yyyy-MM-dd');
-
-    /**
-     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
-     * 무엇을 묻는지 못 짚었으면 평소대로 AI 에게 넘긴다.
-     */
-    if (facts.intent === 'query') {
-      return matched ? this.answer(userId, input, referenceDate, matched.id, today) : null;
-    }
 
     // 처음 보는 항목인데 주기도 말하지 않았다면 규칙이 줄 수 있는 게 없다.
     if (!matched && !facts.statedCadenceDays) return null;
@@ -365,6 +405,7 @@ export class CaptureService {
       confidence: matched ? 0.95 : 0.8,
       degraded: false,
       answer: null,
+      rejectReason: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
@@ -420,6 +461,7 @@ export class CaptureService {
       // 화면이 "또렷하게 말해주세요" 대신 다른 말을 하도록 원인을 알려준다.
       degraded: true,
       answer: null,
+      rejectReason: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,
@@ -449,6 +491,97 @@ export class CaptureService {
     return known.find((i) => i.id === top.item_id) ?? null;
   }
 
+  /**
+   * "청소"처럼 짧은 조각이 항목 이름 토큰과 같을 때.
+   * "청소기 돌리기"는 토큰이 "청소기"라서 빠진다.
+   */
+  private findByToken(name: string, known: ItemRow[]): ItemRow[] {
+    const squashed = squash(name);
+    if (squashed.length < 2) return [];
+    return known.filter((item) => {
+      if (squash(item.name) === squashed) return true;
+      return item.name.split(/\s+/).some((tok) => squash(tok) === squashed);
+    });
+  }
+
+  /**
+   * 조회 전용. 기록 시트(new_item)로 보내지 않는다.
+   * 하나면 답, 여러 개면 고르기, 없으면 재확인.
+   */
+  private async resolveQuery(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    facts: UtteranceFacts,
+  ): Promise<InterpretResult> {
+    if (facts.name) {
+      const matched = await this.findByName(userId, facts.name, known);
+      if (matched) return this.answer(userId, input, referenceDate, matched.id, today);
+
+      const tokens = this.findByToken(facts.name, known);
+      if (tokens.length === 1) {
+        return this.answer(userId, input, referenceDate, tokens[0]!.id, today);
+      }
+      if (tokens.length > 1) {
+        return {
+          transcript: input.text,
+          outcome: 'ambiguous',
+          normalizedName: facts.name,
+          doneOn: referenceDate,
+          matchedItemId: null,
+          candidates: this.toCandidates(
+            tokens.slice(0, 5).map((row) => ({
+              item_id: row.id,
+              name: row.name,
+              similarity: 0.7,
+            })),
+            known,
+            today,
+          ),
+          cadence: null,
+          confidence: 0.7,
+          degraded: false,
+          answer: null,
+          rejectReason: null,
+          draftToken: this.draft.sign({
+            userId,
+            rawInput: input.text,
+            normalizedName: facts.name,
+            doneOn: referenceDate,
+            matchedItemId: null,
+            mode: input.mode,
+            issuedAt: Date.now(),
+          }),
+        };
+      }
+    }
+
+    return {
+      transcript: input.text,
+      outcome: 'unrecognized',
+      normalizedName: facts.name,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates: [],
+      cadence: null,
+      confidence: 0.5,
+      degraded: false,
+      answer: null,
+      rejectReason: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: facts.name,
+        doneOn: referenceDate,
+        matchedItemId: null,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
   private async answer(
     userId: string,
     input: InterpretRequest,
@@ -476,6 +609,7 @@ export class CaptureService {
         nextDueOn: item.nextDueOn,
         daysUntilDue: item.daysUntilDue,
       },
+      rejectReason: null,
       // 답만 하고 끝이라 커밋으로 이어지지 않는다. 토큰은 형식을 맞추기 위한 빈 값이다.
       draftToken: this.draft.sign({
         userId,
@@ -483,6 +617,37 @@ export class CaptureService {
         normalizedName: item.name,
         doneOn: referenceDate,
         matchedItemId: item.id,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /** 예정·못 함 — 확인 시트로 보내지 않고 안내만 한다. */
+  private reject(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    name: string | null,
+  ): InterpretResult {
+    return {
+      transcript: input.text,
+      outcome: 'rejected',
+      normalizedName: name,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates: [],
+      cadence: null,
+      confidence: 1,
+      degraded: false,
+      answer: null,
+      rejectReason: '아직 안 한 일이나 앞으로 할 일은 기록하지 않아요. 했을 때 다시 알려 주세요.',
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: name,
+        doneOn: referenceDate,
+        matchedItemId: null,
         mode: input.mode,
         issuedAt: Date.now(),
       }),
@@ -497,7 +662,7 @@ export class CaptureService {
     doneOn: string,
     statedDays: number | null = null,
   ): Promise<CadenceSuggestion | null> {
-    if (outcome === 'unrecognized') return null;
+    if (outcome === 'unrecognized' || outcome === 'rejected' || outcome === 'answered') return null;
 
     /**
      * 사용자가 문장에서 직접 말한 주기가 최우선이다.
@@ -592,6 +757,7 @@ export class CaptureService {
       // AI가 판단해서 애매한 게 아니라, 아예 대답을 못 받은 것이다.
       degraded: true,
       answer: null,
+      rejectReason: null,
       draftToken: this.draft.sign({
         userId,
         rawInput: input.text,

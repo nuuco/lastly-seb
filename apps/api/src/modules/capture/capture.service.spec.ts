@@ -63,7 +63,9 @@ function buildService(overrides: {
 
   const items = {
     listActive: jest.fn().mockResolvedValue(rows),
-    findById: jest.fn().mockResolvedValue(rows[0]),
+    findById: jest.fn().mockImplementation((_userId: string, id: string) =>
+      Promise.resolve(rows.find((r) => r.id === id) ?? rows[0] ?? null),
+    ),
     matchByMeaning: jest.fn().mockResolvedValue([]),
     recordAlias: jest.fn().mockResolvedValue(undefined),
   };
@@ -306,6 +308,43 @@ describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
     expect(result.outcome).toBe('answered');
     expect(result.answer?.itemId).toBe('item-1');
     expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('했나 물음 + 짧은 이름이면 기록 시트로 보내지 않는다', async () => {
+    const { service, ai } = buildService({
+      parse: null,
+      items: [
+        itemRow({ id: 'item-bath', name: '화장실 청소' }),
+        itemRow({ id: 'item-floor', name: '바닥 청소' }),
+        itemRow({ id: 'item-vac', name: '청소기 돌리기' }),
+      ],
+    });
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '나 오늘 청소했나', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.candidates.map((c) => c.name).sort()).toEqual(['바닥 청소', '화장실 청소']);
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('했나 물음 + 유일한 항목이면 바로 답한다', async () => {
+    const { service } = buildService({
+      parse: null,
+      items: [itemRow({ id: 'item-ac', name: '에어컨 청소', last_done_on: '2026-09-01' })],
+    });
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 에어컨 청소 했나', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.itemId).toBe('item-ac');
   });
 
   it('처음 보는 항목인데 주기도 없으면 AI에게 넘긴다', async () => {

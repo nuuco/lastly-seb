@@ -10,9 +10,11 @@
 - AI 포트: 호스트 8000·8002가 다른 컨테이너와 겹쳐 로컬만 8003 사용
 - 테스트 계정: `dev@lastly.local` / `lastly-dev-1234` 시드
 - 개발 서버: web :3000 · api :4000 · ai :8003 기동
-- 온디바이스 실험: Gemma 3 1B int4를 `/dev/on-device`에서 브라우저 WebGPU로 해석. 모델은 `pnpm download:ondevice-model`
-- 온디바이스 후보 비교: Gemma 1B WebGPU 40/48, Qwen 1.5B 38/48, Qwen 0.5B 31/48, Gemma 270M 0/48
-- 온디바이스 골든셋: `/dev/on-device`에 발화 79문장. 원천은 `eval-fixtures.ts`. Gemma 출력은 규칙으로 보정. 매칭은 유일 일치만. 이름은 `만` 절·미래 동사·군더더기를 걷어 규칙이 79문장 빗나가지 않음. 규칙 rev 2가 아니면 웹 하드 새로고침. `규칙만 채점`으로 Gemma 없이 확인
+- 온디바이스: 캡처에서 규칙 선처리 후, 이름만 기기 Gemma(WebGPU) 검수. 모델은 `pnpm download:ondevice-model`. 미준비·거절 시 규칙·서버 `/v1/parse`. 예정·못 함은 저장 안 함. Whisper·TTS 안내 없음
+- 온디바이스 실험실: http://localhost:3000/dev/on-device (골든셋·배치 채점). 본선 캡처와 별개
+- 미들웨어: `/models`·`on-device-worker.js`는 인증 제외 (워커·모델 로드 차단 방지)
+- 온디바이스 골든셋: API `eval-fixtures.ts` 79문장. 이름·저장 게이트는 jest로 회귀. 실험실 웹 픽스처도 동일 세트
+- 조회(`했나` 등): 기록 시트로 보내지 않음. 짧은 이름(`청소`)은 토큰 후보로 고르거나 재확인
 
 ## 다시 실행
 

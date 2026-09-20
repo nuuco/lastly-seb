@@ -71,8 +71,12 @@ describe('의도 읽기', () => {
     ['마지막으로 이불 언제 빨았지?', 'query'],
     ['칫솔 간 지 얼마나 됐어?', 'query'],
     ['이불 언제 빨았더라', 'query'],
+    ['오늘 에어컨 청소 했나', 'query'],
+    ['이불 빨았지', 'query'],
+    ['필터 갈았을까', 'query'],
     ['오늘 이불 빨았어', 'record'],
     ['어제 화분 물 줬어', 'record'],
+    ['오늘 이불 빨았어 일주일마다 알려줘', 'record'],
   ])('%s → %s', (text, intent) => {
     expect(readIntent(text)).toBe(intent);
   });
