@@ -50,7 +50,7 @@ web ──HTTP──> api ──HTTP──> ai ──> Gemini
 
 ---
 
-## 폴더마다 README 가 따로 있다
+## 문서 구성
 
 세부 사항은 각자 문서에 있다. 손대기 전에 해당 폴더 것을 먼저 읽는다.
 
@@ -61,7 +61,7 @@ web ──HTTP──> api ──HTTP──> ai ──> Gemini
 | `apps/ai` | 문장 해석과 주기 추천. FastAPI | [README](apps/ai/README.md) |
 | `packages/contracts` | web ↔ api 공유 zod 스키마 | [README](packages/contracts/README.md) |
 | `packages/parser` | LLM 없이 문장에서 뽑는 규칙 | [README](packages/parser/README.md) |
-| `packages/design-tokens` | 설계에서 추출한 색·타이포·그림자 | [README](packages/design-tokens/README.md) |
+| `packages/design-tokens` | 설계에서 추출한 색·타이포·그림자 | [tokens.css](packages/design-tokens/src/tokens.css) |
 
 작업 규칙 — 커밋 메시지 형식, 화면을 손대기 전 대조, dev 와 build 를 같이 돌리면
 깨지는 이유 — 은 [CLAUDE.md](CLAUDE.md) 에 있다. 사람이 읽어도 되고 AI 에게
@@ -87,7 +87,7 @@ web ──HTTP──> api ──HTTP──> ai ──> Gemini
 | `items` | 관리 항목. 주기 규칙과 비정규화 캐시(마지막 수행일·다음 예정일·평균 간격) |
 | `item_logs` | 수행 기록. 원본 발화도 남겨 AI 품질 개선에 쓴다 |
 | `item_aliases` | "이불 빨래" ← "이불 세탁", "이불 빨았어" — 학습된 표현 |
-| `cadence_priors` | "보통 사람들은 얼마마다 하는가" 공용 사전이자 AI 조사 결과 캐시 |
+| `cadence_priors` | 항목별 일반 주기 사전(200여 종). AI 조사 결과 캐시를 겸한다 |
 | `push_subscriptions` · `notifications` | 웹푸시 |
 
 **모든 사용자 데이터 테이블은 RLS로 격리한다.**
@@ -154,15 +154,15 @@ pnpm db:push                      # 마이그레이션 적용
 
 ---
 
-## 계정은 처음 저장할 때 생긴다
+## 인증과 계정
 
 온보딩을 보고 그냥 들어온다. 둘러보기만 하면 계정을 만들지 않는다.
 [`ensure-session.ts`](apps/web/src/lib/supabase/ensure-session.ts) 가 **첫 쓰기 직전에**
 익명 로그인을 한 번 한다.
 
-> 예전에는 미들웨어가 홈에 들어서는 순간 만들었다. 그러면 링크만 열어본 사람과 검색
-> 봇까지 계정이 생겨 실제로 25개 중 18개가 빈 계정이었다. 익명 로그인에는 IP 당
-> 시간당 횟수 제한도 있어서, 만드는 수를 줄이면 그 한도도 아낀다.
+> **미들웨어에서 만들지 않는다.** 진입 시점에 만들면 링크만 열어본 사람과 검색 봇까지
+> 계정이 생겨 대부분이 빈 계정이 된다. 익명 로그인에는 IP 당 시간당 횟수 제한이 있어,
+> 생성 수를 줄이면 그 한도도 아낀다.
 
 Supabase 익명 로그인은 `auth.users` 에 진짜 행을 만들고 기록도 처음부터 서버에
 들어간다 — "브라우저에만 있는 기록" 이 아니다.
@@ -193,7 +193,7 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
 
 ---
 
-## 연결이 끊겨도 기록한다
+## 오프라인 지원
 
 지하철이나 비행기에서도 평소와 같은 화면으로 저장된다. **언제 서버에 올라가는지는
 사용자에게 알리지 않는다** — 앱이 알아서 할 일이지 사용자가 신경 쓸 일이 아니다.
@@ -209,26 +209,14 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
   → 연결되면 대기열이 조용히 올라간다
 ```
 
-관련 파일은 [`apps/web/src/lib/offline/`](apps/web/src/lib/offline/) 에 모여 있다.
+이것이 `parser` 를 패키지로 뺀 이유다. 같은 규칙이 서버와 브라우저에서 돌지 않으면
+오프라인 결과가 온라인과 갈린다.
 
-| | 무엇 |
-|---|---|
-| `resolve-offline.ts` | 규칙 파서를 돌려 저장·질문·보류 중 하나로 정한다 |
-| `pending-captures.ts` | 대기열. 기존 항목 기록 · 새 항목 · 원문 세 종류 |
-| `use-pending.ts` | 연결되면 순서대로 올린다. 화면에 아무 말도 하지 않는다 |
-| `feed-cache.ts` | 마지막 홈 피드 사본. 오프라인 저장분을 반영해 목록이 바로 바뀐다 |
-| `use-online.ts` | 연결 상태 |
-
-**주의할 것 둘.**
-
-- 앱 껍데기 캐시는 [`public/sw.js`](apps/web/public/sw.js) 가 **network-first** 로 한다.
-  cache-first 로 두면 개발 중에 옛 번들이 계속 뜬다. 배포마다 `CACHE` 이름을 올린다.
-- 저장 요청은 React Query `networkMode: 'always'` 여야 한다. 기본값(`'online'`)은 오프라인에서
-  요청을 붙들고 기다려서, 오류가 나지 않고 화면이 "살펴보고 있어요" 인 채로 멈춘다.
+구현과 주의할 점은 [`apps/web/README.md`](apps/web/README.md#오프라인-처리) 에 있다.
 
 ---
 
-## AI 키는 서버가 낸다
+## AI 키 운용
 
 해석에 필요한 LLM 호출은 **서버가 들고 있는 Gemini 무료 등급 키로 처리한다.**
 사용자는 아무것도 등록하지 않는다.
@@ -242,9 +230,9 @@ node scripts/seed-dev-user.mjs    # 테스트 계정 + 샘플 항목 6개
 
 ---
 
-## 손대기 전에 알아둘 것
+## 유지보수 규칙
 
-### 주기 계산은 세 곳에 있다 — 반드시 함께 고친다
+### 주기 계산
 
 1. [`supabase/migrations/…_functions_rls.sql`](supabase/migrations/) → `calc_next_due()` — 기록 저장 시 트리거
 2. [`apps/api/…/cadence.service.ts`](apps/api/src/modules/cadence/cadence.service.ts) → `nextDueOn()` — API 응답
@@ -254,13 +242,31 @@ DB에 둔 이유는 트리거가 캐시 컬럼을 갱신해야 해서고, 프론
 미리보기를 보여줘야 하고 연결이 없을 때도 다음 날짜를 계산해야 해서다.
 `cadence.service.spec.ts`가 규칙의 기준이다.
 
-### contracts 와 parser 는 빌드해서 쓴다
+### 공유 패키지 빌드 의존성
 
 zod 스키마와 규칙 파서는 런타임 값이라 `dist`로 내보낸다. 소스(`.ts`)를 그대로 노출하면
 빌드된 `api`가 실행 시 이걸 읽지 못한다. `api`·`web`을 돌리기 전에 두 패키지 빌드가
 먼저 끝나야 하고, turbo가 그 순서를 보장한다.
 
-### 주기 수정과 쉬어가기는 다르다
+**워크스페이스 패키지를 더하면 [`apps/api/Dockerfile`](apps/api/Dockerfile) 도 고친다.**
+`package.json` 한 줄과 소스 한 줄, 둘 다 빌드 컨텍스트에 넣어야 한다. turbo 는 로컬에서만
+순서를 보장하고 컨테이너 빌드는 복사된 파일만 본다 — 빠뜨리면 로컬은 멀쩡한데
+배포 빌드가 `TS2307` 로 실패한다.
+
+### 주기 사전의 이름 규칙
+
+`cadence_priors.canonical_name` 은 `@lastly/parser` 가 만들어내는 형태(`<대상> <행동 명사>`)와
+같아야 한다. 어긋나면 값이 있어도 조회되지 않고 기본값 2주로 떨어진다.
+
+```
+파서 출력   베갯잇 빨래      ← 세탁·빨래·빨았다를 모두 "빨래" 로 모은다
+사전 키     베갯잇 빨래      ← "베갯잇 세탁" 으로 넣으면 닿지 않는다
+```
+
+조회 규칙은 정확 일치 → 공백 무시 일치 → 트라이그램 유사도 순이고, `find_cadence_prior`
+함수와 `apps/ai` 의 `PriorsRepository.find` 두 곳에 같은 형태로 있다. 한쪽을 고치면 같이 고친다.
+
+### 주기 수정과 쉬어가기 구분
 
 - **주기 수정** — 리듬 자체를 바꾼다 (`cadence`). 영구적이다.
 - **쉬어가기** — 리듬은 두고 다음 차례만 미룬다 (`snoozed_until`). 기록이 새로 쌓이면 자동 해제된다.
@@ -308,7 +314,7 @@ npx vercel deploy --prod --scope goorm-lastly    # web
 # api · ai 는 Render 대시보드에서 Manual Deploy
 ```
 
-### 스케줄은 DB 가 돈다
+### 스케줄러
 
 무료 플랜은 접속이 없으면 서버를 재우므로 서버 안의 시계를 믿을 수 없다.
 그래서 `ENABLE_CRON=false` 로 두고 **밖에서** 부른다. 그 밖이 Supabase 의 `pg_cron` 이다 —
@@ -334,7 +340,7 @@ DB 는 항상 켜져 있고 예약이 밀리지 않는다.
 `AiClient` 는 무응답일 때 한 번 더 부르며 최대 45초 기다린다(`WAKE_BUDGET_MS`).
 임베딩은 이 대기를 건너뛴다 — 깨우는 값을 치를 만한 호출이 아니다.
 
-### 확인할 것
+### 운영 점검 항목
 
 - `SUPABASE_SERVICE_ROLE_KEY`는 RLS를 우회한다. `apps/api`에서만 쓰고 프론트에 절대 노출하지 않는다.
 - `apps/ai`는 공개 주소를 갖지 않아야 한다. `INTERNAL_TOKEN`은 최소한의 방어선일 뿐이다.
@@ -346,7 +352,7 @@ DB 는 항상 켜져 있고 예약이 밀리지 않는다.
 
 ---
 
-## 아직 안 된 것
+## 미구현 항목
 
 - 카카오 로그인 — 개발자 콘솔 등록과 심사가 남았다. 그때까지 버튼은 내려둔 상태다
 - 이메일 가입 — 메일 발송 수단이 필요하다. Supabase 기본 발송은 시간당 2통이라

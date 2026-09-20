@@ -79,9 +79,9 @@ return <HomeScreen initialFeed={initialFeed} />;
 색·크기·그림자는 [`@lastly/design-tokens`](../../packages/design-tokens/)에서만 온다.
 `tailwind.config.ts`는 그 CSS 변수를 가리킬 뿐 값을 복제하지 않는다.
 
-**두 가지를 틀리기 쉽다. 실제로 틀렸던 것들이다.**
+**다음 두 가지를 자주 어긴다.**
 
-### accent는 주황이 아니다
+### 강조색
 
 ```
 accent      #4a433f   웜 그레이 — 기본 강조
@@ -96,7 +96,7 @@ sage        #d4836a   보조 점·표식
 > 개정 설계에서 팔레트가 통째로 바뀌었다. 예전 값(`#b0552f`, `#5a6347`)은
 > 지금 설계 파일에 **한 번도 나오지 않는다.** 옛 색이 보이면 개정 전 코드다.
 
-### 소수점 크기와 음수 자간을 반올림하지 않는다
+### 소수점 크기와 음수 자간
 
 `12.5px`, `15.5px`, `-.035em`, `-.055em` 같은 값이 이 디자인의 인상을 만든다.
 Tailwind 기본 스케일로 뭉개면 다른 화면이 된다. 그래서 `text-12.5`, `tracking-t35`처럼
@@ -141,7 +141,7 @@ Tailwind 기본 스케일로 뭉개면 다른 화면이 된다. 그래서 `text-
 
 ---
 
-## 연결이 끊겼을 때
+## 오프라인 처리
 
 [`lib/offline/`](src/lib/offline/) 이 맡는다. **화면은 평소 저장과 똑같이 보인다** —
 언제 서버에 올라가는지 사용자에게 말하지 않는다.
@@ -164,7 +164,7 @@ interpret 실패 + navigator.onLine === false
 | `feed-cache.ts` | 마지막 홈 피드 사본. `applyLocalLog` 로 다음 예정일까지 다시 계산한다 |
 | `use-online.ts` | 연결 상태 |
 
-**틀리기 쉬운 것 셋. 실제로 틀렸던 것들이다.**
+**다음 세 가지를 자주 어긴다.**
 
 - 저장 요청은 `networkMode: 'always'` 여야 한다. React Query 기본값(`'online'`)은
   오프라인에서 요청을 붙들고 기다려서 **오류가 나지 않는다.** 그러면 위 분기로
@@ -176,16 +176,16 @@ interpret 실패 + navigator.onLine === false
 
 ---
 
-## 계정은 첫 저장 때 만든다
+## 계정 생성 시점
 
 [`lib/supabase/ensure-session.ts`](src/lib/supabase/ensure-session.ts) 를 쓰기 요청 직전에
 부른다. 둘러보기만 하는 사람에게는 계정을 만들지 않는다.
 
 그래서 **홈이 계정 없이도 그려져야 한다.** 서버 컴포넌트는 `user` 가 없으면 API 를
-부르지 않고 빈 홈을 내려보내고, 첫 저장으로 계정이 생기면
+부르지 않고 빈 홈을 내려보낸다. 첫 저장으로 계정이 생기면
 [`use-signed-in.ts`](src/lib/supabase/use-signed-in.ts) 의 `onAuthStateChange` 가
-쿼리를 켠다. 이 구독이 없으면 **첫 기록이 목록에 안 나타난다** — 화면을 한 번
-다녀와야 보이던 버그가 이것이었다.
+홈 질의를 활성화한다. **이 구독이 없으면 첫 기록이 목록에 나타나지 않는다** —
+질의가 `enabled: false` 인 채로 남기 때문이다.
 
 ---
 
@@ -193,7 +193,7 @@ interpret 실패 + navigator.onLine === false
 
 - **주기 계산**(`lib/date.ts` 의 `nextDueAfter`)은 서버·DB와 같은 규칙이어야 한다.
   주기 시트의 미리보기와 오프라인 목록 갱신이 둘 다 이걸 쓴다.
-  자세한 건 [루트 README](../../README.md#주기-계산은-세-곳에-있다--반드시-함께-고친다) 참고.
+  자세한 건 [루트 README](../../README.md#주기-계산) 참고.
 - **단위를 바꿀 때 숫자를 그대로 두면 안 된다.** 45일이 45주가 된다.
   일수로 환산한 뒤 새 단위로 다시 나눈다.
 - 입력창 글자는 **16px 이상**이어야 한다. 그 미만이면 iOS가 포커스 시 화면을 확대한다.

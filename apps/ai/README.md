@@ -14,7 +14,7 @@ http://localhost:8000/docs 에서 스펙을 볼 수 있다.
 
 ---
 
-## 이 서비스가 하는 네 가지
+## 역할
 
 설계상 AI가 맡기로 한 일은 이게 전부다.
 
@@ -65,7 +65,7 @@ tests/test_cadence.py
 
 ---
 
-## 0. 키는 요청에 실려 온다 — `providers/`
+## 0. 자격 처리 — `providers/`
 
 이 서비스는 **LLM 키를 보관하지 않는다.** 매 요청의 `caller` 에 제공자와 키가 실려 오고,
 `build_provider()` 가 그것으로 클라이언트를 만들어 한 번 쓰고 버린다.
@@ -120,7 +120,7 @@ confidence      0~1
 
 > LLM이 없는 id를 지어낼 수 있다. `apps/api` 가 받은 id를 실제 목록과 대조해서 거른다.
 
-## 2. 같은 항목으로 묶기 — `embeddings.py`
+## 2. 항목 매칭 — `embeddings.py`
 
 이름을 1536차원 벡터로 만들어 `items.name_embedding` 에 저장한다.
 Postgres `match_items` RPC가 이 벡터의 코사인 유사도로 후보를 찾는다.
@@ -131,7 +131,7 @@ Postgres `match_items` RPC가 이 벡터의 코사인 유사도로 후보를 찾
 
 > 차원은 `embedding_dim` 과 Supabase 마이그레이션의 `vector(N)` 이 **반드시** 같아야 한다.
 
-## 3. 내 주기 알아내기 — `cadence.py`
+## 3. 주기 추론 — `cadence.py`
 
 기록이 4개 이상 쌓이면(`personal_history_threshold` + 1) 개인 이력을 쓴다.
 
@@ -153,7 +153,7 @@ Postgres `match_items` RPC가 이 벡터의 코사인 유사도로 후보를 찾
 > 예전에 "이 사람은 늘 늦으니 주기를 늘려주자"는 보정이 있었는데 뺐다.
 > 미루는 걸 정상으로 굳혀버려서, 주기가 회를 거듭할수록 늘어나기만 했다.
 
-## 4. 처음 보는 일 — `_research`
+## 4. 신규 항목 조사 — `_research`
 
 기록이 없는 새 항목은 개인 이력이 없다. 이때 순서는 이렇다.
 
@@ -206,7 +206,7 @@ pnpm --filter @lastly/ai test
 
 ---
 
-## 알아둘 것
+## 주의
 
 **공개 주소를 주지 않는다.** `INTERNAL_TOKEN` 은 최소한의 빗장일 뿐이다.
 `apps/api` 만 이 서비스를 부른다.
