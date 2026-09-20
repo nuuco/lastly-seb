@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { captureApi } from '@/lib/api/capture';
+import { addPending } from '@/lib/offline/pending-captures';
 import { itemsApi } from '@/lib/api/items';
 import { todayIso } from '@/lib/date';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -41,8 +42,18 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const [rawSaved, setRawSaved] = useState<string | null>(null);
   /** 기다림을 포기했는지. 늦게 도착한 해석 결과를 버리는 기준이다. */
   const abandoned = useRef(false);
+  /** 연결이 끊겨 적어만 둔 문장. 토스트로 알려준 뒤 비운다. */
+  const [pendingSaved, setPendingSaved] = useState<string | null>(null);
 
   const interpret = useMutation({
+    /**
+     * 연결이 없어도 보류하지 말고 실패시킨다.
+     *
+     * 기본값은 오프라인이면 요청을 붙들고 기다린다. 그러면 오류가 나지 않아
+     * 화면이 "살펴보고 있어요" 인 채로 멈추고, 사용자는 말한 것이 어떻게 됐는지 모른다.
+     * 실패로 떨어져야 아래 onError 에서 문장을 적어 둘 수 있다.
+     */
+    networkMode: 'always',
     mutationFn: (input: { text: string; mode: 'voice' | 'text'; asrConfidence?: number }) =>
       captureApi.interpret(input),
     onMutate: (input) => {
@@ -59,8 +70,22 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       // 결과가 나온 뒤에야 입력창을 비운다 — 기다리는 동안 무엇을 보냈는지 보여야 한다.
       onInterpreted?.();
     },
-    onError: () => {
+    onError: (_error, input) => {
       if (abandoned.current) return;
+
+      /**
+       * 연결이 끊겨서 실패한 것이라면 재시도 시트를 띄우지 않는다.
+       * 지금은 아무리 눌러도 안 되고, 사용자는 방금 한 말을 잃는다.
+       * 문장만 적어 두고 연결됐을 때 평소대로 해석한다.
+       */
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        addPending(input.text, input.mode);
+        setPendingSaved(input.text);
+        setStep('idle');
+        onInterpreted?.();
+        return;
+      }
+
       setStep('retry');
     },
   });
@@ -173,6 +198,9 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     saveRaw: saveRaw.mutate,
     rawSaved,
     dismissRawSaved: () => setRawSaved(null),
+    /** 연결이 끊겨 적어만 둔 문장. 토스트로 알린다. */
+    pendingSaved,
+    dismissPendingSaved: () => setPendingSaved(null),
     cancel,
     dismissToast,
     undo: undo.mutate,
