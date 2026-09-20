@@ -119,18 +119,29 @@ describe('CaptureService.interpret', () => {
   });
 
   it('후보는 있지만 확신이 부족하면 고르게 한다', async () => {
-    const { service } = buildService({
-      parse: parsed({
-        matched_item_id: null,
-        candidates: [
-          { item_id: 'item-1', name: '이불 빨래', similarity: 0.7 },
-          { item_id: 'item-2', name: '이불 커버 세탁', similarity: 0.62 },
-        ],
-      }),
+    const { service, items } = buildService({
       items: [itemRow(), itemRow({ id: 'item-2', name: '이불 커버 세탁' })],
     });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.7 },
+      { item_id: 'item-2', name: '이불 커버 세탁', similarity: 0.62 },
+    ]);
 
-    const result = await service.interpret('user-1', { text: '지난주에 이불 빠라써', mode: 'voice' }, TODAY);
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '지난주에 이불 빠라써',
+        mode: 'voice',
+        slots: {
+          intent: 'record',
+          itemName: '이불',
+          daysAgo: 7,
+          statedCadenceDays: null,
+          confidence: 0.7,
+        },
+      },
+      TODAY,
+    );
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(2);
@@ -166,26 +177,52 @@ describe('CaptureService.interpret', () => {
   });
 
   it('확신도가 낮으면 항목명이 있어도 재시도로 보낸다', async () => {
-    const { service } = buildService({ parse: parsed({ confidence: 0.2 }) });
+    const { service, items } = buildService({});
+    items.matchByMeaning.mockResolvedValue([]);
 
-    const result = await service.interpret('user-1', { text: '뭐 했는데', mode: 'voice' }, TODAY);
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '뭐 했는데',
+        mode: 'voice',
+        slots: {
+          intent: 'record',
+          itemName: '이불 빨래',
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.2,
+        },
+      },
+      TODAY,
+    );
 
     expect(result.outcome).toBe('unrecognized');
   });
 
   it('약한 후보는 걸러낸다', async () => {
-    const { service } = buildService({
-      parse: parsed({
-        matched_item_id: null,
-        candidates: [
-          { item_id: 'item-1', name: '이불 빨래', similarity: 0.7 },
-          { item_id: 'item-2', name: '수건 교체', similarity: 0.2 },
-        ],
-      }),
+    const { service, items } = buildService({
       items: [itemRow(), itemRow({ id: 'item-2', name: '수건 교체' })],
     });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.7 },
+      { item_id: 'item-2', name: '수건 교체', similarity: 0.2 },
+    ]);
 
-    const result = await service.interpret('user-1', { text: '이불 관련', mode: 'text' }, TODAY);
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '이불 관련',
+        mode: 'text',
+        slots: {
+          intent: 'record',
+          itemName: '이불',
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.7,
+        },
+      },
+      TODAY,
+    );
 
     expect(result.candidates.map((c) => c.itemId)).toEqual(['item-1']);
   });
@@ -319,22 +356,20 @@ describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
     expect(ai.parseUtterance).not.toHaveBeenCalled();
   });
 
-  it('처음 보는 항목인데 주기도 없으면 AI에게 넘긴다', async () => {
-    // "얼마마다 하는 일인가" 는 세상 지식이고, 애초에 집안일이 맞는지도 판단해야 한다.
+  it('처음 보는 항목인데 주기도 없으면 주기만 AI 에게 묻는다', async () => {
     const { service, ai } = buildService({});
 
-    await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '베란다 창틀 닦았어', mode: 'text' }, TODAY);
 
-    expect(ai.parseUtterance).toHaveBeenCalled();
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('베란다 창틀 청소');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).toHaveBeenCalled();
   });
 });
 
-describe('CaptureService.interpret — AI 가 안 깨어났을 때', () => {
-  /**
-   * 무료 호스팅은 15분 놀면 AI 를 재우고, 깨는 데 30초 넘게 걸린다.
-   * 그 사이에 기록한 사람이 손해를 보면 안 된다.
-   */
-  it('규칙이 이름을 뽑았으면 그걸로 확인 시트를 낸다', async () => {
+describe('CaptureService.interpret — 규칙이 이름만 뽑은 새 항목', () => {
+  it('규칙이 이름을 뽑았으면 그걸로 확인 시트를 내고 주기만 묻는다', async () => {
     const { service, ai } = buildService({ parse: null });
 
     const result = await service.interpret(
@@ -346,14 +381,10 @@ describe('CaptureService.interpret — AI 가 안 깨어났을 때', () => {
     expect(result.outcome).toBe('new_item');
     expect(result.normalizedName).toBe('화장실 청소');
     expect(result.doneOn).toBe('2026-09-05');
-    // 주기만 기본값이다. 시트에서 고칠 수 있다.
-    expect(result.cadence?.source).toBe('default');
-    expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
-    // 화면이 원인을 알 수 있어야 "또렷하게 말해주세요" 대신 다른 말을 한다.
-    expect(result.degraded).toBe(true);
+    expect(result.cadence?.source).toBe('community');
     expect(result.draftToken).toBe('signed-token');
-    // 방금 응답하지 않은 상대에게 주기를 또 묻지 않는다.
-    expect(ai.suggestCadence).not.toHaveBeenCalled();
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).toHaveBeenCalled();
   });
 
   it('이름조차 못 뽑으면 직접 고르게 한다', async () => {
@@ -476,5 +507,110 @@ describe('CaptureService.previewCadence — 이름을 고쳤을 때', () => {
     });
 
     expect(result.cadence?.source).toBe('community');
+  });
+});
+
+describe('CaptureService.interpret — 브라우저 슬롯', () => {
+  it('칸이 오면 문장을 다시 해석하지 않고 매칭만 한다', async () => {
+    const { service, ai } = buildService({ items: [] });
+
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '오늘 헤어샵 다녀왔어',
+        mode: 'voice',
+        slots: {
+          intent: 'record',
+          itemName: '헤어샵',
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.8,
+        },
+      },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('헤어샵');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('조회 칸이면 답을 돌려주고 저장하지 않는다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '그거 언제 했지?',
+        mode: 'voice',
+        slots: {
+          intent: 'query',
+          itemName: '이불 빨래',
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.9,
+        },
+      },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.name).toBe('이불 빨래');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('칸 이름이 애매하면 되묻는다', async () => {
+    const { service, ai, items } = buildService({
+      items: [itemRow(), itemRow({ id: 'item-2', name: '이불 커버' })],
+    });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.6 },
+      { item_id: 'item-2', name: '이불 커버', similarity: 0.55 },
+    ]);
+
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '이불 했어',
+        mode: 'voice',
+        slots: {
+          intent: 'record',
+          itemName: '이불',
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.7,
+        },
+      },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.candidates.map((c) => c.name)).toEqual(['이불 빨래', '이불 커버']);
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+
+  it('칸에 이름도 확신도 없으면 재확인으로 보낸다', async () => {
+    const { service, ai, items } = buildService({});
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
+      'user-1',
+      {
+        text: '음 그거',
+        mode: 'text',
+        slots: {
+          intent: 'record',
+          itemName: null,
+          daysAgo: 0,
+          statedCadenceDays: null,
+          confidence: 0.2,
+        },
+      },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.normalizedName).toBeNull();
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
   });
 });
