@@ -145,7 +145,11 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
         return;
       }
 
+      // 서버 실패 때 result 없이 retry 만 두면 시트가 안 열린다.
+      setResult(failedInterpretResult(input.text));
+      setCadenceOverride(null);
       setStep('retry');
+      onInterpreted?.();
     },
   });
 
@@ -300,6 +304,22 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     cancel,
     dismissToast,
     undo: undo.mutate,
+  };
+}
+
+function failedInterpretResult(text: string): InterpretResult {
+  return {
+    transcript: text,
+    outcome: 'unrecognized',
+    normalizedName: null,
+    doneOn: todayIso(),
+    matchedItemId: null,
+    candidates: [],
+    answer: null,
+    cadence: null,
+    confidence: 0,
+    degraded: true,
+    draftToken: 'error',
   };
 }
 
