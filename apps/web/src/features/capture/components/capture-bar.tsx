@@ -15,6 +15,8 @@ interface CaptureBarProps {
   listening: boolean;
   /** 듣는 동안 실시간으로 들어오는 문장. */
   liveTranscript: string;
+  /** 마이크는 켜졌는데 글자를 못 받았을 때. */
+  listenError?: string | null;
   /** 서버가 문장을 해석하는 중. 몇 초 걸리므로 반드시 티를 내야 한다. */
   interpreting: boolean;
   /** 설계 06 — 입력창이 비어 있고 포커스가 있을 때 위에 뜨는 칩. */
@@ -43,6 +45,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
     onMic,
     listening,
     liveTranscript,
+    listenError,
     interpreting,
     quickPhrases = [],
     above,
@@ -151,6 +154,12 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
           <MicButton listening={listening} onClick={onMic} />
         )}
       </form>
+
+      {listenError ? (
+        <p className="mt-2.5 text-center text-12.5 text-accent-ink" role="alert">
+          {listenError}
+        </p>
+      ) : null}
 
       {interpreting ? (
         waitedLong && onSkipWait ? (

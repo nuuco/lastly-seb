@@ -123,7 +123,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const today = parseISO(shown?.today ?? todayIso());
 
-  const speech = useSpeechRecognition();
+  const [draft, setDraft] = useState('');
   // 해석이 끝나야 입력창을 비운다. 기다리는 동안 보낸 문장이 남아 있어야 한다.
   const capture = useCapture({ onInterpreted: () => setDraft('') });
 
@@ -141,13 +141,47 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
   const [promptDismissed, setPromptDismissed] = useState(false);
-  const [draft, setDraft] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [month, setMonth] = useState(() => formatMonth(new Date()));
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 말이 끝나면 바로 이해한다. 받아쓰기는 훅, 확인 시트 진입만 여기서.
+   */
+  const speech = useSpeechRecognition();
+  const wasListening = useRef(false);
+  const heardRef = useRef('');
+  const interpretVoiceRef = useRef(capture.interpret);
+  interpretVoiceRef.current = capture.interpret;
+  const { listening, transcript, reset: resetSpeech, stop: stopSpeech } = speech;
+
+  if (transcript) heardRef.current = transcript;
+
+  useEffect(() => {
+    const justStopped = wasListening.current && !listening;
+    wasListening.current = listening;
+    if (!justStopped) return;
+
+    const text = (transcript || heardRef.current).trim();
+    heardRef.current = '';
+    if (text) {
+      setDraft(text);
+      interpretVoiceRef.current({
+        text,
+        mode: 'voice',
+        knownItems: knownFrom(shownRef.current),
+      });
+    }
+    resetSpeech();
+  }, [listening, transcript, resetSpeech]);
+
+  /** 해석이 시작되면 메인 마이크를 놓는다. */
+  useEffect(() => {
+    if (capture.step === 'interpreting') stopSpeech();
+  }, [capture.step, stopSpeech]);
 
   /**
    * 설계 06의 "자주 쓰는 문장" 칩.
@@ -194,55 +228,6 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
       await queryClient.invalidateQueries({ queryKey: queryKeys.home });
     },
   });
-
-  const startVoice = () => {
-    if (!speech.supported) return;
-    speech.start();
-  };
-
-  /**
-   * 말이 끝나면(침묵 1.4초) 마이크를 놓고 바로 이해한다.
-   * 입력창에만 두고 보내기를 기다리지 않는다.
-   *
-   * 목록(shown)은 ref 로만 읽는다. 피드가 갱신될 때마다 effect 가 다시 돌면
-   * 듣기 끝과 겹쳐 같은 말을 두 번 보낼 수 있다.
-   */
-  const wasListening = useRef(false);
-  // speech 는 렌더마다 새 객체라 의존성에 두면 효과가 매번 돈다. 필요한 값만 본다.
-  const { listening, transcript, reset: resetSpeech } = speech;
-
-  useEffect(() => {
-    const justStopped = wasListening.current && !listening;
-    wasListening.current = listening;
-
-    if (!justStopped) return;
-
-    const text = transcript.trim();
-    if (text) {
-      setDraft(text);
-      capture.interpret({
-        text,
-        mode: 'voice',
-        knownItems: knownFrom(shownRef.current),
-      });
-    }
-    resetSpeech();
-  }, [listening, transcript, resetSpeech, capture.interpret]);
-
-  /**
-   * 기록 흐름이 시작되면 듣기를 끝낸다.
-   *
-   * 보내기를 누른 뒤에도 마이크가 잡혀 있으면 사용자는 앱이 계속 엿듣는다고 느낀다.
-   * 지금 화면에서는 듣는 중에 보내기 버튼이 숨겨져 여기까지 오는 길이 좁지만,
-   * "다시 말하기" 로 다시 듣기 시작한 뒤 말하지 않고 넘어가는 경우가 있다.
-   * 인식 객체를 놓아주는 책임을 onend 하나에만 두지 않는다.
-   */
-  const { stop: stopSpeech } = speech;
-  const flowStarted = capture.step !== 'idle';
-
-  useEffect(() => {
-    if (flowStarted) stopSpeech();
-  }, [flowStarted, stopSpeech]);
 
   /**
    * "다시 말하기" — 시트를 닫는 데서 그치지 않고 곧바로 다시 듣기 시작한다.
@@ -370,16 +355,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         onChange={setDraft}
         onSubmit={() => submitDraft('text')}
         onMic={() => {
-          if (speech.listening) {
-            speech.stop();
-          } else if (speech.supported) {
-            speech.start();
-          } else {
-            inputRef.current?.focus();
-          }
+          if (capture.step !== 'idle') capture.cancel();
+          if (speech.listening) speech.stop();
+          else if (speech.supported) speech.start();
+          else inputRef.current?.focus();
         }}
         listening={speech.listening}
         liveTranscript={speech.transcript}
+        listenError={speech.error}
         interpreting={capture.interpreting}
         quickPhrases={quickPhrases}
         onSkipWait={() => {
