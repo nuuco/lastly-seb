@@ -19,7 +19,7 @@ const nextConfig = {
 
   // design-tokens는 빌드 단계 없이 소스를 그대로 쓴다.
   // contracts는 dist(JS)를 내보내므로 여기 없어도 된다.
-  transpilePackages: ['@lastly/design-tokens'],
+  transpilePackages: ['@lastly/design-tokens', '@lastly/parser'],
 
   async headers() {
     return [
@@ -29,6 +29,10 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
           { key: 'Service-Worker-Allowed', value: '/' },
         ],
+      },
+      {
+        source: '/models/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
     ];
   },
