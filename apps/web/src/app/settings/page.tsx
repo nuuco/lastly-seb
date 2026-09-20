@@ -61,16 +61,34 @@ export default function SettingsPage() {
           </span>
         </Row>
 
+        {/*
+          * 기기 설정에서 알림을 막아두면 앱이 다시 물어볼 수 없다. 스위치를 눌러도
+          * 조용히 실패하므로, 그 경우에는 스위치 대신 어디서 풀어야 하는지 알려준다.
+          */}
         <Row divider>
-          <p className="text-15.5 font-semibold text-ink">알림 권한</p>
-          {settings.data?.pushGranted ? (
-            <span className="rounded-[9px] bg-sage-soft px-[11px] py-1.5 text-13 font-bold text-accent-ink">
-              허용됨
+          <div>
+            <p className="text-15.5 font-semibold text-ink">알림 받기</p>
+            {push.permission === 'denied' ? (
+              <p className="mt-[3px] break-keep text-12.5 leading-[1.6] text-ink-3">
+                기기 설정에서 이 앱의 알림을 막아뒀어요. 설정 앱에서 허용해주세요.
+              </p>
+            ) : null}
+          </div>
+
+          {push.permission === 'denied' ? (
+            <span className="shrink-0 rounded-[9px] bg-surface-alt px-[11px] py-1.5 text-13 font-bold text-ink-3">
+              차단됨
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={async () => {
+            <Toggle
+              on={settings.data?.pushGranted ?? false}
+              onChange={async (on) => {
+                if (!on) {
+                  await push.unsubscribe();
+                  await queryClient.invalidateQueries({ queryKey: queryKeys.notificationSettings });
+                  return;
+                }
+
                 await push.subscribe();
                 /**
                  * 알림을 켜겠다는 건 챙김받고 싶다는 뜻이다.
@@ -82,10 +100,8 @@ export default function SettingsPage() {
                 });
                 if (fresh.signupPrompt) setSignupPrompt(fresh.signupPrompt);
               }}
-              className="rounded-[9px] bg-accent-soft px-[11px] py-1.5 text-13 font-bold text-accent-ink"
-            >
-              {push.status === 'requesting' ? '요청 중…' : '알림 켜기'}
-            </button>
+              label="알림 받기"
+            />
           )}
         </Row>
 
