@@ -18,8 +18,8 @@ item_name은 행동까지 명사구. 빨았어→빨래, 갈았어→교체, 닦
 예1 오늘 이불 빨았어
 {"intent":"record","item_name":"이불 빨래","days_ago":0,"matched_item_id":"item-1","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}
 
-예2 어제 가습기 필터 갈았어
-{"intent":"record","item_name":"가습기 필터 교체","days_ago":1,"matched_item_id":"item-2","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}
+예2 어제 정수기 필터 갈았어
+{"intent":"record","item_name":"정수기 필터 교체","days_ago":1,"matched_item_id":"item-2","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}
 
 예3 이불 언제 빨았지?
 {"intent":"query","item_name":"이불 빨래","days_ago":0,"matched_item_id":"item-1","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}`;

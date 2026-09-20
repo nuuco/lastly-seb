@@ -16,15 +16,15 @@ interface ModelSpec {
 }
 
 const MODELS: Record<ModelId, ModelSpec> = {
-  'gemma3-270m': {
-    path: '/models/gemma3-270m-it-q4_0-web.task',
-    maxTokens: 1024,
-    label: 'Gemma 3 270M int4',
-  },
   'gemma3-1b': {
     path: '/models/gemma3-1b-it-int4-web.task',
     maxTokens: 1280,
     label: 'Gemma 3 1B int4',
+  },
+  'gemma3-270m': {
+    path: '/models/gemma3-270m-it-q4_0-web.task',
+    maxTokens: 1024,
+    label: 'Gemma 3 270M int4',
   },
 };
 
@@ -59,7 +59,7 @@ let initPromise: Promise<void> | null = null;
 let progressHandler: ((progress: EngineProgress) => void) | null = null;
 
 /** 지금 선택된 모델. 엔진이 올라간 모델과 다르면 다음 ensureEngine 때 다시 올린다. */
-let activeModelId: ModelId = 'gemma3-270m';
+let activeModelId: ModelId = 'gemma3-1b';
 let loadedModelId: ModelId | null = null;
 /** 지금 initPromise가 올리는 중인 모델. 같은 모델을 중복 호출하면 그 promise를 그대로 돌려준다. */
 let loadingModelId: ModelId | null = null;

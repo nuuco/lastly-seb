@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Gemma 3 270M Instruct int4 웹 모델을 apps/web/public/models 에 받는다.
+ * Gemma 3 1B Instruct int4 웹 모델을 apps/web/public/models 에 받는다.
  * 저장소에는 올리지 않는다. Hugging Face Gemma 라이선스 동의가 필요할 수 있다.
  *
- * 1B 대신 270M을 받는 실험 브랜치. EXPECTED_BYTES는 게이트 때문에 직접 못 받아본
- * 추정치(약 249MB)라서, 처음 받고 나면 실제 크기로 맞춰야 매번 재다운로드하지 않는다.
+ * 270M도 실험해봤지만 이름 정규화 정확도가 너무 떨어져서(46% vs 1B의 80%) 1B로 확정했다.
+ * /dev/on-device 랩에서 270M을 다시 보고 싶으면 이 파일명·SOURCE를
+ * gemma3-270m-it-q4_0-web.task / litert-community/gemma-3-270m-it 로 바꿔 따로 받으면 된다.
  */
 import { config as loadEnv } from 'dotenv';
 import { createWriteStream } from 'node:fs';
@@ -15,9 +16,9 @@ import { pipeline } from 'node:stream/promises';
 
 loadEnv({ path: path.join(import.meta.dirname, '../../../.env') });
 
-const MODEL_FILE = 'gemma3-270m-it-q4_0-web.task';
-const SOURCE = `https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/${MODEL_FILE}?download=true`;
-const EXPECTED_BYTES = 249_000_000;
+const MODEL_FILE = 'gemma3-1b-it-int4-web.task';
+const SOURCE = `https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/${MODEL_FILE}?download=true`;
+const EXPECTED_BYTES = 700_383_232;
 const destDir = path.join(import.meta.dirname, '../public/models');
 const dest = path.join(destDir, MODEL_FILE);
 
@@ -45,7 +46,7 @@ if (!res.ok || !res.body) {
 const type = res.headers.get('content-type') ?? '';
 if (type.includes('text/html')) {
   console.error(
-    'HTML이 왔습니다. 모델이 게이트되어 있습니다. https://huggingface.co/google/gemma-3-270m-it 에서 동의 후 HF_TOKEN 으로 다시 받으세요.',
+    'HTML이 왔습니다. 모델이 게이트되어 있습니다. https://huggingface.co/google/gemma-3-1b-it 에서 동의 후 HF_TOKEN 으로 다시 받으세요.',
   );
   process.exit(1);
 }
