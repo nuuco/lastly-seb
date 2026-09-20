@@ -78,6 +78,17 @@ export const formatMonth = (d: Date) => format(d, 'yyyy-MM');
 export const formatYearMonth = (month: string) => format(parseISO(`${month}-01`), 'yyyy년 M월');
 
 /**
+ * 주기 규칙을 일수로 되돌린다. 서버의 CadenceService.toRule 과 반대 방향이다.
+ *
+ * 서버에 "사용자가 정한 주기" 를 알려줄 때 쓴다. 달은 30일로 친다 —
+ * CadenceService.toApproxDays 와 같은 환산이라 왕복해도 값이 유지된다.
+ */
+export function ruleToDays(rule: CadenceRule): number {
+  const unitDays = rule.unit === 'day' ? 1 : rule.unit === 'week' ? 7 : 30;
+  return rule.interval * unitDays;
+}
+
+/**
  * 다음 예정일. 서버·DB와 같은 규칙이어야 한다.
  *
  * 화면이 미리 보여줄 때와, 연결이 끊긴 자리에서 기록을 반영할 때 쓴다.

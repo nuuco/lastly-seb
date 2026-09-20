@@ -123,6 +123,8 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       itemId?: string;
       newItemName?: string;
       note?: string | null;
+      /** 확인 시트가 실제로 보여준 주기. 보이는 것과 저장되는 것이 갈리지 않게 한다. */
+      cadence?: CadenceRule;
     }) => {
       if (!result) throw new Error('해석 결과가 없습니다.');
 
@@ -136,7 +138,11 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
        * 사용자 지정으로 덮여 다음 제안에 영향을 준다.
        */
       const isNew = Boolean(input.newItemName);
-      const cadence = cadenceOverride ?? (isNew ? result.cadence?.rule : undefined);
+      /**
+       * 시트가 보여준 값이 가장 정확하다. 이름을 고쳐 주기가 다시 잡힌 경우
+       * 그 값은 여기(result·cadenceOverride)에 없고 시트에만 있다.
+       */
+      const cadence = input.cadence ?? cadenceOverride ?? (isNew ? result.cadence?.rule : undefined);
 
       /**
        * 연결이 끊긴 자리에서 세운 결과는 서버가 서명한 표가 없다.
@@ -240,6 +246,11 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     committed,
     lastMode,
     cadence: cadenceOverride ?? result?.cadence?.rule ?? null,
+    /**
+     * 그 주기를 사용자가 정했는지. 직접 골랐거나 문장에서 말한 경우다.
+     * 이름을 고쳐도 이 값은 지키라고 서버에 알리는 근거가 된다.
+     */
+    cadenceFixed: cadenceOverride !== null || result?.cadence?.source === 'user',
     setCadenceOverride,
     interpret: interpret.mutate,
     interpreting: interpret.isPending,

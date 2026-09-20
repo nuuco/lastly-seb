@@ -447,3 +447,34 @@ describe('CaptureService.interpret — 주기 사전', () => {
     expect(ai.suggestCadence).not.toHaveBeenCalled();
   });
 });
+
+describe('CaptureService.previewCadence — 이름을 고쳤을 때', () => {
+  /**
+   * 실기기에서 나온 문제다. "2주마다" 라고 말해 놓고 이름만 고쳤더니
+   * 사전값 12달로 바뀌어 보였다. 사용자가 이미 정한 주기가 최우선이다.
+   */
+  it('사용자가 정한 주기가 있으면 사전으로 덮지 않는다', async () => {
+    const { service, ai } = buildService({ priorDays: 365 });
+
+    const result = await service.previewCadence('user-1', {
+      name: '도어락 건전지 교체',
+      doneOn: '2026-09-06',
+      statedCadenceDays: 14,
+    });
+
+    expect(result.cadence?.rule).toMatchObject({ unit: 'week', interval: 2 });
+    expect(result.cadence?.source).toBe('user');
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('정한 주기가 없으면 사전을 따른다', async () => {
+    const { service } = buildService({ priorDays: 365 });
+
+    const result = await service.previewCadence('user-1', {
+      name: '도어락 건전지 교체',
+      doneOn: '2026-09-06',
+    });
+
+    expect(result.cadence?.source).toBe('community');
+  });
+});

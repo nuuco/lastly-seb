@@ -394,6 +394,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           open
           result={capture.result}
           cadence={capture.cadence}
+          cadenceFixed={capture.cadenceFixed}
           onCadenceChange={capture.setCadenceOverride}
           onConfirm={capture.commit}
           onRetry={retryWithVoice}

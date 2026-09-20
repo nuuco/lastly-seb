@@ -114,6 +114,13 @@ export type CommitResult = z.infer<typeof commitResultSchema>;
 export const cadencePreviewRequestSchema = z.object({
   name: z.string().min(1).max(60),
   doneOn: isoDateSchema,
+  /**
+   * 사용자가 이미 정해 둔 주기(일). 말로 했든 주기 시트에서 골랐든 같다.
+   *
+   * 이름을 고쳤다고 이걸 덮으면 방금 한 말을 무시하는 셈이 된다 —
+   * "2주마다" 라고 했는데 이름만 바꿨더니 사전값 12달로 바뀌던 문제.
+   */
+  statedCadenceDays: z.number().int().positive().nullable().optional(),
 });
 export type CadencePreviewRequest = z.infer<typeof cadencePreviewRequestSchema>;
 

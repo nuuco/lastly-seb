@@ -309,6 +309,7 @@ export class CaptureService {
         exact?.id ?? null,
         input.name,
         input.doneOn,
+        input.statedCadenceDays ?? null,
       ),
     };
   }

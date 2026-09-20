@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
-import { describeCadence, formatShortDate, todayIso } from '@/lib/date';
+import { describeCadence, formatShortDate, ruleToDays, todayIso } from '@/lib/date';
 
 import { CadenceSheet } from './cadence-sheet';
 
@@ -15,8 +15,15 @@ interface ConfirmSheetProps {
   open: boolean;
   result: InterpretResult;
   cadence: CadenceRule | null;
+  /** 이 주기를 사용자가 정했는지. 말로 했거나 주기 시트에서 고른 경우다. */
+  cadenceFixed: boolean;
   onCadenceChange: (rule: CadenceRule) => void;
-  onConfirm: (input: { itemId?: string; newItemName?: string; note?: string | null }) => void;
+  onConfirm: (input: {
+    itemId?: string;
+    newItemName?: string;
+    note?: string | null;
+    cadence?: CadenceRule;
+  }) => void;
   onRetry: () => void;
   committing: boolean;
 }
@@ -31,6 +38,7 @@ export function ConfirmSheet({
   open,
   result,
   cadence,
+  cadenceFixed,
   onCadenceChange,
   onConfirm,
   onRetry,
@@ -59,9 +67,20 @@ export function ConfirmSheet({
     return () => clearTimeout(timer);
   }, [name, original]);
 
+  /**
+   * 사용자가 정해 둔 주기는 함께 보낸다. 서버가 그걸 최우선으로 두므로
+   * 이름만 고쳤다고 사전값으로 덮이지 않는다.
+   */
+  const fixedDays = cadenceFixed && cadence ? ruleToDays(cadence) : null;
+
   const preview = useQuery({
-    queryKey: ['cadence-preview', edited, result.doneOn],
-    queryFn: () => captureApi.previewCadence({ name: edited!, doneOn: result.doneOn }),
+    queryKey: ['cadence-preview', edited, result.doneOn, fixedDays],
+    queryFn: () =>
+      captureApi.previewCadence({
+        name: edited!,
+        doneOn: result.doneOn,
+        statedCadenceDays: fixedDays,
+      }),
     enabled: Boolean(edited),
   });
 
@@ -167,7 +186,16 @@ export function ConfirmSheet({
             disabled: committing || !name.trim(),
             onClick: () =>
               onConfirm({
-                ...(isNew ? { newItemName: name.trim() } : { itemId: matchedId ?? undefined }),
+                /**
+                 * 화면에 보인 주기를 그대로 실어 보낸다.
+                 *
+                 * 예전에는 이름을 고쳐 주기가 다시 잡혀도 처음 받은 값이 저장돼,
+                 * 시트에 12달이라고 띄워 놓고 2주로 저장하는 일이 있었다.
+                 * 기존 항목에는 보내지 않는다 — 원래 주기가 사용자 지정으로 덮인다.
+                 */
+                ...(isNew
+                  ? { newItemName: name.trim(), cadence: shownRule ?? undefined }
+                  : { itemId: matchedId ?? undefined }),
                 note: note.trim() || null,
               }),
           }}
