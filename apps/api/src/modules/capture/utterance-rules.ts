@@ -10,6 +10,9 @@
  * 처음 보는 대상이어도 사전에 없을 이유가 없다.
  */
 
+/** 실험실이 새 규칙을 묶었는지 확인하는 표시. 이름 규칙 고칠 때마다 올린다. */
+export const UTTERANCE_RULES_REV = 2;
+
 export type Intent = 'record' | 'query';
 
 export interface UtteranceFacts {
@@ -166,6 +169,19 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
 
 /* ─────────────────────────── 의도 ─────────────────────────── */
 
+const DONE_IN_TEXT =
+  /(?:했어|했다|했음|빨았어|빨아놨어|갈았어|닦았어|돌렸어|버렸어|끝냈어|시켰어|청소했어)/;
+
+/**
+ * 물음 어미. "?" 없이도 묻는 말이다.
+ * "오늘 에어컨 청소 했나" → 조회. "청소 했어" → 기록.
+ */
+const QUESTION_ENDING =
+  /(?:했|빨았|갈았|닦았|돌렸|버렸|시켰|청소했|끝냈)(?:나|지|니|을까|으려나)|한\s*건가/;
+
+const QUESTION_MARKERS =
+  /(?:\?|？|언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇)|알려\s*줘|알려줄래)/;
+
 /**
  * 기록인가 질문인가.
  *
@@ -173,8 +189,16 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
  * 둘을 구분하지 못하면 물어본 것을 기록으로 남겨 없던 일이 생긴다.
  */
 export function readIntent(text: string): Intent {
-  if (/\?|？/.test(text)) return 'query';
-  if (/언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|알려줄래/.test(text)) return 'query';
+  // 물음 어미가 있으면 조회. "빨았어 알려줘" 기록 예외보다 먼저 본다.
+  if (QUESTION_ENDING.test(text)) return 'query';
+  if (
+    /알려\s*줘|알려줄래/.test(text) &&
+    DONE_IN_TEXT.test(text) &&
+    !/(?:\?|？|언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇))/.test(text)
+  ) {
+    return 'record';
+  }
+  if (QUESTION_MARKERS.test(text)) return 'query';
   // "간 지 됐어" 처럼 묻는 꼴
   if (/지\s*(얼마|몇)/.test(text)) return 'query';
   return 'record';
@@ -195,16 +219,19 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
   [/삶(?:았|아|을|기)[가-힣]*/, '삶기'],
   [/뒤집(?:었|어|을|기)[가-힣]*/, '뒤집기'],
   [/목욕\s*(?:했|해|할|하|시)[가-힣]*/, '목욕'],
-  [/돌(?:렸|리)[가-힣]*/, '돌리기'],
+  [/돌(?:렸|리|린)[가-힣]*/, '돌리기'],
   [/세척\s*(?:했|해|할|하)[가-힣]*/, '세척'],
 
-  [/세탁\s*(?:했|해|할|하)[가-힣]*|빨래\s*(?:했|해|할|하)[가-힣]*|빨(?:았|아)[가-힣]*/, '빨래'],
-  [/교체\s*(?:했|해|할|하)[가-힣]*|갈(?:았|아|을|기)[가-힣]*|바꾸[가-힣]*|바꿨[가-힣]*/, '교체'],
+  [/세탁\s*(?:했|해|할|하)[가-힣]*|빨래\s*(?:했|해|할|하)[가-힣]*|빨(?:았|아|을|려)[가-힣]*/, '빨래'],
+  [
+    /교체\s*(?:했|해|할|하)[가-힣]*|갈(?:았|아|을|기)[가-힣]*|(?<=^|[\s는은이가을를])간(?=\s)|바꾸[가-힣]*|바꿨[가-힣]*/,
+    '교체',
+  ],
   [/청소\s*(?:했|해|할|하)[가-힣]*|닦(?:았|아|을|기)[가-힣]*|치웠[가-힣]*|치우[가-힣]*/, '청소'],
   [/물\s*(?:줬|주|줄|주기)[가-힣]*/, '물 주기'],
   [/정리\s*(?:했|해|할|하)[가-힣]*|정돈\s*(?:했|해|할|하)[가-힣]*/, '정리'],
   // 버리기와 비우기는 다른 일이다. 쓰레기는 버리고 물통은 비운다.
-  [/버(?:렸|리)[가-힣]*/, '버리기'],
+  [/버(?:렸|리|린)[가-힣]*/, '버리기'],
   [/비(?:웠|우)[가-힣]*/, '비우기'],
   [/충전\s*(?:했|해|할|하)[가-힣]*/, '충전'],
   [/소독\s*(?:했|해|할|하)[가-힣]*|살균\s*(?:했|해|할|하)[가-힣]*/, '소독'],
@@ -216,11 +243,18 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
  * 일을 끝냈다는 표시. 무엇을 했는지는 목적어에 있으므로 이름에 남기지 않는다.
  * "설거지 끝냈어" 의 이름은 "설거지" 이지 "설거지 끝내기" 가 아니다.
  */
-const DONE_MARKERS = /(?:끝냈|끝내|마쳤|마무리했|해치웠|완료했)[가-힣]*/g;
+const DONE_MARKERS = /(?:끝냈|끝낸|끝내|마쳤|마무리했|해치웠|완료했)[가-힣]*/g;
 
 /** 이름에 들어가면 안 되는 시간 표현. */
 const TIME_EXPR =
-  /(아침|점심|저녁|밤|새벽|오전|오후|오늘|어제|어저께|그저께|그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
+  /(아침|점심|저녁|밤|새벽|오전|오후|오늘|어제|어저께|그저께|그제|내일|모레|이따가|방금|아까|마지막으로|마지막|첫째|둘째|셋째|넷째|막(?!지)|주말(?:에)?|다음(?:에|\s*주)|쯤|아마|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
+
+/**
+ * 이름에 남을 자리가 없는 군더더기.
+ * 시간·주기·의문을 지운 뒤에 붙는 "것 같은데", "줄 알았는데" 같은 말.
+ */
+const NAME_JUNK =
+  /(?:줄 알았는데|것 같은데|것 같아|것 같기도|했는데|이었나|였나|였더라|됐지 싶어|꽤 된|정확히(?:\s*언제)?|인지|모르겠어|기억이(?:\s*안\s*나)?|다시|이고|예정(?:이야)?|돌리다가|하려다|하지|건드리고|그대로 두고|미루고|나중에 하고|했던가|지가|이야|됐어|싶어|같아|같은데)/g;
 
 /**
  * 말버릇으로 붙는 1인칭 주어. 항목 이름에 들어갈 자리가 아니다.
@@ -269,8 +303,57 @@ export function readName(text: string): string | null {
   return readNameWithAction(text).name;
 }
 
+/**
+ * 문장이 가리키는 일만 남긴다.
+ *
+ * "베개만 빨았어" 는 이불이 아니라 베개다. "갈았는데 이불은 못 빨았어" 는
+ * 필터가 아니라 이불이다. 앞절을 그대로 두면 이름에 안 한 일이 섞인다.
+ */
+function isolateFocusClause(text: string): string {
+  const onlyDone = [...text.matchAll(/([가-힣]+)\s*만\s+\S+/g)];
+  if (onlyDone.length > 0) return onlyDone[onlyDone.length - 1]![0]!;
+
+  const failedTail = text.match(/(?:는데|어도)\s+(.+(?:못|안)\s+\S+)/);
+  if (failedTail) return failedTail[1]!;
+  return text;
+}
+
+/**
+ * 예정·다짐 동사를 과거형으로 바꿔 행동 사전이 먹게 한다.
+ * "빨 거야" 에서 "거야" 만 지우면 "빨" 이 남아 빨래가 되지 않는다.
+ */
+function normalizePendingVerbs(text: string): string {
+  let s = text;
+  s = s.replace(/빨(?:을|ㄹ)?\s*거(?:야|예요)?/g, '빨았어');
+  s = s.replace(/빨려고/g, '빨았어');
+  s = s.replace(/바꿀\s*예정(?:이야)?/g, '갈았어');
+  s = s.replace(/갈\s*예정(?:이야)?/g, '갈았어');
+  s = s.replace(/돌릴\s*예정(?:이야)?/g, '돌렸어');
+  s = s.replace(/버릴게/g, '버렸어');
+  s = s.replace(/돌릴게/g, '돌렸어');
+  s = s.replace(/시킬게/g, '시켰어');
+  s = s.replace(/할게/g, '했어');
+  return s;
+}
+
+function tidyRemnant(text: string): string {
+  let s = text.replace(/\s+/g, ' ').trim();
+  s = s.replace(/안\s+|못\s+|아직/g, ' ');
+  s = s
+    .split(/\s+/)
+    .map((tok) => tok.replace(/[은는이가을를도의에만]$/, ''))
+    .filter((tok) => tok.length > 0 && !/^(?:못|안|아직|하고|인데|지|게|던|나|함)$/.test(tok))
+    .join(' ');
+  s = s.replace(/^(?:에|을|를|은|는|이|가|도|의)\s+/, '');
+  s = s.replace(/\s+(?:에|을|를|은|는|이|가|도|의)$/, '');
+  s = s.replace(/(?:했음|했어요|했어|했다|했지|한다|함|해써|했)$/, '').trim();
+  return s.replace(/\s+/g, ' ').trim();
+}
+
 export function readNameWithAction(text: string): { name: string | null; sawAction: boolean } {
   let s = stripCadence(text);
+  s = isolateFocusClause(s);
+  s = normalizePendingVerbs(s);
 
   /**
    * 앞으로의 다짐 — "빨거야", "할 거야", "하려고". 이름이 아니다.
@@ -289,6 +372,7 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
   s = s.replace(FIRST_PERSON, ' ');
   s = s.replace(TIME_EXPR, ' ');
   s = s.replace(QUERY_EXPR, ' ');
+  s = s.replace(NAME_JUNK, ' ');
   /**
    * 한국어 발화에 섞여 들어온 소문자 로마자는 음성 인식 잡음으로 본다.
    * 대문자(TV, LED)는 실제 제품 이름일 수 있으므로 남긴다.
@@ -296,27 +380,23 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
   s = s.replace(/(?:^|\s)[a-z]{2,}(?=\s|$)/g, ' ');
   s = s.replace(/[?？!！.,·]/g, ' ');
 
-  // 행동을 명사로 바꾼다. 문장에서는 지우고 끝에 붙인다.
+  // 행동을 명사로 바꾼다. 문장에서는 지우고 끝에 붙인다. 같은 동사가 두 번이면 둘 다 지운다.
   let action: string | null = null;
   for (const [pattern, noun] of ACTION_NOUNS) {
     const m = s.match(pattern);
     if (m) {
       action = noun;
-      s = s.replace(pattern, ' ');
+      s = s.replace(new RegExp(pattern.source, `${pattern.flags.replace('g', '')}g`), ' ');
       break;
     }
   }
 
-  // 남은 조사와 서술어를 턴다.
-  s = s.replace(/\s+/g, ' ').trim();
-  s = s.replace(/^(?:에|을|를|은|는|이|가|도|의)\s+/, '');
-  s = s.replace(/\s+(?:에|을|를|은|는|이|가|도|의)$/, '');
-  s = s.replace(/(?:했음|했어요|했어|했다|했지|한다|함|해써|했)$/, '').trim();
-  s = s.replace(/\s+/g, ' ').trim();
+  s = tidyRemnant(s);
 
   const sawAction = action !== null;
   if (!s && !action) return { name: null, sawAction };
   if (!action) return { name: s || null, sawAction };
+  if (s === action || s.endsWith(` ${action}`)) return { name: s, sawAction };
   return { name: s ? `${s} ${action}` : action, sawAction };
 }
 
