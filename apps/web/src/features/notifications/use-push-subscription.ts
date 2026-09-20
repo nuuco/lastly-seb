@@ -30,6 +30,8 @@ export type PushStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsuppo
  */
 export function usePushSubscription() {
   const [status, setStatus] = useState<PushStatus>('idle');
+  /** 켜지 못한 이유. 화면이 그대로 보여준다 — 원인을 알아야 사용자가 손쓸 수 있다. */
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * 브라우저가 기억하는 허용 여부. 앱이 바꿀 수 없다.
@@ -48,57 +50,81 @@ export function usePushSubscription() {
   const subscribe = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
       setStatus('unsupported');
+      setError('이 브라우저에서는 알림을 켤 수 없어요.');
       return false;
     }
 
     setStatus('requesting');
+    setError(null);
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      setStatus('denied');
+    /**
+     * 실패를 삼키지 않는다.
+     *
+     * 예전에는 예외가 그대로 터져 나가 화면에 아무 말도 남지 않았다. 사용자는
+     * 토글이 잠깐 켜졌다 꺼지는 것만 보고 무엇이 잘못됐는지 알 수 없었다.
+     * 이유를 그대로 들고 나와야 기기 설정 문제인지 다른 문제인지 가릴 수 있다.
+     */
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setStatus('denied');
+        setError('알림을 허용해야 켤 수 있어요. 기기 설정에서 이 앱의 알림을 확인해주세요.');
+        return false;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+
+      // 예전 구독이 남아 있으면 새로 만들지 못한다. 있으면 그것을 그대로 쓴다.
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToBuffer(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+        }));
+
+      const json = subscription.toJSON();
+
+      await profileApi.subscribePush({
+        endpoint: subscription.endpoint,
+        keys: { p256dh: json.keys!.p256dh!, auth: json.keys!.auth! },
+        userAgent: navigator.userAgent,
+      });
+
+      setStatus('granted');
+      return true;
+    } catch (e) {
+      setStatus('idle');
+      setError(e instanceof Error ? e.message : '알림을 켜지 못했어요.');
       return false;
     }
-
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToBuffer(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
-    });
-
-    const json = subscription.toJSON();
-
-    await profileApi.subscribePush({
-      endpoint: subscription.endpoint,
-      keys: { p256dh: json.keys!.p256dh!, auth: json.keys!.auth! },
-      userAgent: navigator.userAgent,
-    });
-
-    setStatus('granted');
-    return true;
   }, []);
 
   /**
-   * 이 기기로 보내는 주소를 없앤다.
+   * 이 기기로 보내는 주소를 서버에서 지운다.
    *
-   * 브라우저 권한은 그대로 둔다 — 앱이 취소할 수 없기도 하고, 다시 켤 때
-   * 아무것도 묻지 않고 바로 켜지는 편이 낫다.
+   * 브라우저 쪽 구독은 그대로 둔다. 그것까지 지우면 다시 켤 때 애플·구글 서버에
+   * 새 주소를 받아와야 해서 몇 초씩 걸린다. 남겨 두면 다시 켜는 것이 즉시 끝난다.
+   * 주소가 서버에 없으면 어차피 아무것도 보내지 않으므로 알림은 오지 않는다.
+   *
+   * 브라우저 권한도 건드리지 않는다 — 앱이 취소할 수 없고, 다시 켤 때 묻지 않는 편이 낫다.
    */
   const unsubscribe = useCallback(async () => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false;
 
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    if (!subscription) return true;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) await profileApi.unsubscribePush(subscription.endpoint);
 
-    // 서버부터 지운다. 브라우저 쪽만 지우면 서버가 죽은 주소로 계속 보낸다.
-    await profileApi.unsubscribePush(subscription.endpoint);
-    await subscription.unsubscribe();
-
-    setStatus('idle');
-    return true;
+      setStatus('idle');
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '알림을 끄지 못했어요.');
+      return false;
+    }
   }, []);
 
-  return { status, permission, subscribe, unsubscribe, isStandalone: useIsStandalone() };
+  return { status, permission, error, subscribe, unsubscribe, isStandalone: useIsStandalone() };
 }
 
 /** 홈 화면에 추가된 상태인지. iOS는 navigator.standalone, 그 외는 display-mode 미디어쿼리. */

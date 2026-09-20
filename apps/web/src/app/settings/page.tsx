@@ -1,6 +1,6 @@
 'use client';
 
-import type { SignupPrompt } from '@lastly/contracts';
+import type { NotificationSettings, SignupPrompt } from '@lastly/contracts';
 
 import { todayIso } from '@/lib/date';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   /** 알림을 켠 직후에만 띄운다. 설정 화면을 열었다는 이유로 권하지는 않는다. */
   const [signupPrompt, setSignupPrompt] = useState<SignupPrompt | null>(null);
+  /** 알림을 켜지 못한 이유. 실패를 조용히 넘기면 사용자는 같은 행동을 반복한다. */
+  const [pushError, setPushError] = useState<string | null>(null);
 
   /**
    * 계정이 생기기 전에도 설정을 열 수 있다. 그때는 서버를 부르지 않고 기본값을 보여준다 —
@@ -38,6 +40,39 @@ export default function SettingsPage() {
     queryFn: profileApi.notificationSettings,
     enabled: signedIn === true,
   });
+
+  /**
+   * 알림 켜고 끄기.
+   *
+   * 누른 즉시 토글을 움직이고 서버 일은 뒤에서 한다. 예전에는 서버를 두 번 왕복한
+   * 뒤에야 모양이 바뀌어서, 눌러도 한참 반응이 없는 것처럼 보였다.
+   * 실패하면 원래대로 되돌리고 이유를 띄운다.
+   */
+  const togglePush = async (on: boolean) => {
+    setPushError(null);
+
+    const before = queryClient.getQueryData<NotificationSettings>(queryKeys.notificationSettings);
+    if (before) {
+      queryClient.setQueryData(queryKeys.notificationSettings, { ...before, pushGranted: on });
+    }
+
+    const ok = on ? await push.subscribe() : await push.unsubscribe();
+
+    if (!ok) {
+      if (before) queryClient.setQueryData(queryKeys.notificationSettings, before);
+      setPushError(push.error ?? '알림을 바꾸지 못했어요.');
+      return;
+    }
+
+    /**
+     * 알림을 켜겠다는 건 챙김받고 싶다는 뜻이다.
+     * 익명이면 이 브라우저를 비우는 순간 그 알림이 끊기므로 지금 말한다.
+     */
+    if (on && before?.signupPrompt) setSignupPrompt(before.signupPrompt);
+
+    // 서버 값으로 맞춰 둔다. 화면은 이미 바뀌어 있어 기다릴 것이 없다.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.notificationSettings });
+  };
 
   const update = useMutation({
     mutationFn: profileApi.updateNotificationSettings,
@@ -83,6 +118,8 @@ export default function SettingsPage() {
               <p className="mt-[3px] break-keep text-12.5 leading-[1.6] text-ink-3">
                 기기 설정에서 이 앱의 알림을 막아뒀어요. 설정 앱에서 허용해주세요.
               </p>
+            ) : pushError ? (
+              <p className="mt-[3px] break-keep text-12.5 leading-[1.6] text-danger">{pushError}</p>
             ) : null}
           </div>
 
@@ -93,24 +130,7 @@ export default function SettingsPage() {
           ) : (
             <Toggle
               on={settings.data?.pushGranted ?? false}
-              onChange={async (on) => {
-                if (!on) {
-                  await push.unsubscribe();
-                  await queryClient.invalidateQueries({ queryKey: queryKeys.notificationSettings });
-                  return;
-                }
-
-                await push.subscribe();
-                /**
-                 * 알림을 켜겠다는 건 챙김받고 싶다는 뜻이다.
-                 * 익명이면 이 브라우저를 비우는 순간 그 알림이 끊기므로 지금 말한다.
-                 */
-                const fresh = await queryClient.fetchQuery({
-                  queryKey: queryKeys.notificationSettings,
-                  queryFn: profileApi.notificationSettings,
-                });
-                if (fresh.signupPrompt) setSignupPrompt(fresh.signupPrompt);
-              }}
+              onChange={(on) => togglePush(on)}
               label="알림 받기"
             />
           )}
