@@ -9,5 +9,16 @@
 - 동의·음성: 첫 방문 670MB 시트, 설정 행, 조회 TTS, 확인 응/아니
 - 약관: Gemma 이용약관 고지, 개인정보 문장 LLM 미전송으로 개정
 - 확인: API capture 스펙 28개 통과, web·api typecheck 통과. 브라우저 도구 없음 — 화면은 로컬 서버 HTML로만 확인
-- 음성: 침묵 1.4초 후 바로 interpret·확인 시트. 입력창만 채우던 경로 제거
-- 음성 effect: shown은 ref로만 읽어 목록 갱신과 듣기 끝이 겹치지 않게 함
+- 음성: 말이 끝나면 확인 시트. 받아쓰기는 기존 훅(확정 시 마이크 해제) 유지
+- 음성 effect: shown·interpret는 ref, 마지막 받아쓴 글자를 놓치지 않음
+- 음성: isFinal abort 제거. 침묵 1.4초·세션 재시작으로 받아쓰기 유지 후 해석
+- 음성: continuous+침묵 종료, onUtterance로 문장 전달(listening effect 미사용)
+- 음성: 533bd1d 훅으로 복원(isFinal 종료). 홈은 끝나면 interpret. TTS 목소리 로드 보강
+- 음성: Safari는 isFinal 대기로 해석 진입 실패. 침묵 1.5초 후 stop으로 해석 진입
+- 해석: API 실패 시 result 없는 retry로 시트가 안 열리던 경로 수정. 응/아니 오인 완화
+- 음성: Safari 세션 끊김 시 재시작. interpreting 일 때만 메인 마이크 stop
+- 음성: 재시작 루프 제거. continuous 한 세션+침묵 종료. 마이크 시 남은 step 취소
+- 음성: 533bd1d는 훅 미변경 확인. 훅을 그 커밋과 동일 원본으로 복원
+- 음성: 533bd1d 뼈대 유지하되 isFinal abort 제거(받아쓰기 유지). 침묵 후 stop. TTS는 확인 시트+음성 안내 켜짐 시
+- 음성: Safari getUserMedia 권한 선행. 세션 조기 종료 시 재시작. 언마운트에만 abort
+- 음성: 훅·홈·TTS·API 실패 시트 정리(중복 플래그·장황 주석 축소)
