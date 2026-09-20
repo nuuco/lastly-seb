@@ -94,16 +94,30 @@ export class AiClient {
     return this.post<AiCadenceResponse>('/v1/cadence/suggest', { ...body, caller: this.caller });
   }
 
+  /**
+   * 잠든 서비스를 기다리지 않는다.
+   *
+   * 임베딩은 있으면 좋은 보조 수단이고, 없으면 트라이그램 검색이 대신한다.
+   * 그런데 저장 경로에서 부르기 때문에, 자고 있는 서비스를 45초씩 기다리면
+   * 사용자가 "저장하기" 를 누르고 그만큼 멈춰 있게 된다. 실제로 그렇게 걸렸다.
+   */
   embed(text: string) {
-    return this.post<AiEmbedResponse>('/v1/embed', { text });
+    return this.post<AiEmbedResponse>('/v1/embed', { text }, { waitForWake: false });
   }
 
-  private async post<T>(path: string, body: unknown): Promise<T | null> {
+  private async post<T>(
+    path: string,
+    body: unknown,
+    options: { waitForWake?: boolean } = {},
+  ): Promise<T | null> {
     const first = await this.attempt<T>(path, body, TIMEOUT_MS);
     if (first.ok) return first.value;
 
     // 서비스가 실제로 낸 답(4xx, 500 등)이면 다시 불러도 같다.
     if (!first.unreachable) return null;
+
+    // 기다릴 값어치가 없는 호출은 여기서 끝낸다.
+    if (options.waitForWake === false) return null;
 
     // 깨어날 때까지 두드린다. 부팅 중에는 프록시가 502를 즉시 돌려주므로
     // 한 번 더 부르는 것으로는 모자라고, 뜰 때까지 반복해야 한다.
