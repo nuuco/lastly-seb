@@ -5,8 +5,9 @@ import { useEffect, useRef } from 'react';
 import { isVoiceGuidanceOn } from './consent';
 import { speak, stopSpeaking } from './voice-guidance';
 
-const YES = /응|네|어|맞아|그래|기록|저장|해줘|좋아|ㅇㅇ/;
-const NO = /아니|아냐|취소|됐어|그만|싫어|닫/;
+/** 한 글자·조사만으로 확정하지 않는다. TTS 메아리·잡음에 시트가 닫히던 것을 막는다. */
+const YES = /^(?:응|네|어|맞아|그래|기록|저장|해줘|좋아|ㅇㅇ)(?:요|예)?[.!]?\s*$/;
+const NO = /^(?:아니|아냐|아니요|아뇨|취소|됐어|그만|싫어|닫아?)(?:요)?[.!]?\s*$/;
 
 function getCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null;
@@ -56,6 +57,7 @@ export function useSpokenConfirm({
 
     let recognition: SpeechRecognitionLike | null = null;
     let decided = false;
+    let listenTimer: ReturnType<typeof setTimeout> | null = null;
 
     const decide = (yes: boolean) => {
       if (decided) return;
@@ -79,7 +81,7 @@ export function useSpokenConfirm({
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       rec.onresult = (event) => {
-        const text = event.results[0]?.[0]?.transcript ?? '';
+        const text = (event.results[0]?.[0]?.transcript ?? '').trim();
         if (YES.test(text)) decide(true);
         else if (NO.test(text)) decide(false);
       };
@@ -91,10 +93,15 @@ export function useSpokenConfirm({
       }
     };
 
-    speak(prompt, listen);
+    // TTS 메아리가 마이크로 들어가면 취소로 오인한다. 읽기가 끝난 뒤 잠깐 쉰다.
+    speak(prompt, () => {
+      if (decided) return;
+      listenTimer = setTimeout(listen, 400);
+    });
 
     return () => {
       decided = true;
+      if (listenTimer) clearTimeout(listenTimer);
       stopSpeaking();
       try {
         recognition?.abort();
