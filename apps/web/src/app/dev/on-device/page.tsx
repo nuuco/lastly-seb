@@ -13,12 +13,17 @@ import type { GoldenCase, GoldenKind } from '@/features/on-device/eval-fixtures'
 import { UTTERANCE_RULES_REV, parseWithRulesOnly } from '@/features/on-device/apply-rules';
 import {
   ensureEngine,
+  getActiveModel,
   hasWebGpu,
+  listModels,
+  modelLabel,
   parseOnDevice,
   parseOnDeviceModelOnly,
   probeModel,
+  setActiveModel,
   subscribeEngineProgress,
 } from '@/features/on-device/engine';
+import type { ModelId } from '@/features/on-device/engine';
 import { GoldenSetPanel } from '@/features/on-device/golden-set-panel';
 import type { GoldenRun } from '@/features/on-device/golden-set-panel';
 import { scoreGolden, marksOk } from '@/features/on-device/score-golden';
@@ -42,6 +47,7 @@ function todayIso(): string {
 /** 설계에 없는 실험 화면. 캡처 본선·규칙 파서는 타지 않고 LLM만 본다. */
 export default function OnDeviceLabPage() {
   const [webGpu, setWebGpu] = useState<boolean | null>(null);
+  const [modelId, setModelId] = useState<ModelId>(getActiveModel());
   const [model, setModel] = useState<{ ok: boolean; bytes: number } | null>(null);
   const [progress, setProgress] = useState<EngineProgress | null>(null);
   const [text, setText] = useState('오늘 이불 빨았어');
@@ -75,6 +81,19 @@ export default function OnDeviceLabPage() {
 
     return unsub;
   }, []);
+
+  const selectModel = async (id: ModelId) => {
+    if (id === modelId || busy !== null) return;
+    setModelId(id);
+    setActiveModel(id);
+    setProgress(null);
+    setResult(null);
+    setError(null);
+    // 모델이 바뀌면 이전 모델 채점 결과가 새 모델 결과랑 섞이면 안 된다.
+    setRuns({});
+    const found = await probeModel(id).catch(() => ({ ok: false, bytes: 0 }));
+    setModel(found);
+  };
 
   const load = async () => {
     setError(null);
@@ -245,7 +264,24 @@ export default function OnDeviceLabPage() {
         의도·날짜·주기·이름·매칭 규칙으로 한 번 보정합니다.
       </p>
 
-      <section className="mt-5 rounded-card border border-line bg-card px-[18px] py-4 shadow-card">
+      <p className="mt-5 px-1 text-12.5 tracking-[.06em] text-ink-3">모델 선택</p>
+      <div className="mt-2 flex gap-2">
+        {listModels().map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            disabled={busy !== null}
+            onClick={() => selectModel(m.id)}
+            className={`flex h-10 flex-1 items-center justify-center rounded-lg border text-13.5 font-semibold disabled:opacity-40 ${
+              modelId === m.id ? 'border-ink bg-ink text-white' : 'border-line bg-card text-ink-2'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="mt-3 rounded-card border border-line bg-card px-[18px] py-4 shadow-card">
         <Row
           label="WebGPU"
           ok={webGpu !== false}
@@ -258,7 +294,7 @@ export default function OnDeviceLabPage() {
             model == null
               ? '확인 중'
               : model.ok
-                ? `Gemma 3 270M int4 · ${(model.bytes / 1_000_000).toFixed(0)}MB`
+                ? `${modelLabel(modelId)} · ${(model.bytes / 1_000_000).toFixed(0)}MB`
                 : '없음 · pnpm download:ondevice-model'
           }
         />

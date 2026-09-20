@@ -1,5 +1,6 @@
 /**
- * Gemma 3 270M int4 를 WebGPU 에서 돌리는 워커.
+ * Gemma 3 (1B 또는 270M) int4 를 WebGPU 에서 돌리는 워커.
+ * 어느 모델이든 engine.ts가 init 메시지에 모델 경로와 maxTokens를 실어 보낸다.
  *
  * type: 'module' 워커에서는 MediaPipe 기본 로더(importScripts)가 실패하고
  * "ModuleFactory not set" 이 난다. WASM 로더를 ESM 으로 직접 붙인다.
@@ -7,13 +8,6 @@
 import { FilesetResolver, LlmInference } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/genai_bundle.mjs';
 
 const WASM_ROOT = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/wasm';
-/**
- * gemma3-270m-it-q4_0-web.task 에 박힌 KV 크기. 모델에 박힌 값과 정확히 같아야 한다.
- * 1B는 1280이었는데 270M 변환본의 실제 값은 확인 못 했다 — 구글 변환 노트북 예시값(1024)을
- * 넣어뒀다. "memory access out of bounds" 류 에러가 나면 이 값이 안 맞는 것이니
- * 모델 카드나 변환 스크립트를 다시 확인해야 한다.
- */
-const MAX_TOKENS = 1024;
 
 let llm = null;
 
@@ -21,7 +15,7 @@ self.onmessage = async (event) => {
   const msg = event.data;
   try {
     if (msg.type === 'init') {
-      await init(msg.modelUrl, msg.id);
+      await init(msg.modelUrl, msg.maxTokens, msg.id);
       self.postMessage({ id: msg.id, type: 'ready' });
       return;
     }
@@ -40,7 +34,7 @@ self.onmessage = async (event) => {
   }
 };
 
-async function init(modelUrl, requestId) {
+async function init(modelUrl, maxTokens, requestId) {
   const genai = await loadFileset();
 
   self.postMessage({
@@ -53,7 +47,7 @@ async function init(modelUrl, requestId) {
 
   const modelAssetPath = new URL(modelUrl, self.location.origin).href;
   const options = {
-    maxTokens: MAX_TOKENS,
+    maxTokens,
     topK: 40,
     temperature: 0.8,
     randomSeed: 101,
