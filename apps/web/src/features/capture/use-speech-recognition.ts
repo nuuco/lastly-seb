@@ -95,6 +95,31 @@ export function useSpeechRecognition() {
   // 화면을 떠날 때도 반드시 놓아준다.
   useEffect(() => release, [release]);
 
+  /**
+   * 앱을 가리거나 다른 앱으로 넘어갈 때 마이크를 놓는다.
+   *
+   * 아이폰은 소리를 잡고 있는 앱을 재우지 않는다. 듣기를 켠 채로 홈으로 나가면
+   * 앱이 계속 살아 있어 배터리를 먹고, 스크린타임에도 계속 쓰는 것으로 잡힌다.
+   * 나갔다는 것은 더 듣지 않겠다는 뜻이므로 그 자리에서 끊는다.
+   */
+  useEffect(() => {
+    const stopIfHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        release();
+        setState((prev) => ({ ...prev, listening: false }));
+      }
+    };
+
+    document.addEventListener('visibilitychange', stopIfHidden);
+    // 사파리는 탭을 덮을 때 visibilitychange 를 건너뛰는 경우가 있어 함께 건다.
+    window.addEventListener('pagehide', release);
+
+    return () => {
+      document.removeEventListener('visibilitychange', stopIfHidden);
+      window.removeEventListener('pagehide', release);
+    };
+  }, [release]);
+
   const start = useCallback(() => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) return;
@@ -111,15 +136,31 @@ export function useSpeechRecognition() {
     recognition.onresult = (event) => {
       let text = '';
       let confidence = 0;
+      let done = false;
 
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i]!;
         const alternative = result[0]!;
         text += alternative.transcript;
-        if (result.isFinal) confidence = alternative.confidence;
+        if (result.isFinal) {
+          confidence = alternative.confidence;
+          done = true;
+        }
       }
 
       setState((prev) => ({ ...prev, transcript: text, confidence }));
+
+      /**
+       * 말이 끝났으면 그 자리에서 마이크를 놓는다.
+       *
+       * onend 를 기다리면 안 된다. 아이폰은 결과를 준 뒤에도 그 신호를 한참 늦게 주거나
+       * 아예 주지 않아서, 글자가 화면에 뜬 뒤에도 마이크가 켜진 채로 남는다.
+       * 들을 말이 끝났는데 계속 잡고 있을 이유가 없다.
+       */
+      if (done) {
+        release();
+        setState((prev) => ({ ...prev, listening: false }));
+      }
     };
 
     recognition.onerror = (event) => {
