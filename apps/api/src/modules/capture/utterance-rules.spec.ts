@@ -1,4 +1,4 @@
-import { readCadenceDays, readDaysAgo, readIntent, readName } from './utterance-rules';
+import { readCadenceDays, readDaysAgo, readIntent, readName } from '@lastly/parser';
 
 /**
  * 규칙 파서는 LLM 을 부르지 않고 끝낼 수 있는 문장을 가려내는 자리다.

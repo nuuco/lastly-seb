@@ -22,7 +22,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
-import { readUtterance, type UtteranceFacts } from './utterance-rules';
+import { readUtterance, type UtteranceFacts } from '@lastly/parser';
 import { appToday } from '../../common/clock';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */

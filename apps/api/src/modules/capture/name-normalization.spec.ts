@@ -1,4 +1,4 @@
-import { readName } from './utterance-rules';
+import { readName } from '@lastly/parser';
 
 /**
  * 이름 정규화 평가셋.

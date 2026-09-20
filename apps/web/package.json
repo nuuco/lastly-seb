@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@lastly/contracts": "workspace:*",
+    "@lastly/parser": "workspace:*",
     "@lastly/design-tokens": "workspace:*",
     "@next/env": "^16.3.4",
     "@supabase/ssr": "^0.5.1",

@@ -1,4 +1,5 @@
 import type {
+  CreateLogInput,
   CalendarMonth,
   CompleteItemResult,
   CreateItemInput,
@@ -27,6 +28,9 @@ export const itemsApi = {
     apiFetch<CompleteItemResult>(`/items/${id}/complete`, { method: 'POST' }),
 
   logs: (itemId: string) => apiFetch<LogEntry[]>(`/items/${itemId}/logs`),
+  /** 과거 날짜로도 남길 수 있다. 오프라인에서 적어 둔 기록을 올릴 때 쓴다. */
+  addLog: (itemId: string, body: CreateLogInput) =>
+    apiFetch<LogEntry>(`/items/${itemId}/logs`, { method: 'POST', body }),
   updateLog: (logId: string, body: UpdateLogInput) =>
     apiFetch<LogEntry>(`/logs/${logId}`, { method: 'PATCH', body }),
   removeLog: (logId: string) => apiFetch<void>(`/logs/${logId}`, { method: 'DELETE' }),

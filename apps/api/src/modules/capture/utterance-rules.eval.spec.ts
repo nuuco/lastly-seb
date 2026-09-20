@@ -1,4 +1,4 @@
-import { readCadenceDays, readDaysAgo, readIntent, readName } from './utterance-rules';
+import { readCadenceDays, readDaysAgo, readIntent, readName } from '@lastly/parser';
 
 /**
  * 평가셋 — 실제 발화 15개로 규칙이 어디까지 커버하는지 센다.

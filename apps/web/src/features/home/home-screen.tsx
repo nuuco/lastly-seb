@@ -22,7 +22,7 @@ import { queryKeys } from '@/lib/api/query-keys';
 import { loadFeed, loadFeedAt, saveFeed } from '@/lib/offline/feed-cache';
 import { useOnline } from '@/lib/offline/use-online';
 import { useSignedIn } from '@/lib/supabase/use-signed-in';
-import { listPending, removePending, type PendingCapture } from '@/lib/offline/pending-captures';
+import { usePending } from '@/lib/offline/use-pending';
 import { formatMonth, formatShortDate, formatYearMonth, todayIso } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
@@ -118,24 +118,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const capture = useCapture({ onInterpreted: () => setDraft('') });
 
   /**
-   * 연결이 끊긴 사이에 적어 둔 문장들.
-   *
-   * 자동으로 저장하지 않는다. 해석 결과를 사용자가 확인하고 저장하는 흐름은
-   * 온라인일 때와 같아야 한다 — 확인 없이 들어간 항목은 이름이 틀려도 손댈 기회가 없다.
+   * 연결이 끊긴 사이에 남긴 기록. 이미 풀린 것은 훅이 알아서 올리고,
+   * 서버에 물어봐야 하는 말만 화면에 남는다.
    */
-  const [pending, setPending] = useState<PendingCapture[]>([]);
-
-  useEffect(() => {
-    setPending(listPending());
-  }, [online, capture.step]);
+  const pending = usePending(signedIn, capture.step);
 
   const processPending = () => {
-    const next = pending[0];
-    if (!next) return;
-
-    removePending(next.id);
-    setPending(listPending());
-    capture.interpret({ text: next.text, mode: next.mode });
+    const next = pending.takeRaw();
+    if (next) capture.interpret({ text: next.text, mode: next.mode });
   };
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
@@ -285,12 +275,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           </button>
         ) : null}
 
-        {pending.length > 0 ? (
+        {pending.count > 0 ? (
           <div className="mt-2 flex items-center justify-between rounded-md bg-accent-soft px-3.5 py-2.5">
             <span className="min-w-0 truncate pr-2 text-12.5 text-accent-ink">
-              적어둔 기록 {pending.length}개 · “{pending[0]!.text}”
+              {pending.raw.length > 0
+                ? `적어둔 기록 ${pending.count}개 · “${pending.raw[0]!.text}”`
+                : `올리지 못한 기록 ${pending.count}개`}
             </span>
-            {online ? (
+            {pending.online && pending.raw.length > 0 ? (
               <button
                 type="button"
                 onClick={processPending}
@@ -299,11 +291,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
                 정리하기
               </button>
             ) : (
-              <span className="shrink-0 text-12.5 text-ink-3">연결되면 정리</span>
+              <span className="shrink-0 text-12.5 text-ink-3">연결되면 올려요</span>
             )}
           </div>
         ) : null}
-
 
         {isEmpty ? (
           <EmptyState
@@ -458,12 +449,15 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         />
       ) : null}
 
-      {/* 연결이 끊긴 사이에 말한 문장. 잃지 않았다는 것부터 알린다. */}
+      {/* 연결이 끊긴 사이에 남긴 기록. 잃지 않았다는 것부터 알린다. */}
       {capture.pendingSaved ? (
+        <Toast message={capture.pendingSaved} onDismiss={capture.dismissPendingSaved} durationMs={6000} />
+      ) : null}
+
+      {pending.justSynced > 0 ? (
         <Toast
-          message="연결이 끊겨 적어만 뒀어요 · 연결되면 정리할게요"
-          onDismiss={capture.dismissPendingSaved}
-          durationMs={6000}
+          message={`적어둔 기록 ${pending.justSynced}개를 저장했어요`}
+          onDismiss={pending.dismissSynced}
         />
       ) : null}
 

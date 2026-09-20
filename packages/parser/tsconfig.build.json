@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // CommonJS로 낸다. apps/api(NestJS)가 require로 읽고,
+    // apps/web은 번들러가 CJS를 알아서 처리한다.
+    // 소스(.ts)를 그대로 main으로 노출하면 빌드된 api가 런타임에 이걸 못 읽는다.
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src"]
+}

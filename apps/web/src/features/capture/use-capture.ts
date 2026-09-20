@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { captureApi } from '@/lib/api/capture';
-import { addPending } from '@/lib/offline/pending-captures';
+import { resolveOffline } from '@/lib/offline/resolve-offline';
 import { itemsApi } from '@/lib/api/items';
 import { todayIso } from '@/lib/date';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -79,8 +79,12 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
        * 문장만 적어 두고 연결됐을 때 평소대로 해석한다.
        */
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        addPending(input.text, input.mode);
-        setPendingSaved(input.text);
+        /**
+         * 규칙 파서를 기기에서 돌려본다. 이미 있는 항목에 붙는 말이면 서버 없이도
+         * 무엇을 저장할지 정해진다 — 앱에서 제일 흔한 경우가 그것이다.
+         * 못 풀면 말만 적어 두고 연결됐을 때 서버에 맡긴다.
+         */
+        setPendingSaved(resolveOffline(input.text, input.mode));
         setStep('idle');
         onInterpreted?.();
         return;
