@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { profileApi } from '@/lib/api/profile';
 
@@ -30,6 +30,20 @@ export type PushStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsuppo
  */
 export function usePushSubscription() {
   const [status, setStatus] = useState<PushStatus>('idle');
+
+  /**
+   * 브라우저가 기억하는 허용 여부. 앱이 바꿀 수 없다.
+   *
+   * 한 번 "차단" 이 되면 다시 물어볼 수조차 없어서, 호출부가 기기 설정으로 안내해야 한다.
+   *
+   * 그릴 때가 아니라 화면이 붙은 뒤에 읽는다. 서버에는 브라우저가 없어 null 인데
+   * 첫 렌더에서 곧바로 읽으면 서버와 결과가 갈려 화면을 통째로 다시 그리게 된다.
+   */
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
+
+  useEffect(() => {
+    if ('Notification' in window) setPermission(Notification.permission);
+  }, [status]);
 
   const subscribe = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
@@ -63,7 +77,28 @@ export function usePushSubscription() {
     return true;
   }, []);
 
-  return { status, subscribe, isStandalone: useIsStandalone() };
+  /**
+   * 이 기기로 보내는 주소를 없앤다.
+   *
+   * 브라우저 권한은 그대로 둔다 — 앱이 취소할 수 없기도 하고, 다시 켤 때
+   * 아무것도 묻지 않고 바로 켜지는 편이 낫다.
+   */
+  const unsubscribe = useCallback(async () => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false;
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return true;
+
+    // 서버부터 지운다. 브라우저 쪽만 지우면 서버가 죽은 주소로 계속 보낸다.
+    await profileApi.unsubscribePush(subscription.endpoint);
+    await subscription.unsubscribe();
+
+    setStatus('idle');
+    return true;
+  }, []);
+
+  return { status, permission, subscribe, unsubscribe, isStandalone: useIsStandalone() };
 }
 
 /** 홈 화면에 추가된 상태인지. iOS는 navigator.standalone, 그 외는 display-mode 미디어쿼리. */
