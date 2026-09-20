@@ -3,7 +3,7 @@ import {
   readCadenceDays,
   readDaysAgo,
   readIntent,
-  readName,
+  readNameWithAction,
 } from '../../../../api/src/modules/capture/utterance-rules';
 
 import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
@@ -25,6 +25,10 @@ const EMPTY_LLM: OnDeviceParseResult = {
 /**
  * 1B는 칸을 자주 틀린다. 본선과 같이 의도·날짜·주기·이름은 규칙이 먼저 채우고,
  * 모델 값은 규칙이 비울 때만 쓴다. 매칭은 알려진 항목 이름과 비교한다.
+ *
+ * 이름은 sawAction(아는 행동을 찾았는지)까지 봐야 한다. 행동을 못 찾았으면
+ * readName은 null이 아니라 문장 조각을 그대로 남기는데, 그건 이름이 아니다 —
+ * "헤어샵 방문했고 1일 가려구"처럼. 그럴 땐 모델 값을 쓴다.
  */
 export function overlayWithRules(
   text: string,
@@ -34,10 +38,10 @@ export function overlayWithRules(
 ): OnDeviceParseResult {
   const reference = new Date(`${referenceDate}T00:00:00`);
   const intent = readIntentFixed(text);
-  const named = readName(text);
+  const { name: named, sawAction } = readNameWithAction(text);
   const dated = readDaysAgo(text, reference);
   const cadence = readCadenceDays(text);
-  const itemName = named ?? llm.itemName;
+  const itemName = sawAction ? named : llm.itemName;
   const matchedItemId = matchKnown(itemName, knownItems);
   const daysAgo =
     intent === 'query' ? 0 : dated.saw ? dated.daysAgo : llm.daysAgo;
