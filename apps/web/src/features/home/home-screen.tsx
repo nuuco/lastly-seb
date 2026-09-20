@@ -19,6 +19,9 @@ import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-
 import { itemsApi } from '@/lib/api/items';
 import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
+import { loadFeed, loadFeedAt, saveFeed } from '@/lib/offline/feed-cache';
+import { useOnline } from '@/lib/offline/use-online';
+import { listPending, removePending, type PendingCapture } from '@/lib/offline/pending-captures';
 import { formatMonth, formatShortDate, formatYearMonth, todayIso } from '@/lib/date';
 
 import { EmptyState } from './components/empty-state';
@@ -66,15 +69,71 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
     initialData: initialFeed ?? (signedIn ? undefined : EMPTY_FEED),
     enabled: signedIn,
   });
+
+  /**
+   * 받은 목록을 기기에 복사해 둔다. 연결이 끊긴 자리에서 열었을 때 보여줄 것이다.
+   * 서버에서 새로 받을 때마다 덮어쓰므로 사본이 낡아 있을 일이 없다.
+   */
+  useEffect(() => {
+    if (feed.data && signedIn) saveFeed(feed.data);
+  }, [feed.data, signedIn]);
+
+  /** 서버를 못 불렀을 때 꺼내 쓸 사본. 없으면 예전처럼 오류 화면으로 간다. */
+  const [cached, setCached] = useState<{ feed: HomeFeed; at: number | null } | null>(null);
+
+  /**
+   * 부르기에 실패했는지. isError 로 보면 안 된다 — 이미 들고 있는 데이터가 있으면
+   * 다시 부르다 실패해도 성공 상태로 남는다. 실패 횟수를 봐야 드러난다.
+   */
+  const failed = feed.failureCount > 0;
+
+  useEffect(() => {
+    if (!failed) return;
+    const saved = loadFeed();
+    if (saved) setCached({ feed: saved, at: loadFeedAt() });
+  }, [failed]);
+
+  /** 이 화면이 그리는 목록. 서버 것이 없으면 기기에 복사해 둔 것. */
+  const shown = feed.data ?? cached?.feed;
+  /**
+   * 낡은 것을 보여주는 중인지. 알려주지 않으면 최신으로 착각한다.
+   *
+   * 연결이 끊긴 것만으로도 알린다. 목록을 30초 동안 최신으로 보기 때문에,
+   * 부르기 실패만 기다리면 끊긴 직후에는 아무 표시도 안 뜬다.
+   */
+  const online = useOnline();
+  const offline = (!online || failed) && Boolean(shown);
+
   /**
    * 서버가 본 오늘을 쓴다. 기기 시계를 쓰면 맨 윗줄만 따로 움직인다 —
    * 폰 날짜를 바꾸면 날짜는 바뀌는데 항목은 그대로였다.
    */
-  const today = parseISO(feed.data?.today ?? todayIso());
+  const today = parseISO(shown?.today ?? todayIso());
 
   const speech = useSpeechRecognition();
   // 해석이 끝나야 입력창을 비운다. 기다리는 동안 보낸 문장이 남아 있어야 한다.
   const capture = useCapture({ onInterpreted: () => setDraft('') });
+
+  /**
+   * 연결이 끊긴 사이에 적어 둔 문장들.
+   *
+   * 자동으로 저장하지 않는다. 해석 결과를 사용자가 확인하고 저장하는 흐름은
+   * 온라인일 때와 같아야 한다 — 확인 없이 들어간 항목은 이름이 틀려도 손댈 기회가 없다.
+   */
+  const [pending, setPending] = useState<PendingCapture[]>([]);
+
+  useEffect(() => {
+    setPending(listPending());
+  }, [online, capture.step]);
+
+  const processPending = () => {
+    const next = pending[0];
+    if (!next) return;
+
+    removePending(next.id);
+    setPending(listPending());
+    capture.interpret({ text: next.text, mode: next.mode });
+  };
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
@@ -91,8 +150,8 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
    * 곧 할 차례인 것부터 세 개만 — 지금 누를 만한 것이어야 의미가 있다.
    */
   const quickPhrases = [
-    ...(feed.data?.due ?? []),
-    ...(feed.data?.upcoming ?? []),
+    ...(shown?.due ?? []),
+    ...(shown?.upcoming ?? []),
   ]
     .slice(0, 3)
     .map((item) => item.name);
@@ -186,9 +245,9 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
   };
 
   if (feed.isPending) return <HomeSkeleton />;
-  if (feed.isError) return <HomeError onRetry={() => feed.refetch()} />;
+  if (!shown) return <HomeError onRetry={() => feed.refetch()} />;
 
-  const { summary, due, upcoming, later } = feed.data;
+  const { summary, due, upcoming, later } = shown;
   const isEmpty = due.length + upcoming.length + later.length === 0;
   const resting = later.filter((i) => i.snoozedUntil).length;
 
@@ -204,6 +263,43 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
           onViewChange={isEmpty ? undefined : setView}
           title={view === 'calendar' ? formatYearMonth(month) : undefined}
         />
+
+        {/*
+          * 사본으로 그리는 중이라고 알린다. 낡은 목록을 최신으로 착각하면
+          * 이미 한 일을 또 하거나, 방금 적은 것이 사라진 줄 안다.
+          */}
+        {offline ? (
+          <button
+            type="button"
+            onClick={() => feed.refetch()}
+            className="mt-3 flex w-full items-center justify-between rounded-md bg-surface-alt px-3.5 py-2.5 text-left"
+          >
+            <span className="text-12.5 text-ink-2">
+              연결이 끊겨 마지막으로 받은 목록을 보여드리고 있어요
+              {cached?.at ? ` · ${formatShortDate(new Date(cached.at).toISOString().slice(0, 10))} 기준` : ''}
+            </span>
+            <span className="shrink-0 pl-2 text-12.5 font-semibold text-accent-ink">다시 시도</span>
+          </button>
+        ) : null}
+
+        {pending.length > 0 ? (
+          <div className="mt-2 flex items-center justify-between rounded-md bg-accent-soft px-3.5 py-2.5">
+            <span className="min-w-0 truncate pr-2 text-12.5 text-accent-ink">
+              적어둔 기록 {pending.length}개 · “{pending[0]!.text}”
+            </span>
+            {online ? (
+              <button
+                type="button"
+                onClick={processPending}
+                className="shrink-0 text-12.5 font-semibold text-accent-ink underline"
+              >
+                정리하기
+              </button>
+            ) : (
+              <span className="shrink-0 text-12.5 text-ink-3">연결되면 정리</span>
+            )}
+          </div>
+        ) : null}
 
 
         {isEmpty ? (
@@ -290,9 +386,9 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
         }
       />
 
-      {feed.data?.signupPrompt && !promptDismissed && capture.step === 'idle' ? (
+      {shown?.signupPrompt && !promptDismissed && capture.step === 'idle' ? (
         <SignupPromptSheet
-          prompt={feed.data.signupPrompt}
+          prompt={shown.signupPrompt}
           onDismiss={() => {
             setPromptDismissed(true);
             // 실패해도 이번 화면에서는 닫힌다. 다음에 다시 뜨는 편이 막히는 것보다 낫다.
@@ -356,6 +452,15 @@ export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
         <Toast
           message={`${capture.rawSaved} 기록했어요`}
           onDismiss={capture.dismissRawSaved}
+        />
+      ) : null}
+
+      {/* 연결이 끊긴 사이에 말한 문장. 잃지 않았다는 것부터 알린다. */}
+      {capture.pendingSaved ? (
+        <Toast
+          message="연결이 끊겨 적어만 뒀어요 · 연결되면 정리할게요"
+          onDismiss={capture.dismissPendingSaved}
+          durationMs={6000}
         />
       ) : null}
 

@@ -28,6 +28,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const { method = 'GET', body, signal } = options;
 
   /**
+   * 연결이 없으면 시도조차 하지 않는다.
+   *
+   * 세션을 읽는 단계에서 멈춰 버려 오류도 안 나고 화면이 계속 기다리기만 했다.
+   * 여기서 바로 끊어야 부르는 쪽이 "적어만 두기" 같은 대비를 할 수 있다.
+   */
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new ApiError(0, 'offline', '연결이 끊겼어요.');
+  }
+
+  /**
    * 저장하는 요청이면 계정이 없을 때 여기서 만든다.
    *
    * 둘러보기(GET)만으로는 계정을 만들지 않는다 — 남길 것이 없는 사람에게 계정을
