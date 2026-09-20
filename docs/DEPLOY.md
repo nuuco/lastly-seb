@@ -6,7 +6,7 @@
 |---|---|---|
 | 웹앱 | Vercel | 무료 (Hobby) |
 | API · AI | Render | 무료 (Free) |
-| 알림 스케줄러 | GitHub Actions | 무료 (공개 저장소) |
+| 스케줄러 | Supabase pg_cron | 무료 |
 | 데이터베이스 | Supabase | 무료 |
 
 > **무료 플랜의 대가**: Render 무료 서비스는 15분간 접속이 없으면 잠든다.
@@ -23,7 +23,7 @@
 3. API 올리기            (10분)
 4. 웹앱 올리기           (10분)
 5. 서로 연결하기          (5분)
-6. 알림 스케줄러 켜기      (5분)
+6. 스케줄러 켜기           (5분)
 7. 로그인 붙이기          (2분 또는 15분)
 ```
 
@@ -216,23 +216,61 @@ AI를 먼저 올린다. API가 AI 주소를 알아야 하기 때문이다.
 
 ---
 
-## 6. 알림 스케줄러 켜기
+## 6. 스케줄러 켜기
 
-서버가 자고 있어도 알림을 놓치지 않게, GitHub이 매시 정각에 두드린다.
+알림 배치와 "서버 깨우기" 를 **Supabase 의 데이터베이스가** 부른다.
+서버 안의 타이머로 하지 않는 이유는 무료 플랜이 접속 없으면 서버를 재워서,
+서버 안의 시계를 믿을 수 없기 때문이다. DB 는 항상 켜져 있다.
 
-1. https://github.com/seb0070/lastly → **Settings**
-2. 왼쪽 **Secrets and variables** → **Actions**
-3. **New repository secret** 으로 둘을 추가
+### 6-1. 배치 암호를 Vault 에 넣기
 
-   | Name | Secret |
-   |---|---|
-   | `API_URL` | 3번의 API 주소 |
-   | `CRON_SECRET` | 1-1의 값 |
+1. Supabase → **Project Settings** → **Vault** → **Add new secret**
+2. **Name** 에 `cron_secret`, **Secret** 에 1-1 의 `CRON_SECRET` 값
+3. **Save**
 
-4. **Actions** 탭 → 왼쪽 **알림 다이제스트 발송** → **Run workflow**
-   로 눌러서 지금 바로 확인해본다.
+> 마이그레이션 파일에 적지 않는다. 저장소가 공개라 그대로 남는다.
 
-초록 체크가 뜨고 `{"candidates":0,...}` 같은 응답이 보이면 성공이다.
+### 6-2. 주소 확인하고 밀어 넣기
+
+두 파일에 API 주소가 박혀 있다. 3번에서 받은 주소와 다르면 고친다.
+
+```
+supabase/migrations/20260920000002_keep_api_awake.sql        /v1/health
+supabase/migrations/20260920000003_dispatch_digests_cron.sql /v1/internal/dispatch-digests
+```
+
+```bash
+pnpm db:push
+```
+
+### 6-3. 확인
+
+Supabase → **SQL Editor** 에서:
+
+```sql
+select jobname, schedule, active from cron.job;
+```
+
+두 줄이 보이면 된다.
+
+| jobname | schedule | 무엇 |
+|---|---|---|
+| `keep-api-awake` | `*/5 23,0-14 * * *` | KST 08–24시, 5분마다 깨워둔다 |
+| `dispatch-digests` | `0 * * * *` | 매시 정각 알림 배치 |
+
+지금 바로 한 번 돌려보려면:
+
+```sql
+select public.dispatch_digests();
+-- 몇 초 뒤
+select status_code, content from net._http_response order by created desc limit 1;
+```
+
+`200` 과 `{"candidates":0,...}` 같은 응답이면 성공이다.
+
+> **밤에는 재운다.** Render 무료 인스턴스 시간은 워크스페이스 전체에 월 750시간이라
+> 한 서비스를 24시간 돌리면 AI 서비스 몫이 남지 않는다. KST 00–08시에 처음 앱을 열면
+> 첫 요청이 20초쯤 걸리는 건 이 때문이고, 정상이다.
 
 ---
 
@@ -329,7 +367,7 @@ Vercel 주소를 폰 브라우저로 연다.
 | 로그인 후 `/login?error=auth`로 튕긴다 | Supabase Redirect URLs에 `/auth/callback`이 없다 |
 | 기록해도 AI가 못 알아듣는다 | `AI_SERVICE_TOKEN`과 `INTERNAL_TOKEN`이 다르다 |
 | 인사에 이름이 없다 | 카카오 동의항목에 **닉네임**이 빠졌다 |
-| Actions가 빨간 X | `API_URL` 끝에 `/`가 붙었거나 `CRON_SECRET`이 다르다 |
+| 알림이 안 온다 | Vault 의 `cron_secret` 과 Render 의 `CRON_SECRET` 이 다르다. `net._http_response` 의 `status_code` 를 본다 |
 
 Render는 **Logs** 탭에서, Vercel은 **Deployments** → 해당 배포 → **Logs**에서
 실제 오류를 볼 수 있다.

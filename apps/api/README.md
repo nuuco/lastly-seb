@@ -29,7 +29,7 @@ src/
 └── modules/
     ├── items/        항목 + 기록
     ├── capture/      자연어 해석 오케스트레이션
-    │                 └ utterance-rules.ts — LLM 없이 문장에서 뽑는 규칙
+    │                 └ utterance-rules*.spec.ts — 규칙 파서 테스트가 여기 남아 있다
     ├── cadence/      주기 계산 (전역)
     ├── notifications/ 구독 · 알림 액션 · 다이제스트 배치
     ├── profile/      설정 · 내보내기 · 계정 삭제
@@ -108,8 +108,9 @@ src/
 
 ## 규칙 파서 — LLM 을 부르지 않고 끝내는 길
 
-[`utterance-rules.ts`](src/modules/capture/utterance-rules.ts) 가 문장에서 네 가지를
-말의 형태만 보고 뽑는다.
+[`@lastly/parser`](../../packages/parser/) 가 문장에서 네 가지를 말의 형태만 보고 뽑는다.
+패키지로 나와 있는 이유는 **연결이 끊긴 브라우저도 같은 규칙을 써야 하기 때문**이다
+(`apps/web/src/lib/offline/`). 테스트는 여기 `src/modules/capture/` 에 남아 있다.
 
 | 뽑는 것 | 예 |
 |---|---|
@@ -177,6 +178,10 @@ src/
 [`AiClient`](src/infra/ai/ai.client.ts)의 모든 메서드는 실패 시 `null`을 반환하고
 (타임아웃 8초) 호출부가 규칙 기반으로 폴백한다.
 
+무료 호스팅은 15분 미접속이면 `ai` 를 재운다. 첫 호출이 8초 안에 답이 없으면 깨우면서
+최대 45초까지 한 번 더 기다린다(`WAKE_BUDGET_MS`). 임베딩은 이 대기를 건너뛴다
+(`waitForWake: false`) — 깨우는 값을 치를 만한 호출이 아니고, 저장을 45초 붙잡는다.
+
 - 해석 실패 → 트라이그램 검색 결과를 후보로 보여주고 사용자가 고름
 - 주기 제안 실패 → 2주 기본값, 사용자가 저장 전에 수정 가능
 - 임베딩 실패 → 임베딩 없이 저장, 트라이그램 매칭만 동작
@@ -193,6 +198,11 @@ src/
 `notifications.dispatchDigests`가 **매시 정각**에 돌면서, 그 시각이 알림 시간인
 사용자에게만 보낸다. 사용자마다 타임존이 다르므로 비교는 각자의 로컬 시각
 기준(`users_due_for_digest` RPC)으로 한다.
+
+**서버 안의 타이머로 돌지 않는다.** 무료 플랜은 접속이 없으면 서버를 재워 시계를
+믿을 수 없다. `ENABLE_CRON=false` 로 두고 Supabase 의 `pg_cron` 이 밖에서
+`POST /v1/internal/dispatch-digests` 를 부른다 (`CRON_SECRET` 으로 지킨다).
+스케줄은 `supabase/migrations/…_dispatch_digests_cron.sql` 에 있다.
 
 같은 날 이미 보냈으면 건너뛰고, 주말 알림을 껐으면 토·일에는 보내지 않는다.
 만료된 푸시 구독(404·410)은 조용히 정리한다.

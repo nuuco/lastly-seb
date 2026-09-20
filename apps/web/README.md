@@ -33,15 +33,16 @@ src/
 │   ├── search/           검색        설계 05-D
 │   ├── items/            상세 + 기록 편집
 │   ├── onboarding/       소개 · 설치 안내 · 알림 권한
-│   ├── auth/             개발용 로그인
+│   ├── auth/             개발용 로그인 · 계정 연결 유도(설계 12-B)
 │   └── notifications/    웹푸시 구독
 │
 ├── components/ui/    Sheet, Toast
 ├── hooks/            서비스워커 등록
 └── lib/
     ├── api/          api 호출 (client는 브라우저, server는 서버 컴포넌트용)
-    ├── supabase/     브라우저·서버·미들웨어 클라이언트
-    ├── date.ts       날짜 포맷과 주기 문구
+    ├── supabase/     브라우저·서버·미들웨어 클라이언트 · ensure-session
+    ├── offline/      연결이 끊겼을 때의 저장과 대기열
+    ├── date.ts       날짜 포맷 · 주기 문구 · nextDueAfter
     └── cn.ts
 ```
 
@@ -140,9 +141,58 @@ Tailwind 기본 스케일로 뭉개면 다른 화면이 된다. 그래서 `text-
 
 ---
 
+## 연결이 끊겼을 때
+
+[`lib/offline/`](src/lib/offline/) 이 맡는다. **화면은 평소 저장과 똑같이 보인다** —
+언제 서버에 올라가는지 사용자에게 말하지 않는다.
+
+```
+interpret 실패 + navigator.onLine === false
+  → resolveOffline(text, mode)      @lastly/parser 를 브라우저에서 돌린다
+      saved   이름이 기존 항목과 일치. 바로 저장하고 피드 캐시를 갱신한다
+      ask     비슷한 이름(겹침 0.6↑) 또는 새 항목. 확인 시트를 띄운다
+      queued  이름을 못 뽑음. 문장만 적어 두고 연결됐을 때 서버가 해석한다
+  → 저장은 pending-captures 대기열로
+  → use-pending 이 온라인이 되면 순서대로 올린다
+```
+
+| | 무엇 |
+|---|---|
+| `resolve-offline.ts` | 규칙 파서를 돌려 셋 중 하나로 정한다 |
+| `pending-captures.ts` | 대기열. `resolved`(기존 항목 기록) · `item`(새 항목) · `raw`(원문) |
+| `use-pending.ts` | 업로드 루프. 화면에 아무 말도 하지 않는다 |
+| `feed-cache.ts` | 마지막 홈 피드 사본. `applyLocalLog` 로 다음 예정일까지 다시 계산한다 |
+| `use-online.ts` | 연결 상태 |
+
+**틀리기 쉬운 것 셋. 실제로 틀렸던 것들이다.**
+
+- 저장 요청은 `networkMode: 'always'` 여야 한다. React Query 기본값(`'online'`)은
+  오프라인에서 요청을 붙들고 기다려서 **오류가 나지 않는다.** 그러면 위 분기로
+  못 들어가고 화면이 "살펴보고 있어요" 인 채로 멈춘다.
+- 오프라인 배너를 `query.isError` 로 판단하지 않는다. 캐시된 데이터가 있으면 계속
+  false 다. `failureCount` 와 `useOnline()` 을 쓴다.
+- [`public/sw.js`](public/sw.js) 는 **network-first** 다. cache-first 로 두면 개발 중에
+  옛 번들이 계속 뜬다. 배포마다 `CACHE` 이름을 올린다.
+
+---
+
+## 계정은 첫 저장 때 만든다
+
+[`lib/supabase/ensure-session.ts`](src/lib/supabase/ensure-session.ts) 를 쓰기 요청 직전에
+부른다. 둘러보기만 하는 사람에게는 계정을 만들지 않는다.
+
+그래서 **홈이 계정 없이도 그려져야 한다.** 서버 컴포넌트는 `user` 가 없으면 API 를
+부르지 않고 빈 홈을 내려보내고, 첫 저장으로 계정이 생기면
+[`use-signed-in.ts`](src/lib/supabase/use-signed-in.ts) 의 `onAuthStateChange` 가
+쿼리를 켠다. 이 구독이 없으면 **첫 기록이 목록에 안 나타난다** — 화면을 한 번
+다녀와야 보이던 버그가 이것이었다.
+
+---
+
 ## 주의
 
-- **주기 미리보기**(`cadence-sheet.tsx`의 `previewNextDue`)는 서버·DB와 같은 규칙이어야 한다.
+- **주기 계산**(`lib/date.ts` 의 `nextDueAfter`)은 서버·DB와 같은 규칙이어야 한다.
+  주기 시트의 미리보기와 오프라인 목록 갱신이 둘 다 이걸 쓴다.
   자세한 건 [루트 README](../../README.md#주기-계산은-세-곳에-있다--반드시-함께-고친다) 참고.
 - **단위를 바꿀 때 숫자를 그대로 두면 안 된다.** 45일이 45주가 된다.
   일수로 환산한 뒤 새 단위로 다시 나눈다.
