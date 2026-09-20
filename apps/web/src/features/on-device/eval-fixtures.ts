@@ -13,7 +13,7 @@ import type { OnDeviceKnownItem } from './types';
  * 날짜는 기준일 GOLDEN_REF_DATE 기준.
  */
 export const GOLDEN_REF_DATE = '2026-09-14';
-export const GOLDEN_SIZE = 79;
+export const GOLDEN_SIZE = 104;
 
 export type GoldenKind = 'completed' | 'planned' | 'incomplete' | 'uncertain' | 'query';
 
@@ -56,6 +56,9 @@ export const GOLDEN_KNOWN_ITEMS: OnDeviceKnownItem[] = [
   { id: 'item-13', name: '바닥 청소', lastDoneOn: null },
   { id: 'item-14', name: '물통 교체', lastDoneOn: null },
   { id: 'item-15', name: '가습기 필터 교체', lastDoneOn: null },
+  // 80번대 확장 — 집안일 표(ACTION_NOUNS) 밖 동사 테스트용으로 추가.
+  { id: 'item-16', name: '병원 방문', lastDoneOn: null },
+  { id: 'item-17', name: '미용실 방문', lastDoneOn: null },
 ];
 
 const NONE: GoldenCadence = { kind: 'none' };
@@ -167,6 +170,49 @@ export const GOLDEN_CASES: GoldenCase[] = [
   c(77, '오늘 필터 갈았어 매월 10일마다 알려줘', 'completed', false, true, 'record', '필터 교체', 0, { kind: 'monthlyDay', day: 10 }, null),
   c(78, '오늘 화장실 청소했어 매월 마지막 수요일 알려줘', 'completed', false, true, 'record', '화장실 청소', 0, { kind: 'monthlyNthWeekday', nth: 'last', weekday: '수' }, 'item-5'),
   c(79, '오늘 커튼 빨았어 매월 둘째 일요일 알려줘', 'completed', false, true, 'record', '커튼 빨래', 0, { kind: 'monthlyNthWeekday', nth: 2, weekday: '일' }, 'item-6'),
+
+  // 80–87: 규칙 표(ACTION_NOUNS)에 없는 동사. sawAction=false로 모델에게 넘어가는 케이스.
+  c(80, '어제 병원 갔다왔어', 'completed', false, true, 'record', '병원 방문', 1, NONE, 'item-16'),
+  c(81, '지난주에 세차했어', 'completed', false, true, 'record', '세차', 7, NONE, null),
+  c(82, '그저께 치과 검진 받았어', 'completed', false, true, 'record', '치과 검진', 2, NONE, null),
+  c(83, '오늘 독감 예방접종 맞았어', 'completed', false, true, 'record', '예방접종', 0, NONE, null),
+  c(84, '안경 새로 맞췄어', 'completed', false, true, 'record', '안경 맞춤', 0, NONE, null),
+  c(85, '오늘 보험료 냈어', 'completed', false, true, 'record', '보험료 납부', 0, NONE, null),
+  c(86, '오늘 미용실 다녀왔어', 'completed', false, true, 'record', '미용실 방문', 0, NONE, 'item-17'),
+  c(87, '어제 자동차 정비 받았어', 'completed', false, true, 'record', '자동차 정비', 1, NONE, null),
+
+  // 88–91: "했고/했어 + 앞으로 N마다 할 거야" 복합문. 89·91은 함정 —
+  // shouldRecordLog의 future 판정이 "할 거야"에 걸려 이미 끝난 일도 저장 안 함으로 잘못 판단한다.
+  c(88, '오늘 병원 다녀왔고, 3개월마다 갈 거야', 'completed', false, true, 'record', '병원 방문', 0, { kind: 'everyMonths', months: 3 }, 'item-16'),
+  c(89, '세차했어, 앞으로 한 달마다 할 거야', 'completed', true, true, 'record', '세차', 0, { kind: 'everyMonths', months: 1 }, null),
+  c(90, '미용실 다녀왔어, 두 달마다 갈 거야', 'completed', false, true, 'record', '미용실 방문', 0, { kind: 'everyMonths', months: 2 }, 'item-17'),
+  c(91, '치과 검진 받았어, 6개월마다 할 거야', 'completed', true, true, 'record', '치과 검진', 0, { kind: 'everyMonths', months: 6 }, null),
+
+  // 92–94: 규칙이 모르거나 잘못 처리하는 날짜 표현. 92는 함정 —
+  // "지지난주"를 "지난주"(7일)로만 읽어 14일이어야 할 게 7일로 나온다.
+  c(92, '지지난주에 커튼 빨았어', 'completed', true, true, 'record', '커튼 빨래', 14, NONE, 'item-6'),
+  c(93, '사흘 전에 화장실 청소했어', 'completed', false, true, 'record', '화장실 청소', 3, NONE, 'item-5'),
+  c(94, '지난달 15일에 정수기 필터 갈았어', 'completed', false, true, 'record', '정수기 필터 교체', 30, NONE, 'item-2'),
+
+  // 95–96: 진짜 애매한 날짜. daysAgo는 채점에서 스킵(null)하고 다른 필드만 본다.
+  c(95, '이번 주 초에 청소기 돌렸어', 'uncertain', false, true, 'record', '청소기 돌리기', null, NONE, 'item-8'),
+  c(96, '얼마 전에 분리수거 했어', 'uncertain', false, true, 'record', '분리수거', null, NONE, 'item-11'),
+
+  // 97–100: 반말·축약 말투. "함/했당/했음" 같은 어미가 섞여도 규칙·모델이 버텨야 한다.
+  c(97, '오늘 설거지함', 'completed', false, true, 'record', '설거지', 0, NONE, 'item-3'),
+  c(98, '어제 빨래했당', 'completed', false, true, 'record', '빨래', 1, NONE, null),
+  c(99, '쓰레기 버렸음', 'completed', false, true, 'record', '쓰레기 버리기', 0, NONE, 'item-7'),
+  c(100, '필터 갈아치웠어', 'completed', false, true, 'record', '필터 교체', 0, NONE, null),
+
+  // 101–102: 표 밖 동사 + 조회.
+  c(101, '병원 언제 갔었지?', 'query', false, false, 'query', '병원 방문', 0, NONE, 'item-16'),
+  c(102, '세차한 지 얼마나 됐어?', 'query', false, false, 'query', '세차', 0, NONE, null),
+
+  // 103: 함정 — "갈다"(교체)와 "가다"의 활용형이 "갈"로 겹쳐서, "미용실 갈 예정"이
+  // 방문이 아니라 교체로 잘못 읽힌다. 동음이의어 충돌.
+  c(103, '미용실 다음 달에 갈 예정이야', 'planned', true, false, 'record', '미용실 방문', null, NONE, 'item-17'),
+
+  c(104, '강아지 미용했어', 'completed', false, true, 'record', '강아지 미용', 0, NONE, null),
 ];
 
 if (GOLDEN_CASES.length !== GOLDEN_SIZE) {
@@ -181,19 +227,19 @@ const KIND_COUNTS: Record<GoldenKind, number> = {
   query: 0,
 };
 for (const row of GOLDEN_CASES) KIND_COUNTS[row.kind] += 1;
-if (KIND_COUNTS.completed !== 26) throw new Error(`completed ${KIND_COUNTS.completed}행. 26여야 함`);
-if (KIND_COUNTS.planned !== 15) throw new Error(`planned ${KIND_COUNTS.planned}행. 15여야 함`);
+if (KIND_COUNTS.completed !== 46) throw new Error(`completed ${KIND_COUNTS.completed}행. 46여야 함`);
+if (KIND_COUNTS.planned !== 16) throw new Error(`planned ${KIND_COUNTS.planned}행. 16여야 함`);
 if (KIND_COUNTS.incomplete !== 15) throw new Error(`incomplete ${KIND_COUNTS.incomplete}행. 15여야 함`);
-if (KIND_COUNTS.uncertain !== 15) throw new Error(`uncertain ${KIND_COUNTS.uncertain}행. 15여야 함`);
-if (KIND_COUNTS.query !== 8) throw new Error(`query ${KIND_COUNTS.query}행. 8여야 함`);
+if (KIND_COUNTS.uncertain !== 17) throw new Error(`uncertain ${KIND_COUNTS.uncertain}행. 17여야 함`);
+if (KIND_COUNTS.query !== 10) throw new Error(`query ${KIND_COUNTS.query}행. 10여야 함`);
 
 export const GOLDEN_KINDS: Array<{ id: GoldenKind | 'all'; label: string }> = [
-  { id: 'all', label: '전체 79' },
-  { id: 'completed', label: '했어 26' },
-  { id: 'planned', label: '할 거야 15' },
+  { id: 'all', label: '전체 104' },
+  { id: 'completed', label: '했어 46' },
+  { id: 'planned', label: '할 거야 16' },
   { id: 'incomplete', label: '못 했어 15' },
-  { id: 'uncertain', label: '애매 15' },
-  { id: 'query', label: '언제 8' },
+  { id: 'uncertain', label: '애매 17' },
+  { id: 'query', label: '언제 10' },
 ];
 
 export function casesForKind(kind: GoldenKind | 'all'): GoldenCase[] {

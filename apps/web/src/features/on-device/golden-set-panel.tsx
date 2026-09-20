@@ -77,7 +77,7 @@ export function GoldenSetPanel({
         골든셋 · 기준일 {GOLDEN_REF_DATE} (월) · 규칙 rev {rulesRev}
       </p>
       <p className="mt-1.5 px-1 text-[13.5px] leading-[1.7] text-ink-2">
-        예전에 쓰던 5문장은 스모크입니다. 79개가 본 평가입니다. Gemma 출력은 규칙으로 보정합니다.
+        예전에 쓰던 5문장은 스모크입니다. 104개가 본 평가입니다. Gemma 출력은 규칙으로 보정합니다.
         예정·못 함은 저장하면 안 됩니다. rev가 2가 아니면 하드 새로고침하세요.
       </p>
 
@@ -111,7 +111,7 @@ export function GoldenSetPanel({
           onClick={() => onParseKind(kind)}
           className="flex h-11 min-w-[30%] flex-1 items-center justify-center rounded-lg border border-line bg-card text-14 font-semibold text-ink disabled:opacity-40"
         >
-          {kind === 'all' ? '79개 채점' : '이 유형 채점'}
+          {kind === 'all' ? '104개 채점' : '이 유형 채점'}
         </button>
         <button
           type="button"
