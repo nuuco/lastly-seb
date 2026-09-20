@@ -21,6 +21,7 @@ import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { loadFeed, loadFeedAt, saveFeed } from '@/lib/offline/feed-cache';
 import { useOnline } from '@/lib/offline/use-online';
+import { useSignedIn } from '@/lib/supabase/use-signed-in';
 import { listPending, removePending, type PendingCapture } from '@/lib/offline/pending-captures';
 import { formatMonth, formatShortDate, formatYearMonth, todayIso } from '@/lib/date';
 
@@ -60,7 +61,9 @@ const EMPTY_FEED: HomeFeed = {
 };
 
 /** 화면 04 / 05 / 05-B / 07 / 07-C / 08 / 09 / 10 — 단일 홈 구조의 전부. */
-export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
+export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScreenProps) {
+  /** 계정이 생기는 순간(첫 저장)을 알아채야 목록을 부르기 시작한다. */
+  const signedIn = useSignedIn(initiallySignedIn) ?? false;
   const queryClient = useQueryClient();
   const feed = useQuery({
     queryKey: queryKeys.home,

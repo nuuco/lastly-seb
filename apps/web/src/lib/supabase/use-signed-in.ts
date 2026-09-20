@@ -10,18 +10,31 @@ import { createClient } from './client';
  * 확인하기 전에는 null 이다. 서버에는 브라우저 저장소가 없어 첫 렌더에서 알 수 없고,
  * 그릴 때 바로 읽으면 서버와 결과가 갈려 화면을 다시 그리게 된다.
  */
-export function useSignedIn(): boolean | null {
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+export function useSignedIn(initial: boolean | null = null): boolean | null {
+  const [signedIn, setSignedIn] = useState<boolean | null>(initial);
 
   useEffect(() => {
     let alive = true;
-    void createClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (alive) setSignedIn(Boolean(data.session));
-      });
+    const supabase = createClient();
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (alive) setSignedIn(Boolean(data.session));
+    });
+
+    /**
+     * 계정은 처음 저장할 때 생긴다. 그 순간을 화면이 알아야 한다.
+     *
+     * 예전에는 첫 화면을 그릴 때의 값만 보고 끝냈다. 그래서 첫 기록으로 계정이 생겨도
+     * 목록을 부르지 않는 상태가 유지됐고, 방금 남긴 것이 화면에 안 나타났다.
+     * 다른 화면에 갔다 와야 보였다.
+     */
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (alive) setSignedIn(Boolean(session));
+    });
+
     return () => {
       alive = false;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
