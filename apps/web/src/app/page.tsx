@@ -1,5 +1,4 @@
 import type { HomeFeed } from '@lastly/contracts';
-import { redirect } from 'next/navigation';
 
 import { HomeScreen } from '@/features/home/home-screen';
 import { serverFetch } from '@/lib/api/server';
@@ -15,12 +14,14 @@ export default async function Page() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 로그인 전에는 홈을 보여줄 데이터가 없다.
-  // 에러 화면 대신 로그인으로 보낸다 — 여기서 막히면 사용자는 앱이 고장난 줄 안다.
+  /**
+   * 계정이 아직 없을 수 있다. 처음 저장할 때 만들어지기 때문이다.
+   * 그 사람에게는 서버를 부르지 않고 빈 홈을 보여준다 — 첫 기록을 남기면 그때 계정이 생긴다.
+   */
   if (!user) {
-    redirect('/login');
+    return <HomeScreen initialFeed={null} signedIn={false} />;
   }
 
   const initialFeed = await serverFetch<HomeFeed>('/home/feed');
-  return <HomeScreen initialFeed={initialFeed} />;
+  return <HomeScreen initialFeed={initialFeed} signedIn />;
 }

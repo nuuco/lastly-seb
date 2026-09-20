@@ -28,18 +28,43 @@ import { AllDoneCard, HomeHeader } from './components/home-header';
 import { LaterGroup, SectionHeader, UpcomingGroup } from './components/item-rows';
 
 interface HomeScreenProps {
-  /** 서버에서 미리 가져온 피드. 없으면(비로그인 등) 클라이언트가 다시 가져온다. */
+  /** 서버에서 미리 가져온 피드. 없으면 클라이언트가 다시 가져온다. */
   initialFeed: HomeFeed | null;
+  /**
+   * 계정이 있는지. 아직 아무것도 저장하지 않은 사람은 없다.
+   *
+   * 계정이 없으면 서버를 부르지 않는다 — 부를 수도 없고(누구 것인지 모른다),
+   * 보여줄 것도 없다. 첫 기록을 남기면 그때 계정이 생기고 목록이 붙는다.
+   */
+  signedIn: boolean;
 }
 
+/** 계정이 생기기 전에 보여줄 홈. 첫 기록을 남기면 서버 것으로 바뀐다. */
+const EMPTY_FEED: HomeFeed = {
+  today: todayIso(),
+  summary: {
+    greetingName: null,
+    completedThisWeek: 0,
+    averageIntervalDays: null,
+    overdueCount: 0,
+    dueTodayCount: 0,
+    nextUp: null,
+  },
+  signupPrompt: null,
+  due: [],
+  upcoming: [],
+  later: [],
+};
+
 /** 화면 04 / 05 / 05-B / 07 / 07-C / 08 / 09 / 10 — 단일 홈 구조의 전부. */
-export function HomeScreen({ initialFeed }: HomeScreenProps) {
+export function HomeScreen({ initialFeed, signedIn }: HomeScreenProps) {
   const queryClient = useQueryClient();
   const feed = useQuery({
     queryKey: queryKeys.home,
     queryFn: itemsApi.homeFeed,
     // initialData가 있으면 첫 렌더에 그대로 그리고, staleTime이 지나기 전까진 다시 안 부른다.
-    initialData: initialFeed ?? undefined,
+    initialData: initialFeed ?? (signedIn ? undefined : EMPTY_FEED),
+    enabled: signedIn,
   });
   /**
    * 서버가 본 오늘을 쓴다. 기기 시계를 쓰면 맨 윗줄만 따로 움직인다 —

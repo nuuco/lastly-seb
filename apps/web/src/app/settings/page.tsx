@@ -14,6 +14,7 @@ import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { cn } from '@/lib/cn';
 import { createClient } from '@/lib/supabase/client';
+import { useSignedIn } from '@/lib/supabase/use-signed-in';
 
 /** 설계 13 / 13-B. */
 export default function SettingsPage() {
@@ -23,9 +24,16 @@ export default function SettingsPage() {
   /** 알림을 켠 직후에만 띄운다. 설정 화면을 열었다는 이유로 권하지는 않는다. */
   const [signupPrompt, setSignupPrompt] = useState<SignupPrompt | null>(null);
 
+  /**
+   * 계정이 생기기 전에도 설정을 열 수 있다. 그때는 서버를 부르지 않고 기본값을 보여준다 —
+   * 알림을 켜는 순간 계정이 만들어지고 그 값이 서버에 저장된다.
+   */
+  const signedIn = useSignedIn();
+
   const settings = useQuery({
     queryKey: queryKeys.notificationSettings,
     queryFn: profileApi.notificationSettings,
+    enabled: signedIn === true,
   });
 
   const update = useMutation({

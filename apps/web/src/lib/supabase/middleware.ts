@@ -18,10 +18,12 @@ const isPublic = (pathname: string) =>
   PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
 /**
- * 세션 토큰을 갱신하고, 없으면 익명 계정을 만들어 들여보낸다.
+ * 세션 토큰을 갱신한다. 계정이 없어도 막지 않는다.
  *
  * 가입부터 요구하면 무엇을 하는 앱인지 모르는 채로 계정을 내주게 된다.
  * 그래서 일단 쓰게 하고, 기록이 쌓였을 때 구글 계정으로 넘기자고 권한다.
+ *
+ * 계정은 처음 저장할 때 만들어진다 — 둘러보기만 하면 만들지 않는다.
  *
  * 익명이라고 해서 기록이 브라우저에만 있는 것은 아니다. Supabase 익명 로그인은
  * auth.users 에 진짜 행을 만들고 기록도 처음부터 서버에 들어간다. 나중에 구글을
@@ -67,18 +69,12 @@ export async function updateSession(request: NextRequest) {
     }
 
     /**
-     * 온보딩을 본 사람에게는 익명 계정을 만들어 그대로 들여보낸다.
-     * 실패하면(익명 로그인이 꺼져 있거나 한도에 걸리면) 예전처럼 로그인으로 보낸다.
+     * 계정 없이 그대로 들여보낸다.
+     *
+     * 예전에는 여기서 익명 계정을 만들었다. 그러면 링크만 열어보고 나간 사람과
+     * 검색 봇까지 계정이 생겨, 아무것도 남기지 않은 빈 계정이 대부분이 됐다.
+     * 이제는 처음 저장할 때 만든다(lib/supabase/ensure-session.ts).
      */
-    const { error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      const target = request.nextUrl.clone();
-      target.pathname = '/login';
-      target.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`;
-      return NextResponse.redirect(target);
-    }
-
-    // 세션 쿠키가 응답에 실렸으므로 이번 요청부터 바로 쓴다.
     return response;
   }
 
