@@ -5,13 +5,14 @@
  *
  * 두 가지가 섞여 있다.
  *
- *   resolved  이미 있는 항목에 붙일 기록. 규칙 파서가 기기에서 알아냈다.
- *             연결되면 조용히 올라간다 — 무엇을 저장할지 이미 정해져 있다.
- *   raw       규칙으로 못 푼 문장. 서버가 해석해야 하므로 말만 적어 둔다.
- *             연결되면 평소의 확인 시트를 거쳐 저장한다.
+ *   resolved  이미 있는 항목에 붙일 기록. 이름이 정확히 맞아 확인할 것이 없다.
+ *   item      사용자가 확인 시트에서 이름과 주기를 정한 새 항목.
+ *   raw       규칙으로 이름조차 못 뽑은 문장. 연결되면 서버가 해석한다.
  *
  * 확인 없이 새 항목을 만들지는 않는다. 이름이 틀려도 손댈 기회가 없어진다.
  */
+import type { CadenceRule } from '@lastly/contracts';
+
 const KEY = 'lastly.pending-captures';
 
 interface Base {
@@ -26,13 +27,20 @@ export interface ResolvedCapture extends Base {
   doneOn: string;
 }
 
+export interface NewItemCapture extends Base {
+  kind: 'item';
+  name: string;
+  cadence: CadenceRule;
+  doneOn: string;
+}
+
 export interface RawCapture extends Base {
   kind: 'raw';
   text: string;
   mode: 'voice' | 'text';
 }
 
-export type PendingCapture = ResolvedCapture | RawCapture;
+export type PendingCapture = ResolvedCapture | NewItemCapture | RawCapture;
 
 function read(): PendingCapture[] {
   try {
@@ -62,6 +70,12 @@ export function listPending(): PendingCapture[] {
 
 export function addResolved(itemId: string, itemName: string, doneOn: string): ResolvedCapture {
   const item: ResolvedCapture = { id: newId(), at: Date.now(), kind: 'resolved', itemId, itemName, doneOn };
+  write([...read(), item]);
+  return item;
+}
+
+export function addNewItem(name: string, cadence: CadenceRule, doneOn: string): NewItemCapture {
+  const item: NewItemCapture = { id: newId(), at: Date.now(), kind: 'item', name, cadence, doneOn };
   write([...read(), item]);
   return item;
 }

@@ -1,6 +1,12 @@
 'use client';
 
-import type { HomeFeed } from '@lastly/contracts';
+import type { HomeFeed, Item } from '@lastly/contracts';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
+
+import { nextDueAfter } from '@/lib/date';
+
+/** 서버의 UPCOMING_WINDOW_DAYS 와 같은 값이어야 한다. */
+const UPCOMING_WINDOW_DAYS = 14;
 
 /**
  * 마지막으로 받은 홈 목록을 기기에 복사해 둔다.
@@ -39,6 +45,51 @@ export function loadFeedAt(): number | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * 연결이 끊긴 자리에서 남긴 기록을 사본에도 반영한다.
+ *
+ * 저장은 됐는데 목록이 그대로면 안 된 것처럼 보인다. 사용자는 올라갔는지
+ * 아닌지를 알 필요가 없어야 한다 — 그건 우리 사정이다.
+ *
+ * 다음 예정일과 분류는 서버·DB 와 같은 규칙으로 계산한다(lib/date.ts, UPCOMING_WINDOW_DAYS).
+ * 연결되면 서버가 계산한 값으로 덮어써진다.
+ */
+export function applyLocalLog(itemId: string, doneOn: string, today: string): HomeFeed | null {
+  const feed = loadFeed();
+  if (!feed) return null;
+
+  const all = [...feed.due, ...feed.upcoming, ...feed.later];
+  const target = all.find((i) => i.id === itemId);
+  if (!target) return null;
+
+  const nextDueOn = nextDueAfter(doneOn, target.cadence);
+  const daysUntilDue = differenceInCalendarDays(parseISO(nextDueOn), parseISO(today));
+
+  const moved: Item = {
+    ...target,
+    lastDoneOn: doneOn,
+    nextDueOn,
+    daysUntilDue,
+    daysSinceLastDone: differenceInCalendarDays(parseISO(today), parseISO(doneOn)),
+    logCount: target.logCount + 1,
+    bucket: target.snoozedUntil ? 'later' : daysUntilDue <= 0 ? 'due' : daysUntilDue <= UPCOMING_WINDOW_DAYS ? 'upcoming' : 'later',
+  };
+
+  const rest = all.filter((i) => i.id !== itemId);
+  const bucketOf = (b: Item['bucket']) => [...rest, moved].filter((i) => i.bucket === b);
+
+  const updated: HomeFeed = {
+    ...feed,
+    due: bucketOf('due'),
+    upcoming: bucketOf('upcoming'),
+    later: bucketOf('later'),
+    summary: { ...feed.summary, dueTodayCount: bucketOf('due').length },
+  };
+
+  saveFeed(updated);
+  return updated;
 }
 
 export function clearFeed() {

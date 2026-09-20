@@ -30,19 +30,33 @@ export function usePending(signedIn: boolean, step: string) {
   useEffect(() => {
     if (!online || !signedIn) return;
 
-    const resolved = listPending().filter((p) => p.kind === 'resolved');
-    if (resolved.length === 0) return;
+    // 사용자가 이미 확인한 것들. 물어볼 것이 없으니 조용히 올린다.
+    const ready = listPending().filter((p) => p.kind === 'resolved' || p.kind === 'item');
+    if (ready.length === 0) return;
 
     let alive = true;
 
     void (async () => {
       let sent = 0;
 
-      for (const item of resolved) {
-        if (item.kind !== 'resolved') continue;
+      for (const entry of ready) {
         try {
-          await itemsApi.addLog(item.itemId, { doneOn: item.doneOn, note: null });
-          removePending(item.id);
+          if (entry.kind === 'resolved') {
+            await itemsApi.addLog(entry.itemId, { doneOn: entry.doneOn, note: null });
+          } else if (entry.kind === 'item') {
+            // 항목을 먼저 만들고 그 항목에 기록을 붙인다.
+            const created = await itemsApi.create({
+              name: entry.name,
+              cadence: entry.cadence,
+              cadenceSource: 'user',
+              firstDoneOn: entry.doneOn,
+            });
+            if (created.lastDoneOn !== entry.doneOn) {
+              await itemsApi.addLog(created.id, { doneOn: entry.doneOn, note: null });
+            }
+          }
+
+          removePending(entry.id);
           sent += 1;
         } catch {
           // 아직 못 올렸다. 다음에 연결될 때 다시 시도한다.

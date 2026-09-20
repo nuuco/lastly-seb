@@ -1,5 +1,5 @@
 import type { CadenceRule, Item } from '@lastly/contracts';
-import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { addDays, addMonths, addWeeks, differenceInCalendarDays, format, parseISO } from 'date-fns';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -76,3 +76,28 @@ export const formatMonth = (d: Date) => format(d, 'yyyy-MM');
 
 /** "2026년 9월" — 달력 뷰의 머리말. */
 export const formatYearMonth = (month: string) => format(parseISO(`${month}-01`), 'yyyy년 M월');
+
+/**
+ * 다음 예정일. 서버·DB와 같은 규칙이어야 한다.
+ *
+ * 화면이 미리 보여줄 때와, 연결이 끊긴 자리에서 기록을 반영할 때 쓴다.
+ * 규칙을 고치면 apps/api 의 CadenceService 와 DB 의 calc_next_due 도 같이 고친다.
+ */
+export function nextDueAfter(doneOn: string, rule: CadenceRule): string {
+
+  const from = parseISO(doneOn);
+  const base =
+    rule.unit === 'day'
+      ? addDays(from, rule.interval)
+      : rule.unit === 'week'
+        ? addWeeks(from, rule.interval)
+        : addMonths(from, rule.interval);
+
+  if (rule.unit !== 'week' || rule.weekdays.length === 0) {
+    return format(base, 'yyyy-MM-dd');
+  }
+
+  const baseDow = base.getDay();
+  const delta = Math.min(...rule.weekdays.map((d) => (d - baseDow + 7) % 7));
+  return format(addDays(base, delta), 'yyyy-MM-dd');
+}

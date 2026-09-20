@@ -5,7 +5,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { captureApi } from '@/lib/api/capture';
+import { applyLocalLog } from '@/lib/offline/feed-cache';
+import { addNewItem, addResolved } from '@/lib/offline/pending-captures';
 import { resolveOffline } from '@/lib/offline/resolve-offline';
+
+/** 주기를 정하지 않고 저장했을 때. 서버의 FALLBACK_CADENCE 와 같은 값이다. */
+const FALLBACK_RULE: CadenceRule = { unit: 'week', interval: 2, weekdays: [], notifyTimeLocal: null };
 import { itemsApi } from '@/lib/api/items';
 import { todayIso } from '@/lib/date';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -84,7 +89,26 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
          * 무엇을 저장할지 정해진다 — 앱에서 제일 흔한 경우가 그것이다.
          * 못 풀면 말만 적어 두고 연결됐을 때 서버에 맡긴다.
          */
-        setPendingSaved(resolveOffline(input.text, input.mode));
+        const offline = resolveOffline(input.text, input.mode);
+
+        /**
+         * 이름이 그대로 있으면 물어볼 것이 없다. 평소 저장했을 때와 똑같이 알리고
+         * 목록도 그 자리에서 바꾼다 — 언제 올라가는지는 사용자 관심사가 아니다.
+         */
+        if (offline.kind === 'saved') {
+          setRawSaved(offline.itemName);
+          if (offline.feed) queryClient.setQueryData(queryKeys.home, offline.feed);
+        } else if (offline.kind === 'ask') {
+          // 확인 시트를 띄운다. 이름과 주기를 사용자가 정하고 저장하면 대기열에 쌓인다.
+          setResult(offline.result);
+          setCadenceOverride(null);
+          setStep(stepForOutcome(offline.result));
+          onInterpreted?.();
+          return;
+        } else {
+          setPendingSaved('적어뒀어요 · 잠시 뒤 정리할게요');
+        }
+
         setStep('idle');
         onInterpreted?.();
         return;
@@ -113,6 +137,30 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
        */
       const isNew = Boolean(input.newItemName);
       const cadence = cadenceOverride ?? (isNew ? result.cadence?.rule : undefined);
+
+      /**
+       * 연결이 끊긴 자리에서 세운 결과는 서버가 서명한 표가 없다.
+       * 기기에 쌓아 두고 연결될 때 올린다 — 화면에는 저장된 것으로 보인다.
+       */
+      if (result.draftToken === 'offline') {
+        const name = input.newItemName ?? result.normalizedName ?? '';
+
+        if (input.itemId) {
+          addResolved(input.itemId, name, result.doneOn);
+          applyLocalLog(input.itemId, result.doneOn, todayIso());
+        } else {
+          addNewItem(name, cadence ?? FALLBACK_RULE, result.doneOn);
+        }
+
+        return {
+          log: null,
+          itemId: input.itemId ?? 'offline',
+          itemName: name,
+          nextDueOn: result.cadence?.nextDueOn ?? null,
+          undoToken: '',
+          itemCreated: !input.itemId,
+        } as unknown as CommitResult;
+      }
 
       return captureApi.commit({
         draftToken: result.draftToken,

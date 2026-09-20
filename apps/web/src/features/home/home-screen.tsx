@@ -275,14 +275,12 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           </button>
         ) : null}
 
-        {pending.count > 0 ? (
+        {pending.raw.length > 0 ? (
           <div className="mt-2 flex items-center justify-between rounded-md bg-accent-soft px-3.5 py-2.5">
             <span className="min-w-0 truncate pr-2 text-12.5 text-accent-ink">
-              {pending.raw.length > 0
-                ? `적어둔 기록 ${pending.count}개 · “${pending.raw[0]!.text}”`
-                : `올리지 못한 기록 ${pending.count}개`}
+              적어둔 기록 {pending.raw.length}개 · “{pending.raw[0]!.text}”
             </span>
-            {pending.online && pending.raw.length > 0 ? (
+            {pending.online ? (
               <button
                 type="button"
                 onClick={processPending}
@@ -454,12 +452,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         <Toast message={capture.pendingSaved} onDismiss={capture.dismissPendingSaved} durationMs={6000} />
       ) : null}
 
-      {pending.justSynced > 0 ? (
-        <Toast
-          message={`적어둔 기록 ${pending.justSynced}개를 저장했어요`}
-          onDismiss={pending.dismissSynced}
-        />
-      ) : null}
+
 
       {capture.committed ? (
         <Toast

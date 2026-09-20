@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
-import { formatShortDate } from '@/lib/date';
+import { formatShortDate, nextDueAfter } from '@/lib/date';
 
 
 const PRESETS: Array<{ label: string; rule: Pick<CadenceRule, 'unit' | 'interval'> }> = [
@@ -99,7 +99,7 @@ export function CadenceSheet({
                       selected ? 'text-accent-ink' : 'text-ink-3',
                     )}
                   >
-                    {formatShortDate(previewNextDue(doneOn, { ...draft, ...preset.rule, weekdays: [] }))}
+                    {formatShortDate(nextDueAfter(doneOn, { ...draft, ...preset.rule, weekdays: [] }))}
                     {selected ? <CheckDot /> : null}
                   </span>
                 </button>
@@ -246,7 +246,7 @@ function CustomEditor({
       ) : null}
 
       <p className="mt-5 text-[13.5px] leading-[1.7] text-ink-3">
-        다음 알림 · {formatShortDate(previewNextDue(doneOn, draft))}
+        다음 알림 · {formatShortDate(nextDueAfter(doneOn, draft))}
       </p>
     </>
   );
@@ -313,20 +313,3 @@ const matchesPreset = (rule: CadenceRule) =>
  * 다음 예정일 미리보기.
  * apps/api의 CadenceService.nextDueOn과 같은 규칙 — 셋 중 하나를 고치면 나머지도 고쳐야 한다.
  */
-function previewNextDue(doneOn: string, rule: CadenceRule): string {
-  const from = parseISO(doneOn);
-  const base =
-    rule.unit === 'day'
-      ? addDays(from, rule.interval)
-      : rule.unit === 'week'
-        ? addWeeks(from, rule.interval)
-        : addMonths(from, rule.interval);
-
-  if (rule.unit !== 'week' || rule.weekdays.length === 0) {
-    return format(base, 'yyyy-MM-dd');
-  }
-
-  const baseDow = base.getDay();
-  const delta = Math.min(...rule.weekdays.map((d) => (d - baseDow + 7) % 7));
-  return format(addDays(base, delta), 'yyyy-MM-dd');
-}
