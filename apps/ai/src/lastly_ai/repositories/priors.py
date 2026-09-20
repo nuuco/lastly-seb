@@ -43,8 +43,11 @@ class PriorsRepository:
                    rationale, observed_median_days, observed_sample_size
               from public.cadence_priors
              where canonical_name = $1
+                or replace(canonical_name, ' ', '') = replace($1, ' ', '')
                 or similarity(canonical_name, $1) > 0.5
-             order by (canonical_name = $1) desc, similarity(canonical_name, $1) desc
+             order by (canonical_name = $1) desc,
+                      (replace(canonical_name, ' ', '') = replace($1, ' ', '')) desc,
+                      similarity(canonical_name, $1) desc
              limit 1
             """,
             name,

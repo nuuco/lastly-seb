@@ -1,4 +1,4 @@
-import { readCadenceDays, readDaysAgo, readIntent, readName } from '@lastly/parser';
+import { readCadenceDays, readDaysAgo, readIntent, readName, readNameWithAction } from '@lastly/parser';
 
 /**
  * 규칙 파서는 LLM 을 부르지 않고 끝낼 수 있는 문장을 가려내는 자리다.
@@ -96,5 +96,45 @@ describe('이름 읽기', () => {
     // 대상의 종류는 끝이 없다. 행동만 바꾸고 나머지는 건드리지 않는다.
     expect(readName('가습기 필터 갈았어')).toBe('가습기 필터 교체');
     expect(readName('블라인드 닦았어')).toBe('블라인드 청소');
+  });
+});
+
+describe('그 자체가 행동인 말', () => {
+  /**
+   * "설거지", "분리수거" 처럼 명사 하나에 행동이 들어 있는 말들.
+   *
+   * 이것들이 사전에 없으면 이름은 맞게 나오는데 sawAction 이 서지 않아,
+   * 규칙이 자기 답을 믿지 못하고 AI 로 넘긴다. 평가 문장 50개 중 10개가
+   * 여기 걸려 있었다 — 더 볼 것도 없는 문장까지 LLM 을 부르고 있었다.
+   */
+  it.each([
+    ['나 어제 설거지 했어', '설거지'],
+    ['지난주에 다림질 했어', '다림질'],
+    ['분리수거 했어', '분리수거'],
+    ['차 세차했어', '차 세차'],
+    ['오늘 아침에 환기 시켰어', '환기'],
+    ['강아지 산책시켰어', '강아지 산책'],
+    ['욕실 곰팡이 제거했어', '욕실 곰팡이 제거'],
+    ['어항 물갈이 했어', '어항 물갈이'],
+    ['화분 분갈이 했어', '화분 분갈이'],
+    ['강아지 빗질했어', '강아지 빗질'],
+    ['강아지 양치시켰어', '강아지 양치'],
+  ])('%s → %s (행동을 알아본다)', (text, name) => {
+    const got = readNameWithAction(text);
+    expect(got.name).toBe(name);
+    expect(got.sawAction).toBe(true);
+  });
+});
+
+describe('사전에 없던 동사', () => {
+  it.each([
+    ['방금 이불 갰어', '이불 정리'],
+    ['워셔액 넣었어', '워셔액 보충'],
+    ['세제 채웠어', '세제 보충'],
+    ['강아지 발톱 깎았어', '강아지 발톱 깎기'],
+  ])('%s → %s', (text, name) => {
+    const got = readNameWithAction(text);
+    expect(got.name).toBe(name);
+    expect(got.sawAction).toBe(true);
   });
 });
