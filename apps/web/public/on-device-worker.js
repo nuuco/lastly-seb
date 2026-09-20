@@ -1,6 +1,6 @@
 /**
- * Gemma 3 (1B 또는 270M) int4 를 WebGPU 에서 돌리는 워커.
- * 어느 모델이든 engine.ts가 init 메시지에 모델 경로와 maxTokens를 실어 보낸다.
+ * Gemma 3 1B int4 를 WebGPU 에서 돌리는 워커.
+ * engine.ts가 init 메시지에 모델 경로와 maxTokens를 실어 보낸다.
  *
  * type: 'module' 워커에서는 MediaPipe 기본 로더(importScripts)가 실패하고
  * "ModuleFactory not set" 이 난다. WASM 로더를 ESM 으로 직접 붙인다.

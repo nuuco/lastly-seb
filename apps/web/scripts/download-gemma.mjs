@@ -2,10 +2,6 @@
 /**
  * Gemma 3 1B Instruct int4 웹 모델을 apps/web/public/models 에 받는다.
  * 저장소에는 올리지 않는다. Hugging Face Gemma 라이선스 동의가 필요할 수 있다.
- *
- * 270M도 실험해봤지만 이름 정규화 정확도가 너무 떨어져서(46% vs 1B의 80%) 1B로 확정했다.
- * /dev/on-device 랩에서 270M을 다시 보고 싶으면 이 파일명·SOURCE를
- * gemma3-270m-it-q4_0-web.task / litert-community/gemma-3-270m-it 로 바꿔 따로 받으면 된다.
  */
 import { config as loadEnv } from 'dotenv';
 import { createWriteStream } from 'node:fs';

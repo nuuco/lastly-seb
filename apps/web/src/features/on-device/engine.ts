@@ -6,35 +6,14 @@ import type {
   OnDeviceParseResult,
 } from './types';
 
-export type ModelId = 'gemma3-270m' | 'gemma3-1b';
-
-interface ModelSpec {
-  path: string;
-  /** 모델 .task 파일에 박힌 KV 캐시 크기. 모델마다 다르다. */
-  maxTokens: number;
-  label: string;
-}
-
-const MODELS: Record<ModelId, ModelSpec> = {
-  'gemma3-1b': {
-    path: '/models/gemma3-1b-it-int4-web.task',
-    maxTokens: 1280,
-    label: 'Gemma 3 1B int4',
-  },
-  'gemma3-270m': {
-    path: '/models/gemma3-270m-it-q4_0-web.task',
-    maxTokens: 1024,
-    label: 'Gemma 3 270M int4',
-  },
+const MODEL = {
+  path: '/models/gemma3-1b-it-int4-web.task',
+  /** 모델 .task 파일에 박힌 KV 캐시 크기. */
+  maxTokens: 1280,
+  label: 'Gemma 3 1B int4',
 };
 
-export function listModels(): Array<{ id: ModelId; label: string }> {
-  return (Object.keys(MODELS) as ModelId[]).map((id) => ({ id, label: MODELS[id].label }));
-}
-
-export function modelLabel(id: ModelId): string {
-  return MODELS[id].label;
-}
+export const MODEL_LABEL = MODEL.label;
 
 type WorkerIn =
   | { id: number; type: 'init'; modelUrl: string; maxTokens: number }
@@ -58,27 +37,12 @@ let ready = false;
 let initPromise: Promise<void> | null = null;
 let progressHandler: ((progress: EngineProgress) => void) | null = null;
 
-/** 지금 선택된 모델. 엔진이 올라간 모델과 다르면 다음 ensureEngine 때 다시 올린다. */
-let activeModelId: ModelId = 'gemma3-1b';
-let loadedModelId: ModelId | null = null;
-/** 지금 initPromise가 올리는 중인 모델. 같은 모델을 중복 호출하면 그 promise를 그대로 돌려준다. */
-let loadingModelId: ModelId | null = null;
-
-export function getActiveModel(): ModelId {
-  return activeModelId;
-}
-
-/** 모델 선택만 바꾼다. 실제 전환은 다음 ensureEngine(파싱 포함)에서 일어난다. */
-export function setActiveModel(id: ModelId): void {
-  activeModelId = id;
-}
-
 export function hasWebGpu(): boolean {
   return typeof navigator !== 'undefined' && 'gpu' in navigator;
 }
 
-export async function probeModel(id: ModelId = activeModelId): Promise<{ ok: boolean; bytes: number }> {
-  const res = await fetch(MODELS[id].path, { method: 'HEAD' });
+export async function probeModel(): Promise<{ ok: boolean; bytes: number }> {
+  const res = await fetch(MODEL.path, { method: 'HEAD' });
   const bytes = Number(res.headers.get('content-length') || 0);
   return { ok: res.ok, bytes };
 }
@@ -91,29 +55,19 @@ export function subscribeEngineProgress(handler: (progress: EngineProgress) => v
 }
 
 export async function ensureEngine(): Promise<void> {
-  if (ready && loadedModelId === activeModelId) return;
-  // 이미 지금 원하는 모델을 올리는 중이면 그 promise에 합류한다.
-  if (initPromise && loadingModelId === activeModelId) return initPromise;
-
-  if (worker) {
-    // 다른 모델이 올라가 있거나 올라가던 중이었다. 내리고 다시 올린다.
-    worker.terminate();
-    worker = null;
-  }
-  ready = false;
-  loadedModelId = null;
-  loadingModelId = activeModelId;
-  initPromise = startEngine(activeModelId);
+  if (ready) return;
+  if (initPromise) return initPromise;
+  initPromise = startEngine();
   return initPromise;
 }
 
-async function startEngine(modelId: ModelId): Promise<void> {
+async function startEngine(): Promise<void> {
   try {
     if (!hasWebGpu()) {
       throw new Error('이 브라우저는 WebGPU를 지원하지 않습니다. Chrome 또는 Safari 26+ 가 필요합니다.');
     }
 
-    const model = await probeModel(modelId);
+    const model = await probeModel();
     if (!model.ok) {
       throw new Error(
         '모델 파일이 없습니다. 프로젝트 루트에서 pnpm download:ondevice-model 을 실행하세요.',
@@ -125,23 +79,19 @@ async function startEngine(modelId: ModelId): Promise<void> {
       status: 'downloading',
       loaded: 0,
       total: model.bytes,
-      message: `${MODELS[modelId].label} 파일을 읽는 중`,
+      message: `${MODEL.label} 파일을 읽는 중`,
     });
 
     await request(w, {
       type: 'init',
-      modelUrl: MODELS[modelId].path,
-      maxTokens: MODELS[modelId].maxTokens,
+      modelUrl: MODEL.path,
+      maxTokens: MODEL.maxTokens,
     });
     ready = true;
-    loadedModelId = modelId;
-    loadingModelId = null;
     emit({ status: 'ready', loaded: model.bytes, total: model.bytes, message: '준비됨' });
   } catch (err) {
     initPromise = null;
     ready = false;
-    loadedModelId = null;
-    loadingModelId = null;
     if (worker) {
       worker.terminate();
       worker = null;
@@ -212,8 +162,7 @@ function getWorker(): Worker {
     for (const job of pending.values()) job.reject(error);
     pending.clear();
     ready = false;
-    loadedModelId = null;
-    loadingModelId = null;
+    initPromise = null;
     worker = null;
   };
   return worker;

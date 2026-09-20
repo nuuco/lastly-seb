@@ -22,3 +22,6 @@ supabase/.branches/
 supabase/.temp/
 
 .vercel
+
+# 온디바이스 Gemma 가중치. Hugging Face에서 받아 로컬에만 둔다.
+apps/web/public/models/*.task
