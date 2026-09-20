@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { ensureSession } from '@/lib/supabase/ensure-session';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -26,16 +27,23 @@ interface RequestOptions {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, signal } = options;
 
-  const {
-    data: { session },
-  } = await createClient().auth.getSession();
+  /**
+   * 저장하는 요청이면 계정이 없을 때 여기서 만든다.
+   *
+   * 둘러보기(GET)만으로는 계정을 만들지 않는다 — 남길 것이 없는 사람에게 계정을
+   * 내주지 않으려는 것이다. 기록·완료·알림 설정 어디서 시작하든 이 한 곳을 지난다.
+   */
+  const token =
+    method === 'GET'
+      ? (await createClient().auth.getSession()).data.session?.access_token
+      : await ensureSession();
 
   const res = await fetch(`${BASE_URL}/v1${path}`, {
     method,
     signal,
     headers: {
       ...(body ? { 'content-type': 'application/json' } : {}),
-      ...(session ? { authorization: `Bearer ${session.access_token}` } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
