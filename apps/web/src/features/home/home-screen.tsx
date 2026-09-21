@@ -3,7 +3,7 @@
 import type { HomeFeed, Item } from '@lastly/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseISO } from 'date-fns';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Toast } from '@/components/ui/toast';
 import { CadenceSheet } from '@/features/capture/components/cadence-sheet';
@@ -19,13 +19,17 @@ import {
   getModelConsent,
   hasModelConsent,
   setModelConsent,
+  clearModelConsent,
 } from '@/features/on-device/consent';
 import {
+  cancelEngineLoad,
   engineErrorMessage,
+  engineProgressHint,
   engineProgressLabel,
   ensureEngine,
   hasWebGpu,
   isEngineBusy,
+  isEngineCancelled,
   subscribeEngineProgress,
   type EngineProgress,
 } from '@/features/on-device/engine';
@@ -168,6 +172,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const interpretVoiceRef = useRef(capture.interpret);
   interpretVoiceRef.current = capture.interpret;
   const { listening, transcript, reset: resetSpeech, stop: stopSpeech } = speech;
+  const downloadingModel = modelProgress?.status === 'downloading';
+
+  const dropListenWithoutInterpret = useCallback(() => {
+    wasListening.current = false;
+    heardRef.current = '';
+    resetSpeech();
+    stopSpeech();
+  }, [resetSpeech, stopSpeech]);
 
   useEffect(() => {
     if (transcript) heardRef.current = transcript;
@@ -193,8 +205,12 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   /** 해석이 시작되면 메인 마이크를 놓는다. */
   useEffect(() => {
-    if (capture.step === 'interpreting') stopSpeech();
-  }, [capture.step, stopSpeech]);
+    if (capture.step === 'interpreting' && listening) dropListenWithoutInterpret();
+  }, [capture.step, listening, dropListenWithoutInterpret]);
+
+  useEffect(() => {
+    if (downloadingModel && listening) dropListenWithoutInterpret();
+  }, [downloadingModel, listening, dropListenWithoutInterpret]);
 
   /**
    * 설계 06의 "자주 쓰는 문장" 칩.
@@ -228,13 +244,26 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         setModelError(null);
         setConsentOpen(false);
       }
+      if (next.status === 'error') {
+        setModelError(next.message);
+        setConsentOpen(true);
+      }
+      if (next.status === 'idle') {
+        setModelProgress(null);
+      }
     });
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setModelError('이 주소에서는 쓸 수 없어요. localhost로 열어 주세요.');
+      if (getModelConsent() !== 'declined') setConsentOpen(true);
+      return;
+    }
     if (!hasWebGpu()) return;
     if (getModelConsent() === null) setConsentOpen(true);
     if (hasModelConsent()) void ensureEngine().catch((err) => {
+      if (isEngineCancelled(err)) return;
       setModelError(engineErrorMessage(err));
     });
   }, []);
@@ -261,7 +290,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const retryWithVoice = () => {
     capture.cancel();
-    if (speech.supported) speech.start();
+    if (downloadingModel) inputRef.current?.focus();
+    else if (speech.supported) speech.start();
     else inputRef.current?.focus();
   };
 
@@ -311,8 +341,25 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
         {isEngineBusy(modelProgress) && !consentOpen ? (
           <div className="mt-3 rounded-md bg-surface-alt px-3.5 py-2.5">
-            <p className="text-12.5 text-ink-2">{engineProgressLabel(modelProgress!)}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-12.5 text-ink-2">{engineProgressLabel(modelProgress!)}</p>
+              {modelProgress?.status === 'downloading' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void cancelEngineLoad();
+                    clearModelConsent();
+                  }}
+                  className="shrink-0 text-12.5 font-semibold text-danger"
+                >
+                  받기 취소
+                </button>
+              ) : null}
+            </div>
             <EngineProgressBar progress={modelProgress!} />
+            {engineProgressHint(modelProgress!) ? (
+              <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">{engineProgressHint(modelProgress!)}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -387,11 +434,13 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         onChange={setDraft}
         onSubmit={() => submitDraft('text')}
         onMic={() => {
+          if (downloadingModel) return;
           if (capture.step !== 'idle') capture.cancel();
           if (speech.listening) speech.stop();
           else if (speech.supported) speech.start();
           else inputRef.current?.focus();
         }}
+        micDisabled={downloadingModel}
         listening={speech.listening}
         liveTranscript={speech.transcript}
         listenError={speech.error}
@@ -508,6 +557,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           void ensureEngine()
             .then(() => setConsentOpen(false))
             .catch((err) => {
+              if (isEngineCancelled(err)) return;
               setModelError(engineErrorMessage(err));
             });
         }}
@@ -516,6 +566,11 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           setConsentOpen(false);
         }}
         onHide={() => setConsentOpen(false)}
+        onCancel={() => {
+          void cancelEngineLoad();
+          clearModelConsent();
+          setModelError(null);
+        }}
       />
 
       {capture.committed ? (

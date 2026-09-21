@@ -19,6 +19,7 @@ export function ModelConsentSheet({
   onAccept,
   onLater,
   onHide,
+  onCancel,
   progress,
   error,
 }: {
@@ -26,6 +27,7 @@ export function ModelConsentSheet({
   onAccept: () => void;
   onLater: () => void;
   onHide: () => void;
+  onCancel?: () => void;
   progress: EngineProgress | null;
   error: string | null;
 }) {
@@ -41,7 +43,9 @@ export function ModelConsentSheet({
           </h2>
           <EngineProgressBar progress={progress} className="mt-5 h-1.5" />
           <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
-            닫아도 다운로드는 이어집니다. 받는 동안에도 기록할 수 있어요.
+            {progress.status === 'compiling'
+              ? '닫아도 이어집니다.'
+              : '닫아도 계속 다운로드됩니다. 받는 동안은 음성인식이 어렵습니다. 글로 작성해주세요.'}
           </p>
           <button
             type="button"
@@ -50,6 +54,15 @@ export function ModelConsentSheet({
           >
             닫기
           </button>
+          {progress.status === 'downloading' && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="mt-2.5 flex h-[52px] w-full items-center justify-center rounded-lg border border-line bg-card text-15.5 font-semibold text-danger"
+            >
+              받기 취소
+            </button>
+          ) : null}
         </>
       ) : (
         <>

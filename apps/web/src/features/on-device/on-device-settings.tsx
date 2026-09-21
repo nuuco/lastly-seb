@@ -7,12 +7,14 @@ import { Toggle } from '@/components/ui/toggle';
 import {
   engineErrorMessage,
   engineProgressLabel,
+  cancelEngineLoad,
+  clearModelCache,
   ensureEngine,
   hasWebGpu,
   isEngineBusy,
+  isEngineCancelled,
   isEngineReady,
   subscribeEngineProgress,
-  unloadEngine,
   type EngineProgress,
 } from '@/features/on-device/engine';
 import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
@@ -42,13 +44,23 @@ export function OnDeviceSettings() {
     setReady(isEngineReady());
     const unsub = subscribeEngineProgress((next) => {
       setProgress(next);
-      if (next.status === 'ready') setReady(true);
+      if (next.status === 'ready') {
+        setReady(true);
+        setError(null);
+      }
+      if (next.status === 'error') setError(next.message);
+      if (next.status === 'idle') {
+        setProgress(null);
+        setBusy(false);
+        setReady(false);
+      }
     });
     if (current === 'granted' && hasWebGpu() && !isEngineReady()) {
       setBusy(true);
       void ensureEngine()
         .then(() => setReady(true))
         .catch((err) => {
+          if (isEngineCancelled(err)) return;
           setError(engineErrorMessage(err));
         })
         .finally(() => setBusy(false));
@@ -65,6 +77,7 @@ export function OnDeviceSettings() {
       await ensureEngine();
       setReady(true);
     } catch (err) {
+      if (isEngineCancelled(err)) return;
       setError(engineErrorMessage(err));
     } finally {
       setBusy(false);
@@ -72,7 +85,7 @@ export function OnDeviceSettings() {
   };
 
   const remove = () => {
-    unloadEngine();
+    void clearModelCache();
     clearModelConsent();
     setConsent(null);
     setReady(false);
@@ -124,13 +137,29 @@ export function OnDeviceSettings() {
               불가
             </span>
           ) : busy || isEngineBusy(progress) ? (
-            <button
-              type="button"
-              disabled
-              className="shrink-0 text-13.5 font-semibold text-accent-ink opacity-50"
-            >
-              받는 중
-            </button>
+            progress?.status === 'downloading' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void cancelEngineLoad();
+                  clearModelConsent();
+                  setConsent(null);
+                  setBusy(false);
+                  setProgress(null);
+                }}
+                className="shrink-0 text-13.5 font-semibold text-danger"
+              >
+                취소
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="shrink-0 text-13.5 font-semibold text-accent-ink opacity-50"
+              >
+                준비 중
+              </button>
+            )
           ) : error ? (
             <button
               type="button"

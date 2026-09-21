@@ -12,6 +12,8 @@ interface CaptureBarProps {
   onSubmit: () => void;
   /** 마이크 탭. 듣는 중이면 멈춘다. */
   onMic: () => void;
+  /** 모델 받는 중처럼 마이크를 잠시 막을 때. */
+  micDisabled?: boolean;
   listening: boolean;
   /** 듣는 동안 실시간으로 들어오는 문장. */
   liveTranscript: string;
@@ -43,6 +45,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
     onChange,
     onSubmit,
     onMic,
+    micDisabled = false,
     listening,
     liveTranscript,
     listenError,
@@ -137,7 +140,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
            * 글자를 지워야만 마이크가 돌아오는 일이 없어야 한다.
            */
           <>
-            <SmallMicButton onClick={onMic} />
+            <SmallMicButton onClick={onMic} disabled={micDisabled} />
             <button
               type="submit"
               aria-label="기록하기"
@@ -151,7 +154,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
             </button>
           </>
         ) : (
-          <MicButton listening={listening} onClick={onMic} />
+          <MicButton listening={listening} onClick={onMic} disabled={micDisabled} />
         )}
       </form>
 
@@ -199,13 +202,14 @@ function Thinking() {
 }
 
 /** 글자를 적는 중일 때의 마이크 — 물러나 있지만 사라지지는 않는다 (설계 06). */
-function SmallMicButton({ onClick }: { onClick: () => void }) {
+function SmallMicButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label="음성으로 입력하기"
-      className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px] bg-surface-alt"
+      className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px] bg-surface-alt disabled:opacity-40"
     >
       <span className="block h-[13px] w-2 rounded-[5px] bg-ink-2" />
       <span className="absolute bottom-2 block h-1.5 w-3.5 rounded-b-[8px] border-x-[1.6px] border-b-[1.6px] border-t-0 border-ink-2" />
@@ -213,15 +217,24 @@ function SmallMicButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function MicButton({ listening, onClick }: { listening: boolean; onClick: () => void }) {
+function MicButton({
+  listening,
+  onClick,
+  disabled,
+}: {
+  listening: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={listening ? '말하기 멈추기' : '음성으로 입력하기'}
       aria-pressed={listening}
       /* 면은 듣든 안 듣든 같은 짙은 색이다 — 설계 07. 바뀌는 건 안에 든 도형뿐이다. */
-      className="relative flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md bg-[linear-gradient(180deg,var(--lastly-solid-from),var(--lastly-solid-to))] shadow-toast"
+      className="relative flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md bg-[linear-gradient(180deg,var(--lastly-solid-from),var(--lastly-solid-to))] shadow-toast disabled:opacity-40"
     >
       {listening ? (
         /* 멈춤 — 네모 하나. 누르면 멈춘다는 걸 도형만으로 알린다. */
