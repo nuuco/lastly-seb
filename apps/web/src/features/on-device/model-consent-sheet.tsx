@@ -4,11 +4,8 @@ import Link from 'next/link';
 
 import { Sheet } from '@/components/ui/sheet';
 
-import { isMeteredConnection } from './consent';
-
 /**
  * 약 670MB를 받기 전에 한 번 묻는다. 기록은 막지 않는다.
- * 셀룰러·네트워크를 모를 때는 기본이 나중에다.
  */
 export function ModelConsentSheet({
   open,
@@ -19,23 +16,20 @@ export function ModelConsentSheet({
   onAccept: () => void;
   onLater: () => void;
 }) {
-  const metered = isMeteredConnection();
-
   return (
     <Sheet open={open} onClose={onLater} label="이 기기에서 이해하기">
-      <p className="text-13 font-bold text-accent-ink">이 기기에서 더 잘 이해하려면</p>
+      <p className="text-13 font-bold text-accent-ink">말을 더 잘 이해하기 위해</p>
       <h2 className="mt-2 text-[22px] font-bold leading-[1.4] tracking-[-.03em] text-ink">
-        모델을 받을까요?
+        AI 모델을 받을까요?
         <br />
         약 670MB예요
       </h2>
       <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
-        {metered
-          ? '지금 연결은 데이터가 나갈 수 있어요. 나중에 Wi-Fi에서 받기를 권해요. 그동안은 규칙과 서버로 이해합니다.'
-          : 'Wi-Fi에서 받기를 권해요. 받는 동안에도 기록은 그대로 할 수 있어요.'}
+        Wi-Fi에서 받기를 권해요. 안 받아도 규칙으로 동작해요.{' '}
+        {'"설정 > 이 기기에서 이해하기"'}에서 다시 받거나 삭제할 수 있어요.
       </p>
       <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">
-        이 파일은 Google Gemma 모델입니다. 받기면{' '}
+        이 파일은 Google Gemma 모델입니다. 받으면{' '}
         <Link href="/legal/terms" className="font-semibold text-accent-ink underline underline-offset-2">
           Lastly 이용약관
         </Link>
