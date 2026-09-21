@@ -1,28 +1,18 @@
 /**
- * Gemma 3 1B int4 를 WebGPU 에서 돌리는 워커.
- * engine.ts가 init 메시지에 모델 경로와 maxTokens를 실어 보낸다.
- *
- * type: 'module' 워커에서는 MediaPipe 기본 로더(importScripts)가 실패하고
- * "ModuleFactory not set" 이 난다. WASM 로더를 ESM 으로 직접 붙인다.
+ * Gemma 파일을 OPFS에 받는 워커.
+ * GPU 장치는 복제할 수 없어서 올리기는 페이지에서 한다.
  */
-import { FilesetResolver, LlmInference } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/genai_bundle.mjs';
-
-const WASM_ROOT = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/wasm';
-
-let llm = null;
+const MODEL_OPFS_FILE = 'gemma3-1b-it-int4-web.task';
+const MODEL_META_FILE = 'gemma3-1b-it-int4-web.meta.json';
+const DEFAULT_MODEL_BYTES = 700_383_232;
+const DOWNLOAD_STALL_MS = 30_000;
 
 self.onmessage = async (event) => {
   const msg = event.data;
   try {
     if (msg.type === 'init') {
-      await init(msg.modelUrl, msg.maxTokens, msg.id);
+      await ensureModelFile(msg.modelUrl, msg.id);
       self.postMessage({ id: msg.id, type: 'ready' });
-      return;
-    }
-    if (msg.type === 'generate') {
-      if (!llm) throw new Error('모델이 아직 없습니다.');
-      const text = await generate(msg.prompt);
-      self.postMessage({ id: msg.id, type: 'result', text });
       return;
     }
   } catch (err) {
@@ -34,136 +24,138 @@ self.onmessage = async (event) => {
   }
 };
 
-async function init(modelUrl, maxTokens, requestId) {
-  const genai = await loadFileset();
+async function ensureModelFile(modelUrl, requestId) {
   const modelUrlAbs = new URL(modelUrl, self.location.origin).href;
+  const cached = await openCachedFile(modelUrlAbs);
+  if (cached) return cached;
 
   self.postMessage({
     id: requestId,
     type: 'progress',
     stage: 'download',
     loaded: 0,
-    total: 700383232,
+    total: DEFAULT_MODEL_BYTES,
   });
+  return downloadModel(modelUrlAbs, requestId);
+}
 
-  const bytes = await downloadModel(modelUrlAbs, requestId);
+async function openCachedFile(url) {
+  try {
+    const root = await navigator.storage.getDirectory();
+    const meta = await readOpfsJson(root, MODEL_META_FILE);
+    if (meta?.url && meta.url !== url) {
+      await removeOpfsModel(root);
+      return null;
+    }
+    const handle = await root.getFileHandle(MODEL_OPFS_FILE);
+    const file = await handle.getFile();
+    const expected = meta?.bytes > 0 ? meta.bytes : DEFAULT_MODEL_BYTES;
+    if (!isCompleteSize(file.size, expected)) {
+      await removeOpfsModel(root);
+      return null;
+    }
+    return file;
+  } catch {
+    return null;
+  }
+}
 
-  self.postMessage({
-    id: requestId,
-    type: 'progress',
-    stage: 'compile',
-    loaded: bytes.byteLength,
-    total: bytes.byteLength,
-  });
+function isCompleteSize(size, expected) {
+  return size === expected;
+}
 
-  llm = await LlmInference.createFromOptions(genai, {
-    baseOptions: { modelAssetBuffer: bytes },
-    maxTokens,
-    topK: 40,
-    temperature: 0.8,
-    randomSeed: 101,
-    numResponses: 1,
-    forceF32: true,
-  });
+async function removeOpfsModel(root) {
+  await Promise.allSettled([
+    root.removeEntry(MODEL_OPFS_FILE),
+    root.removeEntry(MODEL_META_FILE),
+  ]);
+}
+
+async function writeMeta(root, url, bytes) {
+  const metaHandle = await root.getFileHandle(MODEL_META_FILE, { create: true });
+  const metaWritable = await metaHandle.createWritable();
+  await metaWritable.write(JSON.stringify({ url, bytes }));
+  await metaWritable.close();
+}
+
+async function readOpfsJson(root, name) {
+  try {
+    const handle = await root.getFileHandle(name);
+    const text = await (await handle.getFile()).text();
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 async function downloadModel(url, requestId) {
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('모델 파일을 받지 못했어요.');
 
   const total =
-    Number(res.headers.get('content-length') || res.headers.get('x-linked-size') || 0) || 700383232;
+    Number(res.headers.get('content-length') || res.headers.get('x-linked-size') || 0) ||
+    DEFAULT_MODEL_BYTES;
 
-  if (!res.body) {
-    const buf = new Uint8Array(await res.arrayBuffer());
-    self.postMessage({
-      id: requestId,
-      type: 'progress',
-      stage: 'download',
-      loaded: buf.byteLength,
-      total: buf.byteLength,
-    });
-    return buf;
-  }
+  const root = await navigator.storage.getDirectory();
+  await removeOpfsModel(root);
+  const handle = await root.getFileHandle(MODEL_OPFS_FILE, { create: true });
+  const writable = await handle.createWritable();
 
-  const reader = res.body.getReader();
-  const chunks = [];
   let loaded = 0;
-  let lastSent = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.byteLength;
-    if (loaded - lastSent >= 1024 * 1024 || loaded >= total) {
-      lastSent = loaded;
-      self.postMessage({
-        id: requestId,
-        type: 'progress',
-        stage: 'download',
-        loaded,
-        total,
-      });
+  try {
+    if (!res.body) throw new Error('모델 파일을 받지 못했어요.');
+    const reader = res.body.getReader();
+    let lastSent = 0;
+    while (true) {
+      const { done, value } = await readChunk(reader);
+      if (done) break;
+      await writable.write(value);
+      loaded += value.byteLength;
+      if (loaded - lastSent >= 1024 * 1024 || loaded >= total) {
+        lastSent = loaded;
+        self.postMessage({
+          id: requestId,
+          type: 'progress',
+          stage: 'download',
+          loaded,
+          total,
+        });
+      }
     }
+    await writable.close();
+  } catch (err) {
+    try {
+      await writable.abort();
+    } catch {
+      // ignore
+    }
+    await removeOpfsModel(root);
+    throw err;
   }
 
-  const bytes = new Uint8Array(loaded);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
+  await writeMeta(root, url, loaded);
+  const file = await handle.getFile();
+  if (!isCompleteSize(file.size, total) && !isCompleteSize(file.size, DEFAULT_MODEL_BYTES)) {
+    await removeOpfsModel(root);
+    throw new Error('모델 파일이 덜 받아졌어요. 다시 받아 주세요.');
   }
-  return bytes;
+  return file;
 }
 
-async function generate(prompt) {
-  let acc = '';
-  const text = await llm.generateResponse(prompt, (partial, done) => {
-    acc += partial;
-    if (!done && (hasClosedJson(acc) || isDegenerate(acc))) {
-      llm.cancelProcessing();
-    }
+function readChunk(reader) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('모델 받기가 멈췄어요. 네트워크를 확인하고 다시 받아 주세요.'));
+    }, DOWNLOAD_STALL_MS);
+    reader.read().then(
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
   });
-  return (acc || text || '').trim();
-}
-
-function hasClosedJson(text) {
-  const start = text.indexOf('{');
-  if (start < 0) return false;
-  let depth = 0;
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth += 1;
-    if (text[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return true;
-    }
-  }
-  return false;
-}
-
-function isDegenerate(text) {
-  if (text.length < 80) return false;
-  if (text.includes('{') || text.includes('"intent"')) return false;
-  const chunk = text.slice(-24);
-  return text.split(chunk).length >= 4;
-}
-
-async function loadFileset() {
-  const genai = await FilesetResolver.forGenAiTasks(WASM_ROOT, true);
-
-  if (typeof self.ModuleFactory !== 'function' && genai.wasmLoaderPath) {
-    const loader = await import(/* webpackIgnore: true */ genai.wasmLoaderPath);
-    if (typeof loader.ModuleFactory === 'function') {
-      self.ModuleFactory = loader.ModuleFactory;
-    } else if (typeof loader.default === 'function') {
-      self.ModuleFactory = loader.default;
-    }
-    delete genai.wasmLoaderPath;
-  }
-
-  if (typeof self.ModuleFactory !== 'function') {
-    throw new Error('WebAssembly 로더를 붙이지 못했습니다. 페이지를 새로고침한 뒤 다시 올려 보세요.');
-  }
-
-  return genai;
 }
