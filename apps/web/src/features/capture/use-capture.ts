@@ -246,7 +246,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     mutationFn: (name: string) =>
       itemsApi.create({
         name,
-        cadence: { unit: 'week', interval: 2, weekdays: [], notifyTimeLocal: null },
+        cadence: FALLBACK_RULE,
         cadenceSource: 'default',
         firstDoneOn: todayIso(),
       }),
@@ -268,7 +268,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const dismissToast = useCallback(() => setCommitted(null), []);
 
   const undo = useMutation({
-    mutationFn: (undoToken: string) => import('@/lib/api/items').then((m) => m.itemsApi.undo(undoToken)),
+    mutationFn: (undoToken: string) => itemsApi.undo(undoToken),
     onSuccess: async () => {
       setCommitted(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.home });

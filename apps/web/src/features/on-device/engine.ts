@@ -31,6 +31,10 @@ export function engineProgressLabel(progress: EngineProgress): string {
   return `받는 중 ${engineProgressPercent(progress)}%`;
 }
 
+export function engineErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : '모델을 준비하지 못했어요.';
+}
+
 const DEFAULT_MODEL_URL =
   'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task';
 const DEFAULT_MODEL_BYTES = 700_383_232;

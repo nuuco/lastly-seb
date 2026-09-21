@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { Toggle } from '@/components/ui/toggle';
 import {
+  engineErrorMessage,
   engineProgressLabel,
-  engineProgressPercent,
   ensureEngine,
   hasWebGpu,
   isEngineBusy,
@@ -14,6 +15,7 @@ import {
   unloadEngine,
   type EngineProgress,
 } from '@/features/on-device/engine';
+import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import {
   clearModelConsent,
   getModelConsent,
@@ -21,33 +23,6 @@ import {
   setModelConsent,
   setVoiceGuidance,
 } from '@/features/on-device/consent';
-import { cn } from '@/lib/cn';
-
-function Toggle({
-  on,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  onChange: (on: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={() => onChange(!on)}
-      className={cn(
-        'flex h-7 w-12 items-center rounded-[14px] px-[3px] transition-colors',
-        on ? 'justify-end bg-sage' : 'justify-start bg-line-muted',
-      )}
-    >
-      <span className="block h-[22px] w-[22px] rounded-full bg-white" />
-    </button>
-  );
-}
 
 /** 설정 13에 없는 행 — 음성 안내와 이 기기 모델. */
 export function OnDeviceSettings() {
@@ -74,7 +49,7 @@ export function OnDeviceSettings() {
       void ensureEngine()
         .then(() => setReady(true))
         .catch((err) => {
-          setError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+          setError(engineErrorMessage(err));
         })
         .finally(() => setBusy(false));
     }
@@ -90,7 +65,7 @@ export function OnDeviceSettings() {
       await ensureEngine();
       setReady(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+      setError(engineErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -136,14 +111,7 @@ export function OnDeviceSettings() {
           <div className="min-w-0 pr-3">
             <p className="text-15.5 font-semibold text-ink">이 기기에서 이해하기</p>
             <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
-            {isEngineBusy(progress) ? (
-              <span className="relative mt-2 block h-1 overflow-hidden rounded-[2px] bg-bar-track">
-                <span
-                  className="absolute inset-y-0 left-0 block rounded-[2px] bg-sage"
-                  style={{ width: `${engineProgressPercent(progress!)}%` }}
-                />
-              </span>
-            ) : null}
+            {isEngineBusy(progress) ? <EngineProgressBar progress={progress!} /> : null}
             <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
               Gemma 모델.{' '}
               <Link href="/legal/terms" className="font-semibold text-accent-ink">

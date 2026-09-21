@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
 
 import { Sheet } from '@/components/ui/sheet';
+import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import {
   engineProgressLabel,
-  engineProgressPercent,
   isEngineBusy,
   type EngineProgress,
 } from '@/features/on-device/engine';
@@ -32,10 +31,6 @@ export function ModelConsentSheet({
 }) {
   const showProgress = isEngineBusy(progress) || progress?.status === 'ready';
 
-  useEffect(() => {
-    if (open && progress?.status === 'ready') onHide();
-  }, [open, progress, onHide]);
-
   return (
     <Sheet open={open} onClose={onHide} label="이 기기에서 이해하기">
       {showProgress && progress ? (
@@ -44,12 +39,7 @@ export function ModelConsentSheet({
           <h2 className="mt-2 text-[22px] font-bold leading-[1.4] tracking-[-.03em] text-ink">
             {engineProgressLabel(progress)}
           </h2>
-          <span className="relative mt-5 block h-1.5 overflow-hidden rounded-[2px] bg-bar-track">
-            <span
-              className="absolute inset-y-0 left-0 block rounded-[2px] bg-sage"
-              style={{ width: `${engineProgressPercent(progress)}%` }}
-            />
-          </span>
+          <EngineProgressBar progress={progress} className="mt-5 h-1.5" />
           <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
             닫아도 다운로드는 이어집니다. 받는 동안에도 기록할 수 있어요.
           </p>

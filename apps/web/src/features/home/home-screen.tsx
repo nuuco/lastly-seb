@@ -21,14 +21,15 @@ import {
   setModelConsent,
 } from '@/features/on-device/consent';
 import {
+  engineErrorMessage,
   engineProgressLabel,
-  engineProgressPercent,
   ensureEngine,
   hasWebGpu,
   isEngineBusy,
   subscribeEngineProgress,
   type EngineProgress,
 } from '@/features/on-device/engine';
+import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
@@ -168,7 +169,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   interpretVoiceRef.current = capture.interpret;
   const { listening, transcript, reset: resetSpeech, stop: stopSpeech } = speech;
 
-  if (transcript) heardRef.current = transcript;
+  useEffect(() => {
+    if (transcript) heardRef.current = transcript;
+  }, [transcript]);
 
   useEffect(() => {
     const justStopped = wasListening.current && !listening;
@@ -232,7 +235,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     if (!hasWebGpu()) return;
     if (getModelConsent() === null) setConsentOpen(true);
     if (hasModelConsent()) void ensureEngine().catch((err) => {
-      setModelError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+      setModelError(engineErrorMessage(err));
     });
   }, []);
 
@@ -309,12 +312,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         {isEngineBusy(modelProgress) && !consentOpen ? (
           <div className="mt-3 rounded-md bg-surface-alt px-3.5 py-2.5">
             <p className="text-12.5 text-ink-2">{engineProgressLabel(modelProgress!)}</p>
-            <span className="relative mt-2 block h-1 overflow-hidden rounded-[2px] bg-bar-track">
-              <span
-                className="absolute inset-y-0 left-0 block rounded-[2px] bg-sage"
-                style={{ width: `${engineProgressPercent(modelProgress!)}%` }}
-              />
-            </span>
+            <EngineProgressBar progress={modelProgress!} />
           </div>
         ) : null}
 
@@ -510,7 +508,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           void ensureEngine()
             .then(() => setConsentOpen(false))
             .catch((err) => {
-              setModelError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+              setModelError(engineErrorMessage(err));
             });
         }}
         onLater={() => {

@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
+import { Toggle } from '@/components/ui/toggle';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { OnDeviceSettings } from '@/features/on-device/on-device-settings';
 import { usePushSubscription } from '@/features/notifications/use-push-subscription';
@@ -253,33 +254,6 @@ function ActionRow({
     >
       {children}
       {danger ? null : <Chevron className="border-[1.6px] border-b-0 border-l-0" />}
-    </button>
-  );
-}
-
-/** 설계의 토글 — 켜지면 세이지, 꺼지면 회색. */
-function Toggle({
-  on,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  onChange: (on: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={() => onChange(!on)}
-      className={cn(
-        'flex h-7 w-12 items-center rounded-[14px] px-[3px] transition-colors',
-        on ? 'justify-end bg-sage' : 'justify-start bg-line-muted',
-      )}
-    >
-      <span className="block h-[22px] w-[22px] rounded-full bg-white" />
     </button>
   );
 }

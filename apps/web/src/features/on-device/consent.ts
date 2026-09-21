@@ -54,19 +54,3 @@ export function isVoiceGuidanceOn(): boolean {
 export function setVoiceGuidance(on: boolean): void {
   write(VOICE_KEY, on ? 'on' : 'off');
 }
-
-/**
- * 셀룰러이거나 네트워크를 모를 때(iOS 등)는 과금으로 본다.
- * 그때는 받기 시트를 띄워도 기본은 받지 않는다.
- */
-export function isMeteredConnection(): boolean {
-  if (typeof navigator === 'undefined') return true;
-  const connection = (
-    navigator as Navigator & {
-      connection?: { type?: string; saveData?: boolean };
-    }
-  ).connection;
-  if (!connection) return true;
-  if (connection.saveData) return true;
-  return connection.type === 'cellular';
-}

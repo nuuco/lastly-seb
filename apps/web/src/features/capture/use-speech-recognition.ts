@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  detachRecognition,
+  getSpeechRecognitionCtor,
+  type SpeechRecognitionLike,
+} from '@/lib/speech';
+
 /**
  * Web Speech API 래퍼.
  *
@@ -10,41 +16,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * - Safari 가 세션을 먼저 끊으면 앞문장을 남기고 다시 붙인다
  */
 
-interface SpeechRecognitionLike extends EventTarget {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-}
-
-interface SpeechRecognitionEventLike {
-  results: ArrayLike<
-    ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
-  >;
-}
-
 const MAX_LISTEN_MS = 15_000;
 const SILENCE_MS = 1_500;
-
-function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as Record<string, unknown>;
-  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as
-    | (new () => SpeechRecognitionLike)
-    | null;
-}
-
-function detach(recognition: SpeechRecognitionLike) {
-  recognition.onresult = null;
-  recognition.onerror = null;
-  recognition.onend = null;
-}
 
 export interface SpeechState {
   supported: boolean;
@@ -76,7 +49,7 @@ export function useSpeechRecognition() {
   });
 
   useEffect(() => {
-    if (getRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
+    if (getSpeechRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
   }, []);
 
   const clearTimers = useCallback(() => {
@@ -100,7 +73,7 @@ export function useSpeechRecognition() {
     const recognition = recognitionRef.current;
     if (!recognition) return;
     recognitionRef.current = null;
-    detach(recognition);
+    detachRecognition(recognition);
     try {
       recognition.abort();
     } catch {
@@ -154,7 +127,7 @@ export function useSpeechRecognition() {
   }, [abort, clearTimers, settle]);
 
   const start = useCallback(() => {
-    const Ctor = getRecognitionCtor();
+    const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setState((prev) => ({ ...prev, error: '이 브라우저에서는 음성 입력을 쓸 수 없어요.' }));
       return;
@@ -228,7 +201,7 @@ export function useSpeechRecognition() {
         listeningIntentRef.current = false;
         clearTimers();
         if (recognitionRef.current === recognition) recognitionRef.current = null;
-        detach(recognition);
+        detachRecognition(recognition);
         setState((prev) => ({
           ...prev,
           listening: false,
@@ -241,7 +214,7 @@ export function useSpeechRecognition() {
         committedRef.current = `${committedRef.current}${sessionFinalsRef.current}`;
         sessionFinalsRef.current = '';
         if (recognitionRef.current === recognition) recognitionRef.current = null;
-        detach(recognition);
+        detachRecognition(recognition);
 
         if (!listeningIntentRef.current) {
           settle();
