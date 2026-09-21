@@ -34,7 +34,7 @@ export function ModelConsentSheet({
   const showProgress = isEngineBusy(progress) || progress?.status === 'ready';
 
   return (
-    <Sheet open={open} onClose={onHide} label="이 기기에서 이해하기">
+    <Sheet open={open} onClose={onHide} label="AI 모델">
       {showProgress && progress ? (
         <>
           <p className="text-13 font-bold text-accent-ink">말을 더 잘 이해하기 위해</p>
@@ -74,7 +74,7 @@ export function ModelConsentSheet({
           </h2>
           <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
             Wi-Fi에서 받기를 권해요. 안 받아도 규칙으로 동작해요.{' '}
-            {'"설정 > 이 기기에서 이해하기"'}에서 다시 받거나 삭제할 수 있어요.
+            {'"설정 > AI 모델"'}에서 다시 받거나 삭제할 수 있어요.
           </p>
           {error ? (
             <p className="mt-3 text-[13.5px] leading-[1.7] text-danger">{error}</p>

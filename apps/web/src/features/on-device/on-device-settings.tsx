@@ -26,7 +26,7 @@ import {
   setVoiceGuidance,
 } from '@/features/on-device/consent';
 
-/** 설정 13에 없는 행 — 음성 안내와 이 기기 모델. */
+/** 설정 13에 없는 행 — 음성 안내와 AI 모델. */
 export function OnDeviceSettings() {
   const [voice, setVoice] = useState(true);
   const [consent, setConsent] = useState<'granted' | 'declined' | null>(null);
@@ -95,7 +95,7 @@ export function OnDeviceSettings() {
   const modelHint = !gpu
     ? '이 브라우저에서는 쓸 수 없어요.'
     : ready
-      ? '이 기기에서 이해하고 있어요.'
+      ? '받아 둔 모델로 알아들어요.'
       : isEngineBusy(progress)
         ? engineProgressLabel(progress!)
         : consent === 'granted'
@@ -122,7 +122,7 @@ export function OnDeviceSettings() {
         </div>
         <div className="flex items-center justify-between py-4">
           <div className="min-w-0 pr-3">
-            <p className="text-15.5 font-semibold text-ink">이 기기에서 이해하기</p>
+            <p className="text-15.5 font-semibold text-ink">AI 모델</p>
             <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
             {isEngineBusy(progress) ? <EngineProgressBar progress={progress!} /> : null}
             <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
