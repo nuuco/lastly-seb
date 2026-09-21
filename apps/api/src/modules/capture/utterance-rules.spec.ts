@@ -1,4 +1,4 @@
-import { readCadenceDays, readDaysAgo, readIntent, readName, readNameWithAction } from '@lastly/parser';
+import { classifySave, readCadenceDays, readDaysAgo, readIntent, readName, readNameWithAction } from '@lastly/parser';
 
 /**
  * 규칙 파서는 LLM 을 부르지 않고 끝낼 수 있는 문장을 가려내는 자리다.
@@ -39,6 +39,8 @@ describe('날짜 읽기', () => {
     ['오늘 이불 빨았어', 0],
     ['어제 화분 물 줬어', 1],
     ['그저께 칫솔 갈았어', 2],
+    ['그끄저께 청소했어', 3],
+    ['그그제 청소했어', 3],
     ['3일 전에 정수기 필터 갈았어', 3],
     ['2주 전에 청소했어', 14],
     ['지난주에 했어', 7],
@@ -132,9 +134,67 @@ describe('사전에 없던 동사', () => {
     ['워셔액 넣었어', '워셔액 보충'],
     ['세제 채웠어', '세제 보충'],
     ['강아지 발톱 깎았어', '강아지 발톱 깎기'],
+    ['오늘 가습기 필터 설치했어', '가습기 필터 설치'],
   ])('%s → %s', (text, name) => {
     const got = readNameWithAction(text);
     expect(got.name).toBe(name);
     expect(got.sawAction).toBe(true);
+  });
+});
+
+describe('저장 여부', () => {
+  it('완료 뒤에 할거야는 주기이지 예정이 아니다', () => {
+    const save = classifySave('오늘 가습기 필터 설치했고 한달마다 할거야');
+    expect(save.kind).toBe('completed');
+    expect(save.willSave).toBe(true);
+    expect(save.intent).toBe('record');
+    expect(readCadenceDays('오늘 가습기 필터 설치했고 한달마다 할거야')).toBe(30);
+  });
+
+  it('할래도 완료가 있으면 저장한다', () => {
+    const save = classifySave('세탁조 청소했어 세달에 한번 할래');
+    expect(save.kind).toBe('completed');
+    expect(save.willSave).toBe(true);
+  });
+
+  it('순수 예정은 저장하지 않는다', () => {
+    const save = classifySave('내일 가습기 필터 설치할거야');
+    expect(save.kind).toBe('planned');
+    expect(save.willSave).toBe(false);
+  });
+
+  it('못 함은 저장하지 않는다', () => {
+    const save = classifySave('오늘 이불 못 빨았어');
+    expect(save.kind).toBe('incomplete');
+    expect(save.willSave).toBe(false);
+  });
+
+  it('것 같아는 저장하지 않는다', () => {
+    const save = classifySave('이불 빨았던 것 같아');
+    expect(save.kind).toBe('uncertain');
+    expect(save.willSave).toBe(false);
+  });
+
+  it('짧은 함도 완료다', () => {
+    const save = classifySave('베란다 청소 오늘 함');
+    expect(save.kind).toBe('completed');
+    expect(save.willSave).toBe(true);
+    expect(save.intent).toBe('record');
+  });
+
+  it('쯤은 시간 어림이지 불확실이 아니다', () => {
+    const save = classifySave('세 시쯤 이불 빨았어');
+    expect(save.willSave).toBe(true);
+    expect(save.kind).toBe('completed');
+  });
+
+  it('그거야만으로는 예정이 아니다', () => {
+    const save = classifySave('응 그거야');
+    expect(save.kind).not.toBe('planned');
+  });
+
+  it('완료 표지 없는 잔여는 이름으로 믿지 않는다', () => {
+    const got = readNameWithAction('오늘 점심 맛있었다');
+    expect(got.sawAction).toBe(false);
   });
 });

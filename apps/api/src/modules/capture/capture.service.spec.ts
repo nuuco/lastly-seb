@@ -366,6 +366,66 @@ describe('CaptureService.interpret — 규칙으로 끝나는 문장', () => {
     expect(ai.parseUtterance).not.toHaveBeenCalled();
     expect(ai.suggestCadence).toHaveBeenCalled();
   });
+
+  it('사전에 없는 동사도 완료면 새 항목으로 간다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 가습기 필터 설치했어', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('가습기 필터 설치');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).toHaveBeenCalled();
+  });
+
+  it('했고 뒤에 할거야는 말한 주기로 저장한다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 가습기 필터 설치했고 한달마다 할거야', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('가습기 필터 설치');
+    expect(result.cadence?.source).toBe('user');
+    expect(result.cadence?.rule).toMatchObject({ unit: 'month', interval: 1 });
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('못 한 일은 확인 시트를 열지 않는다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '오늘 이불 못 빨았어', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.normalizedName).toBeNull();
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(ai.suggestCadence).not.toHaveBeenCalled();
+  });
+
+  it('순수 예정은 확인 시트를 열지 않는다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '내일 가습기 필터 설치할거야', mode: 'text' },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
 });
 
 describe('CaptureService.interpret — 규칙이 이름만 뽑은 새 항목', () => {

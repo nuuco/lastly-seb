@@ -124,6 +124,10 @@ export class CaptureService {
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
+    if (!facts.willSave && facts.intent !== 'query') {
+      return this.declinedRecord(userId, input, referenceDate);
+    }
+
     const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
     if (ruled) return ruled;
 
@@ -438,6 +442,38 @@ export class CaptureService {
         normalizedName: part.normalizedName,
         doneOn: part.doneOn,
         matchedItemId: part.matchedItemId,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /**
+   * 못 함·예정·불확실. 확인 시트를 열지 않는다.
+   * 웹은 이 말을 서버에 안 보내지만, slots 없는 폴백에서도 같아야 한다.
+   */
+  private declinedRecord(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+  ): InterpretResult {
+    return {
+      transcript: input.text,
+      outcome: 'unrecognized',
+      normalizedName: null,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates: [],
+      cadence: null,
+      confidence: 0,
+      degraded: false,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: null,
+        doneOn: referenceDate,
+        matchedItemId: null,
         mode: input.mode,
         issuedAt: Date.now(),
       }),
