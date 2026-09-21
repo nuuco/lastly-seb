@@ -37,7 +37,7 @@ export function ModelConsentSheet({
       <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">
         이 파일은 Google Gemma 모델입니다. 받기면{' '}
         <Link href="/legal/terms" className="font-semibold text-accent-ink underline underline-offset-2">
-          이용약관
+          Lastly 이용약관
         </Link>
         과{' '}
         <a
@@ -56,7 +56,7 @@ export function ModelConsentSheet({
         onClick={onAccept}
         className="mt-[18px] flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white"
       >
-        {metered ? '데이터로도 받기' : '지금 받기'}
+        지금 받기
       </button>
       <button
         type="button"
