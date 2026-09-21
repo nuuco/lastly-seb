@@ -23,5 +23,5 @@ supabase/.temp/
 
 .vercel
 
-# 온디바이스 Gemma 가중치. Hugging Face에서 받아 로컬에만 둔다.
+# 온디바이스 Gemma 가중치. 로컬에 남아 있을 수 있음. 커밋하지 않는다.
 apps/web/public/models/*.task

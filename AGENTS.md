@@ -23,3 +23,4 @@
 - 음성: Safari getUserMedia 권한 선행. 세션 조기 종료 시 재시작. 언마운트에만 abort
 - 음성: 훅·홈·TTS·API 실패 시트 정리(중복 플래그·장황 주석 축소)
 - 동의 시트: 링크를 Lastly 이용약관으로, 받기 버튼을 지금 받기로 통일
+- 모델 URL: 기본 HF resolve, 로컬 다운로드 스크립트·HF_TOKEN 제거

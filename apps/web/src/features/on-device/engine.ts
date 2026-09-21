@@ -15,9 +15,13 @@ const MODEL = {
 
 export const MODEL_LABEL = MODEL.label;
 
-/** 브라우저가 GET 할 주소. 배포는 CDN, 로컬은 public/models. */
+const DEFAULT_MODEL_URL =
+  'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task';
+const DEFAULT_MODEL_BYTES = 700_383_232;
+
+/** 브라우저가 GET 할 주소. 비우면 Hugging Face 공개 파일을 쓴다. */
 export function modelAssetUrl(): string {
-  return process.env.NEXT_PUBLIC_ONDEVICE_MODEL_URL || '/models/gemma3-1b-it-int4-web.task';
+  return process.env.NEXT_PUBLIC_ONDEVICE_MODEL_URL || DEFAULT_MODEL_URL;
 }
 
 type WorkerIn =
@@ -47,9 +51,16 @@ export function hasWebGpu(): boolean {
 }
 
 export async function probeModel(): Promise<{ ok: boolean; bytes: number }> {
-  const res = await fetch(modelAssetUrl(), { method: 'HEAD' });
-  const bytes = Number(res.headers.get('content-length') || 0);
-  return { ok: res.ok, bytes };
+  try {
+    const res = await fetch(modelAssetUrl(), { method: 'HEAD' });
+    const bytes = Number(
+      res.headers.get('content-length') || res.headers.get('x-linked-size') || DEFAULT_MODEL_BYTES,
+    );
+    const ok = res.ok || res.status === 405;
+    return { ok, bytes: Number.isFinite(bytes) && bytes > 0 ? bytes : DEFAULT_MODEL_BYTES };
+  } catch {
+    return { ok: true, bytes: DEFAULT_MODEL_BYTES };
+  }
 }
 
 export function subscribeEngineProgress(handler: (progress: EngineProgress) => void): () => void {
