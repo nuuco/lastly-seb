@@ -5,12 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
+import { isVoiceGuidanceOn } from '@/features/on-device/consent';
+import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
 import { describeCadence, formatShortDate, ruleToDays, todayIso } from '@/lib/date';
 
 import { CadenceSheet } from './cadence-sheet';
-import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 
 interface ConfirmSheetProps {
   open: boolean;
@@ -103,6 +104,10 @@ export function ConfirmSheet({
       : { itemId: matchedId ?? undefined }),
     note: note.trim() || null,
   };
+  const rationaleText = edited
+    ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
+    : (shown?.rationale ?? '');
+  const showVoiceHint = mode === 'voice' && isVoiceGuidanceOn();
 
   useSpokenConfirm({
     enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
@@ -193,11 +198,12 @@ export function ConfirmSheet({
           </div>
         </div>
 
-        <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">
-          {edited
-            ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
-            : (shown?.rationale ?? '')}
-        </p>
+        {rationaleText || showVoiceHint ? (
+          <div className="mt-1 space-y-1 text-[13.5px] leading-[1.7] text-ink-3">
+            {rationaleText ? <p>{rationaleText}</p> : null}
+            {showVoiceHint ? <p>응이나 아니로 답해도 돼요</p> : null}
+          </div>
+        ) : null}
 
         <SheetActions
           primary={{

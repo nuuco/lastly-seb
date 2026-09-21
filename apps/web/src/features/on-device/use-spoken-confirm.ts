@@ -46,6 +46,8 @@ export function useSpokenConfirm({
       } catch {
         // already ended
       }
+      // 시트가 닫혀도 cleanup이 이 안내를 끊지 않는다.
+      speak(yes ? '기록했어요' : '취소했어요');
       if (yes) yesRef.current();
       else noRef.current();
     };
@@ -59,12 +61,25 @@ export function useSpokenConfirm({
       rec.continuous = false;
       rec.interimResults = false;
       rec.maxAlternatives = 1;
+      let unmatched = false;
       rec.onresult = (event) => {
         const text = (event.results[0]?.[0]?.transcript ?? '').trim();
         if (YES.test(text)) decide(true);
         else if (NO.test(text)) decide(false);
+        else unmatched = true;
       };
-      rec.onerror = () => undefined;
+      rec.onerror = (event) => {
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          decided = true;
+        }
+      };
+      rec.onend = () => {
+        if (recognition === rec) recognition = null;
+        // Safari는 세션을 바로 끝낸다. 매번 다시 켜면 마이크 허용이 연달아 뜬다.
+        if (decided || !unmatched) return;
+        if (listenTimer) clearTimeout(listenTimer);
+        listenTimer = setTimeout(listen, 300);
+      };
       try {
         rec.start();
       } catch {
@@ -75,13 +90,15 @@ export function useSpokenConfirm({
     // TTS 메아리가 마이크로 들어가면 취소로 오인한다. 읽기가 끝난 뒤 잠깐 쉰다.
     speak(prompt, () => {
       if (decided) return;
+      if (listenTimer) clearTimeout(listenTimer);
       listenTimer = setTimeout(listen, 400);
     });
 
     return () => {
+      const alreadyDecided = decided;
       decided = true;
       if (listenTimer) clearTimeout(listenTimer);
-      stopSpeaking();
+      if (!alreadyDecided) stopSpeaking();
       try {
         recognition?.abort();
       } catch {
