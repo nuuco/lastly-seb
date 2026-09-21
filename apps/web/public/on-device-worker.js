@@ -36,29 +36,84 @@ self.onmessage = async (event) => {
 
 async function init(modelUrl, maxTokens, requestId) {
   const genai = await loadFileset();
+  const modelUrlAbs = new URL(modelUrl, self.location.origin).href;
+
+  self.postMessage({
+    id: requestId,
+    type: 'progress',
+    stage: 'download',
+    loaded: 0,
+    total: 700383232,
+  });
+
+  const bytes = await downloadModel(modelUrlAbs, requestId);
 
   self.postMessage({
     id: requestId,
     type: 'progress',
     stage: 'compile',
-    loaded: 0,
-    total: 1,
+    loaded: bytes.byteLength,
+    total: bytes.byteLength,
   });
 
-  const modelAssetPath = new URL(modelUrl, self.location.origin).href;
-  const options = {
+  llm = await LlmInference.createFromOptions(genai, {
+    baseOptions: { modelAssetBuffer: bytes },
     maxTokens,
     topK: 40,
     temperature: 0.8,
     randomSeed: 101,
     numResponses: 1,
     forceF32: true,
-  };
-
-  llm = await LlmInference.createFromOptions(genai, {
-    baseOptions: { modelAssetPath },
-    ...options,
   });
+}
+
+async function downloadModel(url, requestId) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('모델 파일을 받지 못했어요.');
+
+  const total =
+    Number(res.headers.get('content-length') || res.headers.get('x-linked-size') || 0) || 700383232;
+
+  if (!res.body) {
+    const buf = new Uint8Array(await res.arrayBuffer());
+    self.postMessage({
+      id: requestId,
+      type: 'progress',
+      stage: 'download',
+      loaded: buf.byteLength,
+      total: buf.byteLength,
+    });
+    return buf;
+  }
+
+  const reader = res.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  let lastSent = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    if (loaded - lastSent >= 1024 * 1024 || loaded >= total) {
+      lastSent = loaded;
+      self.postMessage({
+        id: requestId,
+        type: 'progress',
+        stage: 'download',
+        loaded,
+        total,
+      });
+    }
+  }
+
+  const bytes = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
 }
 
 async function generate(prompt) {

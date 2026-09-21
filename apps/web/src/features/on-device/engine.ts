@@ -15,6 +15,22 @@ const MODEL = {
 
 export const MODEL_LABEL = MODEL.label;
 
+export function isEngineBusy(progress: EngineProgress | null): boolean {
+  return progress?.status === 'downloading' || progress?.status === 'compiling';
+}
+
+export function engineProgressPercent(progress: EngineProgress): number {
+  if (progress.status === 'compiling' || progress.status === 'ready') return 100;
+  if (progress.total <= 0) return 0;
+  return Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+}
+
+export function engineProgressLabel(progress: EngineProgress): string {
+  if (progress.status === 'compiling') return 'GPU에서 모델을 올리는 중';
+  if (progress.status === 'ready') return '준비됐어요';
+  return `받는 중 ${engineProgressPercent(progress)}%`;
+}
+
 const DEFAULT_MODEL_URL =
   'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task';
 const DEFAULT_MODEL_BYTES = 700_383_232;
@@ -44,7 +60,14 @@ let nextId = 1;
 const pending = new Map<number, Pending>();
 let ready = false;
 let initPromise: Promise<void> | null = null;
-let progressHandler: ((progress: EngineProgress) => void) | null = null;
+let progressHandlers = new Set<(progress: EngineProgress) => void>();
+
+export function subscribeEngineProgress(handler: (progress: EngineProgress) => void): () => void {
+  progressHandlers.add(handler);
+  return () => {
+    progressHandlers.delete(handler);
+  };
+}
 
 export function hasWebGpu(): boolean {
   return typeof navigator !== 'undefined' && 'gpu' in navigator;
@@ -61,13 +84,6 @@ export async function probeModel(): Promise<{ ok: boolean; bytes: number }> {
   } catch {
     return { ok: true, bytes: DEFAULT_MODEL_BYTES };
   }
-}
-
-export function subscribeEngineProgress(handler: (progress: EngineProgress) => void): () => void {
-  progressHandler = handler;
-  return () => {
-    if (progressHandler === handler) progressHandler = null;
-  };
 }
 
 export async function ensureEngine(): Promise<void> {
@@ -93,7 +109,7 @@ async function startEngine(): Promise<void> {
       status: 'downloading',
       loaded: 0,
       total: model.bytes,
-      message: `${MODEL.label} 파일을 읽는 중`,
+      message: '모델을 받는 중',
     });
 
     await request(w, {
@@ -150,7 +166,7 @@ async function generateRaw(
 
 function getWorker(): Worker {
   if (worker) return worker;
-  worker = new Worker('/on-device-worker.js?v=5', { type: 'module' });
+  worker = new Worker('/on-device-worker.js?v=6', { type: 'module' });
   worker.onmessage = (event: MessageEvent<WorkerOut>) => {
     const msg = event.data;
     if (msg.type === 'progress') {
@@ -159,7 +175,7 @@ function getWorker(): Worker {
         status,
         loaded: msg.loaded,
         total: msg.total,
-        message: msg.stage === 'compile' ? 'GPU에서 모델을 올리는 중' : '모델 파일을 읽는 중',
+        message: msg.stage === 'compile' ? 'GPU에서 모델을 올리는 중' : '모델을 받는 중',
       });
       return;
     }
@@ -195,5 +211,5 @@ function request(
 }
 
 function emit(progress: EngineProgress) {
-  progressHandler?.(progress);
+  for (const handler of progressHandlers) handler(progress);
 }

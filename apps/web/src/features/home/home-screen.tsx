@@ -20,7 +20,15 @@ import {
   hasModelConsent,
   setModelConsent,
 } from '@/features/on-device/consent';
-import { ensureEngine, hasWebGpu } from '@/features/on-device/engine';
+import {
+  engineProgressLabel,
+  engineProgressPercent,
+  ensureEngine,
+  hasWebGpu,
+  isEngineBusy,
+  subscribeEngineProgress,
+  type EngineProgress,
+} from '@/features/on-device/engine';
 import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
@@ -142,6 +150,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [modelProgress, setModelProgress] = useState<EngineProgress | null>(null);
+  const [modelError, setModelError] = useState<string | null>(null);
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
@@ -209,9 +219,21 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   }, []);
 
   useEffect(() => {
+    return subscribeEngineProgress((next) => {
+      setModelProgress(next);
+      if (next.status === 'ready') {
+        setModelError(null);
+        setConsentOpen(false);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (!hasWebGpu()) return;
     if (getModelConsent() === null) setConsentOpen(true);
-    if (hasModelConsent()) void ensureEngine().catch(() => undefined);
+    if (hasModelConsent()) void ensureEngine().catch((err) => {
+      setModelError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+    });
   }, []);
 
   const restore = useMutation({
@@ -282,6 +304,18 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
             </span>
             <span className="shrink-0 pl-2 text-12.5 font-semibold text-accent-ink">다시 시도</span>
           </button>
+        ) : null}
+
+        {isEngineBusy(modelProgress) && !consentOpen ? (
+          <div className="mt-3 rounded-md bg-surface-alt px-3.5 py-2.5">
+            <p className="text-12.5 text-ink-2">{engineProgressLabel(modelProgress!)}</p>
+            <span className="relative mt-2 block h-1 overflow-hidden rounded-[2px] bg-bar-track">
+              <span
+                className="absolute inset-y-0 left-0 block rounded-[2px] bg-sage"
+                style={{ width: `${engineProgressPercent(modelProgress!)}%` }}
+              />
+            </span>
+          </div>
         ) : null}
 
         {pending.raw.length > 0 ? (
@@ -468,15 +502,22 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
       <ModelConsentSheet
         open={consentOpen}
+        progress={modelProgress}
+        error={modelError}
         onAccept={() => {
           setModelConsent('granted');
-          setConsentOpen(false);
-          void ensureEngine().catch(() => undefined);
+          setModelError(null);
+          void ensureEngine()
+            .then(() => setConsentOpen(false))
+            .catch((err) => {
+              setModelError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+            });
         }}
         onLater={() => {
           setModelConsent('declined');
           setConsentOpen(false);
         }}
+        onHide={() => setConsentOpen(false)}
       />
 
       {capture.committed ? (

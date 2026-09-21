@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import {
+  engineProgressLabel,
+  engineProgressPercent,
   ensureEngine,
   hasWebGpu,
+  isEngineBusy,
   isEngineReady,
   subscribeEngineProgress,
   unloadEngine,
@@ -58,13 +61,24 @@ export function OnDeviceSettings() {
 
   useEffect(() => {
     setVoice(isVoiceGuidanceOn());
-    setConsent(getModelConsent());
+    const current = getModelConsent();
+    setConsent(current);
     setGpu(hasWebGpu());
     setReady(isEngineReady());
-    return subscribeEngineProgress((next) => {
+    const unsub = subscribeEngineProgress((next) => {
       setProgress(next);
       if (next.status === 'ready') setReady(true);
     });
+    if (current === 'granted' && hasWebGpu() && !isEngineReady()) {
+      setBusy(true);
+      void ensureEngine()
+        .then(() => setReady(true))
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : '모델을 준비하지 못했어요.');
+        })
+        .finally(() => setBusy(false));
+    }
+    return unsub;
   }, []);
 
   const download = async () => {
@@ -94,9 +108,11 @@ export function OnDeviceSettings() {
     ? '이 브라우저에서는 쓸 수 없어요.'
     : ready
       ? '이 기기에서 이해하고 있어요.'
-      : consent === 'granted'
-        ? progress?.message || '모델을 준비하고 있어요.'
-        : '약 670MB. Wi-Fi에서 받기를 권해요.';
+      : isEngineBusy(progress)
+        ? engineProgressLabel(progress!)
+        : consent === 'granted'
+          ? '모델을 준비하고 있어요.'
+          : '약 670MB. Wi-Fi에서 받기를 권해요.';
 
   return (
     <>
@@ -120,6 +136,14 @@ export function OnDeviceSettings() {
           <div className="min-w-0 pr-3">
             <p className="text-15.5 font-semibold text-ink">이 기기에서 이해하기</p>
             <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
+            {isEngineBusy(progress) ? (
+              <span className="relative mt-2 block h-1 overflow-hidden rounded-[2px] bg-bar-track">
+                <span
+                  className="absolute inset-y-0 left-0 block rounded-[2px] bg-sage"
+                  style={{ width: `${engineProgressPercent(progress!)}%` }}
+                />
+              </span>
+            ) : null}
             <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
               Gemma 모델.{' '}
               <Link href="/legal/terms" className="font-semibold text-accent-ink">
@@ -131,7 +155,23 @@ export function OnDeviceSettings() {
             <span className="shrink-0 rounded-[9px] bg-surface-alt px-[11px] py-1.5 text-13 font-bold text-ink-3">
               불가
             </span>
-          ) : ready ? (
+          ) : busy || isEngineBusy(progress) ? (
+            <button
+              type="button"
+              disabled
+              className="shrink-0 text-13.5 font-semibold text-accent-ink opacity-50"
+            >
+              받는 중
+            </button>
+          ) : error ? (
+            <button
+              type="button"
+              onClick={() => void download()}
+              className="shrink-0 text-13.5 font-semibold text-accent-ink"
+            >
+              다시 받기
+            </button>
+          ) : ready || consent === 'granted' ? (
             <button
               type="button"
               onClick={remove}
@@ -143,10 +183,9 @@ export function OnDeviceSettings() {
             <button
               type="button"
               onClick={() => void download()}
-              disabled={busy}
-              className="shrink-0 text-13.5 font-semibold text-accent-ink disabled:opacity-50"
+              className="shrink-0 text-13.5 font-semibold text-accent-ink"
             >
-              {busy ? '받는 중' : '받기'}
+              받기
             </button>
           )}
         </div>
