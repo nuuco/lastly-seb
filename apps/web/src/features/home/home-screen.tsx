@@ -28,7 +28,6 @@ import {
   engineProgressLabel,
   ensureEngine,
   hasWebGpu,
-  isEngineBusy,
   isEngineCancelled,
   subscribeEngineProgress,
   type EngineProgress,
@@ -339,26 +338,24 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           </button>
         ) : null}
 
-        {isEngineBusy(modelProgress) && !consentOpen ? (
+        {modelProgress?.status === 'downloading' && !consentOpen ? (
           <div className="mt-3 rounded-md bg-surface-alt px-3.5 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate text-12.5 text-ink-2">{engineProgressLabel(modelProgress!)}</p>
-              {modelProgress?.status === 'downloading' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void cancelEngineLoad();
-                    clearModelConsent();
-                  }}
-                  className="shrink-0 text-12.5 font-semibold text-danger"
-                >
-                  받기 취소
-                </button>
-              ) : null}
+              <p className="min-w-0 truncate text-12.5 text-ink-2">{engineProgressLabel(modelProgress)}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  void cancelEngineLoad();
+                  clearModelConsent();
+                }}
+                className="shrink-0 text-12.5 font-semibold text-danger"
+              >
+                받기 취소
+              </button>
             </div>
-            <EngineProgressBar progress={modelProgress!} />
-            {engineProgressHint(modelProgress!) ? (
-              <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">{engineProgressHint(modelProgress!)}</p>
+            <EngineProgressBar progress={modelProgress} />
+            {engineProgressHint(modelProgress) ? (
+              <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">{engineProgressHint(modelProgress)}</p>
             ) : null}
           </div>
         ) : null}
