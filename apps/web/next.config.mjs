@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import nextEnv from '@next/env';
 import path from 'node:path';
 
@@ -7,6 +8,9 @@ import path from 'node:path';
 // @next/env는 CJS라 named import가 안 되고 default를 거쳐야 한다.
 const repoRoot = path.join(import.meta.dirname, '../..');
 nextEnv.loadEnvConfig(repoRoot);
+
+const localModelPath = path.join(import.meta.dirname, 'public/models/gemma3-1b-it-int4-web.task');
+const hasLocalModel = fs.existsSync(localModelPath);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -19,7 +23,19 @@ const nextConfig = {
 
   // design-tokens는 빌드 단계 없이 소스를 그대로 쓴다.
   // contracts는 dist(JS)를 내보내므로 여기 없어도 된다.
-  transpilePackages: ['@lastly/design-tokens'],
+  transpilePackages: ['@lastly/design-tokens', '@lastly/parser'],
+
+  async redirects() {
+    if (hasLocalModel) return [];
+    return [
+      {
+        source: '/models/gemma3-1b-it-int4-web.task',
+        destination:
+          'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task',
+        permanent: false,
+      },
+    ];
+  },
 
   async headers() {
     return [

@@ -50,6 +50,10 @@ export function resolveOffline(text: string, mode: 'voice' | 'text'): OfflineOut
   const feed = loadFeed();
   const items: Item[] = feed ? [...feed.due, ...feed.upcoming, ...feed.later] : [];
 
+  if (!facts.willSave && facts.intent !== 'query') {
+    return { kind: 'queued' };
+  }
+
   if (!facts.name) {
     addRaw(text, mode);
     return { kind: 'queued' };

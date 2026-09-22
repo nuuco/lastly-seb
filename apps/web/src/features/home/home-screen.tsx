@@ -3,7 +3,7 @@
 import type { HomeFeed, Item } from '@lastly/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseISO } from 'date-fns';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Toast } from '@/components/ui/toast';
 import { CadenceSheet } from '@/features/capture/components/cadence-sheet';
@@ -15,6 +15,26 @@ import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { CalendarView } from '@/features/calendar/calendar-view';
+import {
+  getModelConsent,
+  hasModelConsent,
+  setModelConsent,
+  clearModelConsent,
+} from '@/features/on-device/consent';
+import {
+  cancelEngineLoad,
+  engineErrorMessage,
+  engineProgressHint,
+  engineProgressLabel,
+  ensureEngine,
+  hasWebGpu,
+  isEngineCancelled,
+  subscribeEngineProgress,
+  type EngineProgress,
+} from '@/features/on-device/engine';
+import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
+import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
+import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { profileApi } from '@/lib/api/profile';
@@ -98,6 +118,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   /** 이 화면이 그리는 목록. 서버 것이 없으면 기기에 복사해 둔 것. */
   const shown = feed.data ?? cached?.feed;
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
   /**
    * 낡은 것을 보여주는 중인지. 알려주지 않으면 최신으로 착각한다.
    *
@@ -113,7 +135,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const today = parseISO(shown?.today ?? todayIso());
 
-  const speech = useSpeechRecognition();
+  const [draft, setDraft] = useState('');
   // 해석이 끝나야 입력창을 비운다. 기다리는 동안 보낸 문장이 남아 있어야 한다.
   const capture = useCapture({ onInterpreted: () => setDraft('') });
 
@@ -125,18 +147,69 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   const processPending = () => {
     const next = pending.takeRaw();
-    if (next) capture.interpret({ text: next.text, mode: next.mode });
+    if (next) capture.interpret({ text: next.text, mode: next.mode, knownItems: knownFrom(shown) });
   };
 
   const [cadenceItem, setCadenceItem] = useState<Item | null>(null);
   /** 이번 화면에서 유도를 닫았는지. 서버 표시가 반영되기 전까지 다시 뜨지 않게 한다. */
   const [promptDismissed, setPromptDismissed] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [modelProgress, setModelProgress] = useState<EngineProgress | null>(null);
+  const [modelError, setModelError] = useState<string | null>(null);
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [month, setMonth] = useState(() => formatMonth(new Date()));
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 말이 끝나면 바로 이해한다. 받아쓰기는 훅, 확인 시트 진입만 여기서.
+   */
+  const speech = useSpeechRecognition();
+  const wasListening = useRef(false);
+  const heardRef = useRef('');
+  const interpretVoiceRef = useRef(capture.interpret);
+  interpretVoiceRef.current = capture.interpret;
+  const { listening, transcript, reset: resetSpeech, stop: stopSpeech } = speech;
+  const downloadingModel = modelProgress?.status === 'downloading';
+
+  const dropListenWithoutInterpret = useCallback(() => {
+    wasListening.current = false;
+    heardRef.current = '';
+    resetSpeech();
+    stopSpeech();
+  }, [resetSpeech, stopSpeech]);
+
+  useEffect(() => {
+    if (transcript) heardRef.current = transcript;
+  }, [transcript]);
+
+  useEffect(() => {
+    const justStopped = wasListening.current && !listening;
+    wasListening.current = listening;
+    if (!justStopped) return;
+
+    const text = (transcript || heardRef.current).trim();
+    heardRef.current = '';
+    if (text) {
+      setDraft(text);
+      interpretVoiceRef.current({
+        text,
+        mode: 'voice',
+        knownItems: knownFrom(shownRef.current),
+      });
+    }
+    resetSpeech();
+  }, [listening, transcript, resetSpeech]);
+
+  /** 해석이 시작되면 메인 마이크를 놓는다. */
+  useEffect(() => {
+    if (capture.step === 'interpreting' && listening) dropListenWithoutInterpret();
+  }, [capture.step, listening, dropListenWithoutInterpret]);
+
+  useEffect(() => {
+    if (downloadingModel && listening) dropListenWithoutInterpret();
+  }, [downloadingModel, listening, dropListenWithoutInterpret]);
 
   /**
    * 설계 06의 "자주 쓰는 문장" 칩.
@@ -163,6 +236,37 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     setDeleted(takeDeletedNotice());
   }, []);
 
+  useEffect(() => {
+    return subscribeEngineProgress((next) => {
+      setModelProgress(next);
+      if (next.status === 'ready') {
+        setModelError(null);
+        setConsentOpen(false);
+      }
+      if (next.status === 'error') {
+        setModelError(next.message);
+        setConsentOpen(true);
+      }
+      if (next.status === 'idle') {
+        setModelProgress(null);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setModelError('이 주소에서는 쓸 수 없어요. localhost로 열어 주세요.');
+      if (getModelConsent() !== 'declined') setConsentOpen(true);
+      return;
+    }
+    if (!hasWebGpu()) return;
+    if (getModelConsent() === null) setConsentOpen(true);
+    if (hasModelConsent()) void ensureEngine().catch((err) => {
+      if (isEngineCancelled(err)) return;
+      setModelError(engineErrorMessage(err));
+    });
+  }, []);
+
   const restore = useMutation({
     mutationFn: (id: string) => itemsApi.restore(id),
     onSuccess: async () => {
@@ -178,48 +282,6 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     },
   });
 
-  const startVoice = () => {
-    if (!speech.supported) return;
-    speech.start();
-  };
-
-  /**
-   * 음성 인식이 끝나면 바로 보내지 않고 입력창에 채운다.
-   * 잘못 들었을 때 사용자가 고쳐서 보낼 수 있어야 한다.
-   */
-  const wasListening = useRef(false);
-  // speech 는 렌더마다 새 객체라 의존성에 두면 효과가 매번 돈다. 필요한 값만 본다.
-  const { listening, transcript, reset: resetSpeech } = speech;
-
-  useEffect(() => {
-    const justStopped = wasListening.current && !listening;
-    wasListening.current = listening;
-
-    if (!justStopped) return;
-
-    const text = transcript.trim();
-    if (text) {
-      setDraft(text);
-      inputRef.current?.focus();
-    }
-    resetSpeech();
-  }, [listening, transcript, resetSpeech]);
-
-  /**
-   * 기록 흐름이 시작되면 듣기를 끝낸다.
-   *
-   * 보내기를 누른 뒤에도 마이크가 잡혀 있으면 사용자는 앱이 계속 엿듣는다고 느낀다.
-   * 지금 화면에서는 듣는 중에 보내기 버튼이 숨겨져 여기까지 오는 길이 좁지만,
-   * "다시 말하기" 로 다시 듣기 시작한 뒤 말하지 않고 넘어가는 경우가 있다.
-   * 인식 객체를 놓아주는 책임을 onend 하나에만 두지 않는다.
-   */
-  const { stop: stopSpeech } = speech;
-  const flowStarted = capture.step !== 'idle';
-
-  useEffect(() => {
-    if (flowStarted) stopSpeech();
-  }, [flowStarted, stopSpeech]);
-
   /**
    * "다시 말하기" — 시트를 닫는 데서 그치지 않고 곧바로 다시 듣기 시작한다.
    * 사용자는 말을 고치려는 것이지 입력창으로 돌아가려는 게 아니다.
@@ -227,14 +289,15 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const retryWithVoice = () => {
     capture.cancel();
-    if (speech.supported) speech.start();
+    if (downloadingModel) inputRef.current?.focus();
+    else if (speech.supported) speech.start();
     else inputRef.current?.focus();
   };
 
   const submitDraft = (mode: 'voice' | 'text') => {
     const text = draft.trim();
     if (!text || capture.interpreting) return;
-    capture.interpret({ text, mode });
+    capture.interpret({ text, mode, knownItems: knownFrom(shown) });
   };
 
   if (feed.isPending) return <HomeSkeleton />;
@@ -273,6 +336,28 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
             </span>
             <span className="shrink-0 pl-2 text-12.5 font-semibold text-accent-ink">다시 시도</span>
           </button>
+        ) : null}
+
+        {modelProgress?.status === 'downloading' && !consentOpen ? (
+          <div className="mt-3 rounded-md bg-surface-alt px-3.5 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-12.5 text-ink-2">{engineProgressLabel(modelProgress)}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  void cancelEngineLoad();
+                  clearModelConsent();
+                }}
+                className="shrink-0 text-12.5 font-semibold text-danger"
+              >
+                받기 취소
+              </button>
+            </div>
+            <EngineProgressBar progress={modelProgress} />
+            {engineProgressHint(modelProgress) ? (
+              <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">{engineProgressHint(modelProgress)}</p>
+            ) : null}
+          </div>
         ) : null}
 
         {pending.raw.length > 0 ? (
@@ -346,16 +431,16 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         onChange={setDraft}
         onSubmit={() => submitDraft('text')}
         onMic={() => {
-          if (speech.listening) {
-            speech.stop();
-          } else if (speech.supported) {
-            speech.start();
-          } else {
-            inputRef.current?.focus();
-          }
+          if (downloadingModel) return;
+          if (capture.step !== 'idle') capture.cancel();
+          if (speech.listening) speech.stop();
+          else if (speech.supported) speech.start();
+          else inputRef.current?.focus();
         }}
+        micDisabled={downloadingModel}
         listening={speech.listening}
         liveTranscript={speech.transcript}
+        listenError={speech.error}
         interpreting={capture.interpreting}
         quickPhrases={quickPhrases}
         onSkipWait={() => {
@@ -398,7 +483,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           onCadenceChange={capture.setCadenceOverride}
           onConfirm={capture.commit}
           onRetry={retryWithVoice}
+          onCancel={capture.cancel}
           committing={capture.committing}
+          mode={capture.lastMode}
         />
       ) : null}
 
@@ -453,7 +540,35 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         <Toast message={capture.pendingSaved} onDismiss={capture.dismissPendingSaved} durationMs={6000} />
       ) : null}
 
+      {capture.deferredMessage ? (
+        <Toast message={capture.deferredMessage} onDismiss={capture.dismissDeferred} />
+      ) : null}
 
+      <ModelConsentSheet
+        open={consentOpen}
+        progress={modelProgress}
+        error={modelError}
+        onAccept={() => {
+          setModelConsent('granted');
+          setModelError(null);
+          void ensureEngine()
+            .then(() => setConsentOpen(false))
+            .catch((err) => {
+              if (isEngineCancelled(err)) return;
+              setModelError(engineErrorMessage(err));
+            });
+        }}
+        onLater={() => {
+          setModelConsent('declined');
+          setConsentOpen(false);
+        }}
+        onHide={() => setConsentOpen(false)}
+        onCancel={() => {
+          void cancelEngineLoad();
+          clearModelConsent();
+          setModelError(null);
+        }}
+      />
 
       {capture.committed ? (
         <Toast
@@ -482,5 +597,14 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
       ) : null}
     </main>
   );
+}
+
+function knownFrom(feed: HomeFeed | undefined | null): OnDeviceKnownItem[] {
+  if (!feed) return [];
+  return [...feed.due, ...feed.upcoming, ...feed.later].map((item) => ({
+    id: item.id,
+    name: item.name,
+    lastDoneOn: item.lastDoneOn,
+  }));
 }
 

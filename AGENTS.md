@@ -1,0 +1,44 @@
+# 작업 기록
+
+- 로컬 AI 캡처: 규칙이 못 끝낸 문장만 기기 Gemma, 서버 Gemini는 주기만
+- 브랜치 feat/local-ai: 업스트림 02c62da 기준, 533bd1d는 참고만
+- 모델 인프라: gitignore·다운로드 스크립트·워커·미들웨어·env 예시
+- contracts slots: interpret 요청에 clientParseSlots, 있으면 문장 재해석 안 함
+- API interpret: parseUtterance 제거, fromClientSlots·decideOutcome 유지
+- 웹 파서: @lastly/parser overlay + parse-local, 홈 knownItems·예정 토스트
+- 동의·음성: 첫 방문 670MB 시트, 설정 행, 조회 TTS, 확인 응/아니
+- 약관: Gemma 이용약관 고지, 개인정보 문장 LLM 미전송으로 개정
+- 확인: API capture 스펙 28개 통과, web·api typecheck 통과. 브라우저 도구 없음 — 화면은 로컬 서버 HTML로만 확인
+- 음성: 말이 끝나면 확인 시트. 받아쓰기는 기존 훅(확정 시 마이크 해제) 유지
+- 음성 effect: shown·interpret는 ref, 마지막 받아쓴 글자를 놓치지 않음
+- 음성: isFinal abort 제거. 침묵 1.4초·세션 재시작으로 받아쓰기 유지 후 해석
+- 음성: continuous+침묵 종료, onUtterance로 문장 전달(listening effect 미사용)
+- 음성: 533bd1d 훅으로 복원(isFinal 종료). 홈은 끝나면 interpret. TTS 목소리 로드 보강
+- 음성: Safari는 isFinal 대기로 해석 진입 실패. 침묵 1.5초 후 stop으로 해석 진입
+- 해석: API 실패 시 result 없는 retry로 시트가 안 열리던 경로 수정. 응/아니 오인 완화
+- 음성: Safari 세션 끊김 시 재시작. interpreting 일 때만 메인 마이크 stop
+- 음성: 재시작 루프 제거. continuous 한 세션+침묵 종료. 마이크 시 남은 step 취소
+- 음성: 533bd1d는 훅 미변경 확인. 훅을 그 커밋과 동일 원본으로 복원
+- 음성: 533bd1d 뼈대 유지하되 isFinal abort 제거(받아쓰기 유지). 침묵 후 stop. TTS는 확인 시트+음성 안내 켜짐 시
+- 음성: Safari getUserMedia 권한 선행. 세션 조기 종료 시 재시작. 언마운트에만 abort
+- 음성: 훅·홈·TTS·API 실패 시트 정리(중복 플래그·장황 주석 축소)
+- 동의 시트: 링크를 Lastly 이용약관으로, 받기 버튼을 지금 받기로 통일
+- 모델 URL: 기본 HF resolve, 로컬 다운로드 스크립트·HF_TOKEN 제거
+- 동의 시트: AI 모델 받기 문구, 받기면→받으면
+- 동의 시트: 안 받으면 규칙 동작, 설정에서 다시 받기·삭제
+- 발화 게이트: lastly 완료가 할거야보다 앞. 완료면 설치처럼 사전에 없는 동사도 이름. Gemma는 이름 없을 때만. 주기만 Gemini
+- 모델 받기: 시트·홈·설정에 진행률 표시. 워커가 HF를 직접 받아 퍼센트 전달
+- 동의 시트: 배경 닫기는 거절 아님. 나중에만 다시 안 뜸
+- 설정: 동의한 모델은 삭제로 표시. 들어오면 캐시에서 다시 올림
+- 리팩터: 음성 ctor·토글·진행률 바 공용화. heardRef는 effect. 시트 이중 닫기 제거
+- 모델 404: /models/*.task 요청을 HF resolve로 리다이렉트
+- 모델 캐시: 받은 .task를 OPFS에 남겨 새로고침 때 다시 받지 않음
+- 음성: 훅을 533bd1d와 같이 복원. 클릭에서 start, isFinal에서 마이크 해제
+- GPU 올리기: 받는 동안 디스크에 바로 씀. 끝나면 100% 찍고 올리기 표시. 막대는 꽉 찬 맥박
+- 음성: 동기 start, 침묵 1.5초 stop, 재시작 없음. 모델 받는 중에만 마이크 막음
+- 모델 받기: 닫아도 이어짐. 받는 중 음성 어려움 안내. 받기 취소 가능
+- 엔진: 받기 세대 번호로 취소·타임아웃이 다음 받기를 죽이지 않음. 받기 중단은 해석하지 않음
+- 받기 안내: 음성 어려움 뒤에 글로 작성 안내 추가
+- 확인 시트: 음성+안내 켜짐 시 응/아니 안내. 대답 후 기록했어요·취소했어요. 못 알아들은 말만 다시 듣기
+- 홈 배너: 모델 받는 중만. GPU 올리기는 동의 시트·설정에만
+- 설정: AI 모델. 준비되면 받아 둔 모델로 알아들어요

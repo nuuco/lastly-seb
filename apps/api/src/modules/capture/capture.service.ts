@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type {
   CadenceRule,
   CadenceSuggestion,
+  ClientParseSlots,
   CommitRequest,
   CommitResult,
   InterpretOutcome,
@@ -41,15 +42,15 @@ export const FALLBACK_CADENCE: CadenceRule = {
 };
 
 /**
- * 자연어 한 문장을 항목 + 날짜 + 주기로 바꾸는 오케스트레이터.
- * 해석은 AI가 하되, 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
- */
-/**
  * 이름을 견주기 위해 공백을 지우고 소문자로 눕힌다.
  * "화분 물 주기" 와 "화분물주기" 는 사람에겐 같은 말이다.
  */
 const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
 
+/**
+ * 한 문장을 항목·날짜·주기로 바꾼다.
+ * 칸은 브라우저(규칙·기기 모델)가 채우고, 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
+ */
 @Injectable()
 export class CaptureService {
   private readonly logger = new Logger(CaptureService.name);
@@ -107,92 +108,36 @@ export class CaptureService {
     }
 
     /**
-     * 규칙으로 끝나면 AI 를 부르지 않는다.
+     * 브라우저가 칸을 채웠으면 문장을 다시 해석하지 않는다.
+     * 목록과 붙이고 화면(outcome)만 정한다. Gemma 가 채운 이름을
+     * 서버 규칙이 쓰레기 조각으로 덮지 않게 규칙보다 앞에 둔다.
+     */
+    if (input.slots) {
+      return this.fromClientSlots(userId, input, input.slots, referenceDate, known, today);
+    }
+
+    /**
+     * 규칙으로 끝나면 문장 LLM 을 부르지 않는다.
      *
      * 의도·날짜·주기는 말의 형태만 보면 정해지고, 자주 하던 일을 다시 남기는
      * 경우에는 이름도 이미 가진 항목에 붙는다. 앱에서 제일 흔한 이 경우에
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
+    if (!facts.willSave && facts.intent !== 'query') {
+      return this.declinedRecord(userId, input, referenceDate);
+    }
+
     const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
     if (ruled) return ruled;
 
-    const parsed = await this.ai.parseUtterance({
-      text: input.text,
-      reference_date: referenceDate,
-      known_items: known.map((i) => ({
-        id: i.id,
-        name: i.name,
-        last_done_on: i.last_done_on,
-      })),
-    });
-
     /**
-     * AI 가 응답하지 않았을 때.
-     *
-     * 규칙이 이미 이름을 뽑아 뒀다면 그걸 쓴다. AI 에게 물어본 것은 주기 하나인데,
-     * 그걸 못 받았다고 이름까지 내려놓고 "알아보기 어려워요" 라고 하면
-     * 손에 든 답을 버리는 셈이다. 주기만 기본값으로 두고 시트에서 고치게 한다.
-     *
-     * 무료 호스팅은 15분 놀면 AI 를 재우고 깨는 데 30초 넘게 걸린다.
-     * 그 사이에 기록한 사람이 이 길로 온다.
+     * 규칙이 이름을 뽑았으면 주기만 채운다. 문장 해석용 Gemini 는 쓰지 않는다.
+     * 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
      */
-    if (!parsed) {
-      // 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
-      return facts.sawAction && facts.name
-        ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
-        : this.withoutAi(userId, input, referenceDate, known);
-    }
-
-    const candidates = this.toCandidates(parsed.candidates, known, today);
-
-    // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목인지 확인한다.
-    const claimed =
-      parsed.matched_item_id && known.some((i) => i.id === parsed.matched_item_id)
-        ? parsed.matched_item_id
-        : null;
-
-    /**
-     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
-     * 어느 항목을 묻는지 알아야 답할 수 있으므로, 못 짚었으면 평소대로 되묻는다.
-     */
-    if (parsed.intent === 'query') {
-      const target = claimed ?? candidates[0]?.itemId ?? null;
-      if (target) return this.answer(userId, input, referenceDate, target, today);
-    }
-
-    const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
-    const matchedItemId =
-      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
-
-    return {
-      transcript: input.text,
-      outcome,
-      normalizedName: parsed.normalized_name,
-      doneOn: parsed.done_on,
-      matchedItemId,
-      candidates: outcome === 'ambiguous' ? candidates : [],
-      cadence: await this.resolveCadence(
-        userId,
-        outcome,
-        matchedItemId,
-        parsed.normalized_name,
-        parsed.done_on,
-        parsed.stated_cadence_days ?? null,
-      ),
-      confidence: parsed.confidence,
-      degraded: false,
-      answer: null,
-      draftToken: this.draft.sign({
-        userId,
-        rawInput: input.text,
-        normalizedName: parsed.normalized_name,
-        doneOn: parsed.done_on,
-        matchedItemId,
-        mode: input.mode,
-        issuedAt: Date.now(),
-      }),
-    };
+    return facts.sawAction && facts.name
+      ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
+      : this.withoutAi(userId, input, referenceDate, known);
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
@@ -314,13 +259,11 @@ export class CaptureService {
     };
   }
 
-  /** 물어본 것에 그 자리에서 답한다 — 설계 07-C. 아무것도 기록하지 않는다. */
   /**
-   * 규칙만으로 답이 서는 문장을 처리한다. 못 세우면 null 을 돌려 AI 로 넘긴다.
+   * 규칙만으로 답이 서는 문장을 처리한다. 못 세우면 null 을 돌려 다음으로 넘긴다.
    *
    * 넘기는 경우는 두 가지다 — 이름을 못 뽑았거나, 처음 보는 항목인데 주기도
-   * 말하지 않은 경우. 후자는 "얼마마다 하는 일인가" 라는 세상 지식이 필요하고,
-   * 애초에 집안일이 맞는지도 판단해야 한다.
+   * 말하지 않은 경우. 후자는 주기 사전·suggestCadence 가 채운다.
    */
   private async byRules(
     userId: string,
@@ -337,7 +280,7 @@ export class CaptureService {
 
     /**
      * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
-     * 무엇을 묻는지 못 짚었으면 평소대로 AI 에게 넘긴다.
+     * 무엇을 묻는지 못 짚었으면 평소대로 다음 경로로 넘긴다.
      */
     if (facts.intent === 'query') {
       return matched ? this.answer(userId, input, referenceDate, matched.id, today) : null;
@@ -381,11 +324,165 @@ export class CaptureService {
   }
 
   /**
-   * AI 없이 규칙이 뽑은 것만으로 새 항목 확인 시트를 만든다.
-   *
-   * 여기까지 온 것은 규칙이 이름을 뽑았고, 기존 항목에도 안 붙었고, AI 도
-   * 답하지 않은 경우다. 이름과 날짜는 확실하므로 주기만 기본값으로 둔다.
-   * 시트에서 주기를 눌러 고칠 수 있고, 고친 값이 그대로 저장된다.
+   * 브라우저가 채운 칸으로 outcome을 정한다. 이름 매칭은 서버 목록 기준이다.
+   * 되묻기(ambiguous / unrecognized)는 decideOutcome 을 그대로 탄다.
+   */
+  private async fromClientSlots(
+    userId: string,
+    input: InterpretRequest,
+    slots: ClientParseSlots,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+  ): Promise<InterpretResult> {
+    const doneOn = format(
+      subDays(new Date(`${referenceDate}T00:00:00`), slots.daysAgo),
+      'yyyy-MM-dd',
+    );
+    const name = slots.itemName?.trim() || null;
+    const matched = name ? await this.findByName(userId, name, known) : null;
+
+    if (slots.intent === 'query') {
+      if (matched) return this.answer(userId, input, referenceDate, matched.id, today);
+
+      const rows = await this.items
+        .matchByMeaning(userId, name ?? input.text, null, 5)
+        .catch(() => []);
+      const candidates = this.toCandidates(
+        rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
+        known,
+        today,
+      );
+      const top = candidates[0];
+      if (top && top.similarity >= MATCH_THRESHOLD) {
+        return this.answer(userId, input, referenceDate, top.itemId, today);
+      }
+      if (candidates.length > 0) {
+        return this.slotResult(userId, input, {
+          outcome: 'ambiguous',
+          normalizedName: name,
+          doneOn: referenceDate,
+          matchedItemId: null,
+          candidates,
+          cadence: null,
+          confidence: slots.confidence,
+        });
+      }
+      return this.slotResult(userId, input, {
+        outcome: 'unrecognized',
+        normalizedName: name,
+        doneOn: referenceDate,
+        matchedItemId: null,
+        candidates: [],
+        cadence: null,
+        confidence: slots.confidence,
+      });
+    }
+
+    const rows = name
+      ? await this.items.matchByMeaning(userId, name, null, 5).catch(() => [])
+      : [];
+    const candidates = this.toCandidates(
+      rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
+      known,
+      today,
+    );
+    const claimed = matched?.id ?? null;
+    const outcome = this.decideOutcome(name, slots.confidence, claimed, candidates);
+    const matchedItemId =
+      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
+
+    return this.slotResult(userId, input, {
+      outcome,
+      normalizedName: matchedItemId
+        ? (known.find((i) => i.id === matchedItemId)?.name ?? name)
+        : name,
+      doneOn,
+      matchedItemId,
+      candidates: outcome === 'ambiguous' ? candidates : [],
+      cadence: await this.resolveCadence(
+        userId,
+        outcome,
+        matchedItemId,
+        name,
+        doneOn,
+        slots.statedCadenceDays,
+      ),
+      confidence: slots.confidence,
+    });
+  }
+
+  private slotResult(
+    userId: string,
+    input: InterpretRequest,
+    part: {
+      outcome: InterpretOutcome;
+      normalizedName: string | null;
+      doneOn: string;
+      matchedItemId: string | null;
+      candidates: ItemCandidate[];
+      cadence: InterpretResult['cadence'];
+      confidence: number;
+    },
+  ): InterpretResult {
+    return {
+      transcript: input.text,
+      outcome: part.outcome,
+      normalizedName: part.normalizedName,
+      doneOn: part.doneOn,
+      matchedItemId: part.matchedItemId,
+      candidates: part.candidates,
+      cadence: part.cadence,
+      confidence: part.confidence,
+      degraded: false,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: part.normalizedName,
+        doneOn: part.doneOn,
+        matchedItemId: part.matchedItemId,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /**
+   * 못 함·예정·불확실. 확인 시트를 열지 않는다.
+   * 웹은 이 말을 서버에 안 보내지만, slots 없는 폴백에서도 같아야 한다.
+   */
+  private declinedRecord(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+  ): InterpretResult {
+    return {
+      transcript: input.text,
+      outcome: 'unrecognized',
+      normalizedName: null,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates: [],
+      cadence: null,
+      confidence: 0,
+      degraded: false,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: null,
+        doneOn: referenceDate,
+        matchedItemId: null,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
+  }
+
+  /**
+   * 규칙이 이름을 뽑았고 기존 항목에도 안 붙은 새 항목.
+   * 문장 LLM 은 부르지 않고, 주기만 사전·suggestCadence 로 채운다.
    */
   private async fromRulesOnly(
     userId: string,
@@ -406,21 +503,15 @@ export class CaptureService {
       doneOn,
       matchedItemId: null,
       candidates: [],
-      /**
-       * AI 는 부르지 않는다. 방금 응답하지 않은 상대라 45초를 더 기다리게 된다.
-       * 대신 사전은 본다 — DB 한 번이라 빠르고, "빨래를 2주마다" 같은 엉뚱한 기본값을 막는다.
-       * (주기를 말한 경우라면 byRules 에서 이미 끝났으므로 여기엔 오지 않는다.)
-       */
-      cadence: (await this.cadenceFromPrior(name, doneOn)) ?? {
-        rule: FALLBACK_CADENCE,
-        source: 'default',
-        confidence: 0.3,
-        rationale: '우선 2주로 잡아뒀어요. 저장 전에 바꿔도 돼요.',
-        nextDueOn: this.cadence.nextDueOn(doneOn, FALLBACK_CADENCE) ?? doneOn,
-      },
-      // 규칙만으로 세운 것이라 모델이 확인해 준 결과보다는 낮게 둔다.
+      cadence: await this.resolveCadence(
+        userId,
+        'new_item',
+        null,
+        name,
+        doneOn,
+        facts.statedCadenceDays,
+      ),
       confidence: 0.7,
-      // 화면이 "또렷하게 말해주세요" 대신 다른 말을 하도록 원인을 알려준다.
       degraded: true,
       answer: null,
       draftToken: this.draft.sign({

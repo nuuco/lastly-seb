@@ -1,8 +1,9 @@
 'use client';
 
 import type { InterpretResult } from '@lastly/contracts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
 import { Sheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
 
@@ -43,6 +44,16 @@ export function DisambiguateSheet({
   const candidates = result.candidates;
   const [name, setName] = useState(result.normalizedName ?? result.transcript);
   const notice = describeNotice(result.degraded, candidates.length > 0, mode);
+  const candidateKey = candidates.map((c) => c.itemId).join(',');
+
+  useEffect(() => {
+    if (!open) return;
+    const names = candidates.map((c) => c.name);
+    const text =
+      names.length > 0 ? `혹시 ${names.join(', ')} 중 어떤 건가요?` : notice.title;
+    speak(text);
+    return () => stopSpeaking();
+  }, [open, notice.title, candidateKey]);
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 고르기">

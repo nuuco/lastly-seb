@@ -6,6 +6,19 @@ import { completeItemResultSchema } from './log';
 export const captureInputModeSchema = z.enum(['voice', 'text']);
 export type CaptureInputMode = z.infer<typeof captureInputModeSchema>;
 
+/**
+ * 브라우저가 규칙(+온디바이스 모델)으로 채운 칸.
+ * 있으면 서버는 문장을 다시 해석하지 않고 목록 매칭·outcome만 한다.
+ */
+export const clientParseSlotsSchema = z.object({
+  intent: z.enum(['record', 'query']),
+  itemName: z.string().nullable(),
+  daysAgo: z.number().int().min(0).max(3650),
+  statedCadenceDays: z.number().int().positive().nullable(),
+  confidence: z.number().min(0).max(1),
+});
+export type ClientParseSlots = z.infer<typeof clientParseSlotsSchema>;
+
 /** 한 문장을 해석해달라는 요청. 화면 06/07의 입력이 그대로 들어온다. */
 export const interpretRequestSchema = z.object({
   text: z.string().min(1).max(300),
@@ -14,6 +27,7 @@ export const interpretRequestSchema = z.object({
   referenceDate: isoDateSchema.optional(),
   /** 음성 인식 신뢰도. 낮으면 재확인 시트로 유도한다. */
   asrConfidence: z.number().min(0).max(1).optional(),
+  slots: clientParseSlotsSchema.optional(),
 });
 export type InterpretRequest = z.infer<typeof interpretRequestSchema>;
 

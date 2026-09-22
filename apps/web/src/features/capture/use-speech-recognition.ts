@@ -2,52 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  detachRecognition,
+  getSpeechRecognitionCtor,
+  type SpeechRecognitionLike,
+} from '@/lib/speech';
+
 /**
  * Web Speech API 래퍼.
  *
  * 인식 객체를 들고 있지 않고 말할 때마다 만들었다가 끝나면 버린다.
- * 하나를 계속 붙들고 있으면 stop() 뒤에도 브라우저가 마이크를 놓지 않아
- * 녹음 표시가 켜진 채로 남는다.
- *
- * 사파리·크롬은 webkit 접두사를 쓰고 지원하지 않는 브라우저도 있으므로
- * supported 를 노출해 호출부가 키보드 입력으로 대체할 수 있게 한다.
+ * 클릭과 같은 틱에서 start 한다. isFinal 이 없어도 침묵이면 stop 한다.
  */
 
-interface SpeechRecognitionLike extends EventTarget {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-}
-
-interface SpeechRecognitionEventLike {
-  resultIndex: number;
-  results: ArrayLike<
-    ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
-  >;
-}
-
-/** 말이 없어도 이 시간이 지나면 스스로 끊는다. onend 가 오지 않는 경우가 있다. */
 const MAX_LISTEN_MS = 15_000;
-
-function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as Record<string, unknown>;
-  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as
-    | (new () => SpeechRecognitionLike)
-    | null;
-}
+const SILENCE_MS = 1_500;
 
 export interface SpeechState {
   supported: boolean;
   listening: boolean;
-  /** 말하는 중에도 화면에 흘려보낼 중간 결과 (화면 07). */
   transcript: string;
   confidence: number;
   error: string | null;
@@ -55,7 +28,11 @@ export interface SpeechState {
 
 export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const safariStreamRef = useRef<MediaStream | null>(null);
+  const listeningIntentRef = useRef(false);
+  const requestStopRef = useRef<() => void>(() => undefined);
 
   const [state, setState] = useState<SpeechState>({
     supported: false,
@@ -65,67 +42,92 @@ export function useSpeechRecognition() {
     error: null,
   });
 
-  // 생성자 존재 여부만 본다. 객체를 미리 만들지 않는다.
   useEffect(() => {
-    if (getRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
+    if (getSpeechRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
   }, []);
 
-  /** 인식 객체를 확실히 버린다. 이걸 해야 마이크가 풀린다. */
-  const release = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+  const clearTimers = useCallback(() => {
+    if (maxTimerRef.current) {
+      clearTimeout(maxTimerRef.current);
+      maxTimerRef.current = null;
     }
+    if (silenceRef.current) {
+      clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
+  }, []);
+
+  const dropSafariStream = useCallback(() => {
+    const stream = safariStreamRef.current;
+    safariStreamRef.current = null;
+    stream?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  const release = useCallback(() => {
+    listeningIntentRef.current = false;
+    clearTimers();
+    dropSafariStream();
 
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
     recognitionRef.current = null;
-    recognition.onresult = null;
-    recognition.onerror = null;
-    recognition.onend = null;
-    // abort 는 stop 과 달리 결과를 기다리지 않고 즉시 끊는다.
+    detachRecognition(recognition);
     try {
       recognition.abort();
     } catch {
-      // 이미 끝난 뒤라면 무시한다.
+      // ignore
     }
-  }, []);
+  }, [clearTimers, dropSafariStream]);
 
-  // 화면을 떠날 때도 반드시 놓아준다.
+  const requestStop = useCallback(() => {
+    listeningIntentRef.current = false;
+    clearTimers();
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      dropSafariStream();
+      setState((prev) => ({ ...prev, listening: false }));
+      return;
+    }
+    try {
+      recognition.stop();
+    } catch {
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    }
+  }, [clearTimers, dropSafariStream, release]);
+
+  requestStopRef.current = requestStop;
+
   useEffect(() => release, [release]);
 
-  /**
-   * 앱을 가리거나 다른 앱으로 넘어갈 때 마이크를 놓는다.
-   *
-   * 아이폰은 소리를 잡고 있는 앱을 재우지 않는다. 듣기를 켠 채로 홈으로 나가면
-   * 앱이 계속 살아 있어 배터리를 먹고, 스크린타임에도 계속 쓰는 것으로 잡힌다.
-   * 나갔다는 것은 더 듣지 않겠다는 뜻이므로 그 자리에서 끊는다.
-   */
   useEffect(() => {
+    const abortListen = () => {
+      release();
+      setState((prev) => ({ ...prev, listening: false }));
+    };
     const stopIfHidden = () => {
-      if (document.visibilityState === 'hidden') {
-        release();
-        setState((prev) => ({ ...prev, listening: false }));
-      }
+      if (document.visibilityState === 'hidden') abortListen();
     };
 
     document.addEventListener('visibilitychange', stopIfHidden);
-    // 사파리는 탭을 덮을 때 visibilitychange 를 건너뛰는 경우가 있어 함께 건다.
-    window.addEventListener('pagehide', release);
+    window.addEventListener('pagehide', abortListen);
 
     return () => {
       document.removeEventListener('visibilitychange', stopIfHidden);
-      window.removeEventListener('pagehide', release);
+      window.removeEventListener('pagehide', abortListen);
     };
   }, [release]);
 
   const start = useCallback(() => {
-    const Ctor = getRecognitionCtor();
-    if (!Ctor) return;
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      setState((prev) => ({ ...prev, error: '이 브라우저에서는 음성 입력을 쓸 수 없어요.' }));
+      return;
+    }
 
-    // 이전 것이 남아 있으면 먼저 버린다. 두 개가 동시에 살면 마이크가 안 풀린다.
     release();
+    listeningIntentRef.current = true;
 
     const recognition = new Ctor();
     recognition.lang = 'ko-KR';
@@ -136,85 +138,88 @@ export function useSpeechRecognition() {
     recognition.onresult = (event) => {
       let text = '';
       let confidence = 0;
-      let done = false;
+      let sawFinal = false;
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      for (let i = 0; i < event.results.length; i += 1) {
         const result = event.results[i]!;
         const alternative = result[0]!;
         text += alternative.transcript;
         if (result.isFinal) {
           confidence = alternative.confidence;
-          done = true;
+          sawFinal = true;
         }
       }
 
-      setState((prev) => ({ ...prev, transcript: text, confidence }));
+      setState((prev) => ({ ...prev, transcript: text, confidence, error: null }));
 
-      /**
-       * 말이 끝났으면 그 자리에서 마이크를 놓는다.
-       *
-       * onend 를 기다리면 안 된다. 아이폰은 결과를 준 뒤에도 그 신호를 한참 늦게 주거나
-       * 아예 주지 않아서, 글자가 화면에 뜬 뒤에도 마이크가 켜진 채로 남는다.
-       * 들을 말이 끝났는데 계속 잡고 있을 이유가 없다.
-       */
-      if (done) {
-        release();
-        setState((prev) => ({ ...prev, listening: false }));
+      if (!listeningIntentRef.current) return;
+
+      if (sawFinal) {
+        requestStopRef.current();
+        return;
       }
+
+      if (silenceRef.current) clearTimeout(silenceRef.current);
+      silenceRef.current = setTimeout(() => requestStopRef.current(), SILENCE_MS);
     };
 
     recognition.onerror = (event) => {
+      if (event.error === 'aborted') return;
+      if (event.error === 'no-speech') {
+        requestStopRef.current();
+        return;
+      }
       const message = describeError(event.error);
       release();
-      // no-speech 는 잘못이 아니라 그냥 조용했던 것이다. 오류로 적지 않는다.
-      setState((prev) => ({
-        ...prev,
-        listening: false,
-        error: event.error === 'no-speech' ? null : message,
-      }));
+      setState((prev) => ({ ...prev, listening: false, error: message }));
     };
 
     recognition.onend = () => {
-      release();
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      detachRecognition(recognition);
+      dropSafariStream();
+      listeningIntentRef.current = false;
+      clearTimers();
       setState((prev) => ({ ...prev, listening: false }));
     };
 
     recognitionRef.current = recognition;
-    timerRef.current = setTimeout(() => {
-      release();
-      setState((prev) => ({ ...prev, listening: false }));
-    }, MAX_LISTEN_MS);
+    maxTimerRef.current = setTimeout(() => requestStopRef.current(), MAX_LISTEN_MS);
 
     setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null, listening: true }));
 
     try {
       recognition.start();
     } catch {
-      // 이미 듣는 중이면 브라우저가 던진다. 상태만 되돌린다.
       release();
       setState((prev) => ({ ...prev, listening: false }));
+      return;
     }
-  }, [release]);
 
-  /** 사용자가 멈춤을 눌렀을 때. 지금까지 들은 것은 살린다. */
-  const stop = useCallback(() => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
-
-    try {
-      recognition.stop();
-    } catch {
-      release();
-      setState((prev) => ({ ...prev, listening: false }));
+    if (isSafariBrowser() && navigator.mediaDevices?.getUserMedia) {
+      void navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        if (!listeningIntentRef.current || recognitionRef.current !== recognition) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        safariStreamRef.current = stream;
+      }).catch(() => {
+        // 권한을 거부해도 인식은 이미 시작했다.
+      });
     }
-  }, [release]);
+  }, [clearTimers, dropSafariStream, release]);
 
   const reset = useCallback(
     () => setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null })),
     [],
   );
 
-  return { ...state, start, stop, reset };
+  return { ...state, start, stop: requestStop, reset };
+}
+
+function isSafariBrowser() {
+  const ua = navigator.userAgent;
+  return /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Android/i.test(ua);
 }
 
 function describeError(code: string): string {

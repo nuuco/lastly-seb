@@ -12,8 +12,24 @@
 
 export type Intent = 'record' | 'query';
 
+export type SaveKind =
+  | 'completed'
+  | 'query'
+  | 'incomplete'
+  | 'planned'
+  | 'uncertain'
+  | 'none';
+
+export interface SaveDecision {
+  intent: Intent;
+  /** 조회·못 함·예정·불확실이면 false. */
+  willSave: boolean;
+  kind: SaveKind;
+}
+
 export interface UtteranceFacts {
   intent: Intent;
+  willSave: boolean;
   /** 기준일로부터 며칠 전인지. 시간 표현이 없으면 0. */
   daysAgo: number;
   /** 문장에서 직접 말한 주기(일). 말하지 않았으면 null. */
@@ -23,7 +39,7 @@ export interface UtteranceFacts {
   /** 날짜·주기를 문장에서 실제로 읽어냈는지. 확신도를 매길 때 쓴다. */
   sawDate: boolean;
   /**
-   * 아는 행동("빨았어", "닦았다")을 찾아냈는지.
+   * 아는 행동("빨았어", "닦았다")을 찾아냈거나, 완료 표지 뒤에 남는 말이 있는지.
    *
    * 못 찾았으면 name 은 그저 남은 말일 뿐이다. "음 그러니까 그거" 같은 문장도
    * 지우고 나면 뭔가 남으므로, 이 표시가 없으면 이름으로 믿어서는 안 된다.
@@ -131,6 +147,7 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
     if (new RegExp(`${word}\\s*전`).test(t)) return { daysAgo: days, saw: true };
   }
 
+  if (/그끄저께|그그제/.test(t)) return { daysAgo: 3, saw: true };
   if (/그저께|그제/.test(t)) return { daysAgo: 2, saw: true };
   if (/어제|어저께/.test(t)) return { daysAgo: 1, saw: true };
 
@@ -178,6 +195,74 @@ export function readIntent(text: string): Intent {
   // "간 지 됐어" 처럼 묻는 꼴
   if (/지\s*(얼마|몇)/.test(text)) return 'query';
   return 'record';
+}
+
+/* ─────────────────────────── 저장 여부 ─────────────────────────── */
+
+const INCOMPLETE = [
+  /못\s*(?:했|갈|빨|닦|버리|버렸|돌리|시키|끝냈)/,
+  /안\s*(?:했어|했고|갈았|빨았|닦았|버렸|돌렸|시켰|끝냈|한|빨았나)/,
+  /아직\s*(?:못|안)|아직이야|아직이고/,
+  /하지\s*(?:못|않)|지\s*(?:못했|않았)/,
+];
+
+/** 완료가 없을 때만 본다. 맨 /거야/ 는 "그거야" 까지 예정으로 잡아서 빼 둔다. */
+const PLANNED = [
+  /할래/, /할게/, /시킬게/, /버릴게/, /하려고/, /려고(?:\s|$)/, /할\s*거야/, /빨\s*거야/,
+  /예정/, /이따가/, /오늘\s*(?:저녁|밤)에/,
+  /내일(?!로)/, /모레/, /주말에/, /다음\s*주에/,
+];
+
+/** 시각 어림(쯤)·서술 인가 는 빼 둔다. "세 시쯤 빨았어" 를 막으면 안 된다. */
+const UNCERTAIN = [
+  /것\s*같/, /아마/, /더라/, /였나/, /했던가/, /지\s*싶/,
+  /기억이\s*안/, /모르겠어/,
+];
+
+const COMPLETED = [
+  /했고/, /했어/, /했다/, /했어요/, /했습니다/, /했음/, /해놨어/,
+  /끝냈어/, /갈았어/, /빨았어/, /빨아놨어/, /버렸어/, /돌렸어/, /시켰어/, /닦았어/,
+  /함(?:\s|[.,!?~…]|$)/,
+];
+
+function anyMatch(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function hasCompletedMarker(text: string): boolean {
+  return anyMatch(text, COMPLETED);
+}
+
+/** "빨았어, 일주일마다 알려줘" 는 조회가 아니라 기록+알림이다. */
+function readIntentFixed(text: string): Intent {
+  const intent = readIntent(text);
+  if (intent !== 'query') return intent;
+  if (!/알려\s*줘|알려줄래/.test(text)) return intent;
+  if (/(?:언제|얼마나|며칠|얼마만|몇\s*일|지\s*(?:얼마|몇)|\?|？)/.test(text)) return 'query';
+  if (hasCompletedMarker(text)) return 'record';
+  return intent;
+}
+
+/**
+ * 조회는 readIntent 가 이미 가른다. 여기서는 저장을 막을 표지만 본다.
+ * 완료 동사가 있으면 할거야/하려고는 예정이 아니라 주기다.
+ */
+function classifyKind(text: string): Exclude<SaveKind, 'query'> {
+  const t = text.replace(/\s+/g, ' ');
+  if (anyMatch(t, INCOMPLETE)) return 'incomplete';
+  if (anyMatch(t, UNCERTAIN)) return 'uncertain';
+  const completed = anyMatch(t, COMPLETED);
+  if (anyMatch(t, PLANNED) && !completed) return 'planned';
+  if (completed) return 'completed';
+  return 'none';
+}
+
+export function classifySave(text: string): SaveDecision {
+  const intent = readIntentFixed(text);
+  if (intent === 'query') return { intent, willSave: false, kind: 'query' };
+  const kind = classifyKind(text);
+  const blocked = kind === 'incomplete' || kind === 'planned' || kind === 'uncertain';
+  return { intent, willSave: !blocked, kind };
 }
 
 /* ─────────────────────────── 이름 ─────────────────────────── */
@@ -244,7 +329,7 @@ const DONE_MARKERS = /(?:끝냈|끝내|마쳤|마무리했|해치웠|완료했)[
 
 /** 이름에 들어가면 안 되는 시간 표현. */
 const TIME_EXPR =
-  /(아침|점심|저녁|밤|새벽|오전|오후|오늘|어제|어저께|그저께|그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
+  /(아침|점심|저녁|밤|새벽|오전|오후|오늘|어제|어저께|그저께|그제|그끄저께|그그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
 
 /**
  * 말버릇으로 붙는 1인칭 주어. 항목 이름에 들어갈 자리가 아니다.
@@ -341,10 +426,14 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
    */
   s = s.replace(/^(?:에|을|를|은|는|이|가|도|의)(?:\s+|$)/, '');
   s = s.replace(/\s+(?:에|을|를|은|는|이|가|도|의)$/, '');
-  s = s.replace(/(?:했음|했어요|했어|했다|했지|한다|함|해써|했)$/, '').trim();
+  s = s.replace(/(?:했음|했어요|했습니다|했어도|했고|했어|했다|했지|한다|함|해써|했)$/, '').trim();
   s = s.replace(/\s+/g, ' ').trim();
 
-  const sawAction = action !== null;
+  /**
+   * 완료 표지("했어", "함")가 있으면 사전에 없는 동사("설치")도 남은 말을 이름으로 본다.
+   * "음 그거" 처럼 완료가 없는 잔여는 계속 불신한다.
+   */
+  const sawAction = action !== null || (Boolean(s) && hasCompletedMarker(text));
   if (!s && !action) return { name: null, sawAction };
   if (!action) return { name: s || null, sawAction };
   return { name: s ? `${s} ${action}` : action, sawAction };
@@ -355,9 +444,11 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
 export function readUtterance(text: string, reference: Date): UtteranceFacts {
   const { daysAgo, saw } = readDaysAgo(text, reference);
   const { name, sawAction } = readNameWithAction(text);
+  const save = classifySave(text);
 
   return {
-    intent: readIntent(text),
+    intent: save.intent,
+    willSave: save.willSave,
     daysAgo,
     statedCadenceDays: readCadenceDays(text),
     name,

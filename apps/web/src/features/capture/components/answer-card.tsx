@@ -2,7 +2,9 @@
 
 import type { InterpretResult } from '@lastly/contracts';
 import Link from 'next/link';
+import { useEffect, type ReactNode } from 'react';
 
+import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
 import { formatShortDate } from '@/lib/date';
 
 /**
@@ -26,7 +28,17 @@ export function AnswerCard({
   const answer = result.answer;
   if (!answer) return null;
 
+  const spoken = [
+    describeLast(answer.daysSinceLastDone, answer.lastDoneOn),
+    answer.nextDueOn
+      ? `다음 예정일은 ${describeDue(answer.daysUntilDue)} ${formatShortDate(answer.nextDueOn)}이에요`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('. ');
+
   return (
+    <SpokenAnswer text={spoken}>
     <div className="mb-2.5 rounded-[22px] bg-ink p-[16px_18px] shadow-answer">
       <p className="text-12 font-bold tracking-wide2 text-[#C9BEA8]">물어보신 것</p>
       <p className="mt-1.5 text-14 text-[#EFE9DD]">“{result.transcript}”</p>
@@ -58,7 +70,16 @@ export function AnswerCard({
         </Link>
       </div>
     </div>
+    </SpokenAnswer>
   );
+}
+
+function SpokenAnswer({ text, children }: { text: string; children: ReactNode }) {
+  useEffect(() => {
+    speak(text);
+    return () => stopSpeaking();
+  }, [text]);
+  return <>{children}</>;
 }
 
 function describeLast(days: number | null, lastDoneOn: string | null): string {

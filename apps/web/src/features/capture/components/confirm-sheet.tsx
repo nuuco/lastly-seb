@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
+import { isVoiceGuidanceOn } from '@/features/on-device/consent';
+import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
 import { describeCadence, formatShortDate, ruleToDays, todayIso } from '@/lib/date';
@@ -25,7 +27,10 @@ interface ConfirmSheetProps {
     cadence?: CadenceRule;
   }) => void;
   onRetry: () => void;
+  /** 응/아니의 아니 — 시트를 닫는다. */
+  onCancel?: () => void;
   committing: boolean;
+  mode?: 'voice' | 'text';
 }
 
 /**
@@ -42,7 +47,9 @@ export function ConfirmSheet({
   onCadenceChange,
   onConfirm,
   onRetry,
+  onCancel,
   committing,
+  mode = 'text',
 }: ConfirmSheetProps) {
   const [cadenceOpen, setCadenceOpen] = useState(false);
   const [name, setName] = useState(result.normalizedName ?? '');
@@ -91,6 +98,23 @@ export function ConfirmSheet({
   const isNew = matchedId === null;
   // 사용자가 주기 시트에서 직접 고른 값이 언제나 우선한다.
   const shownRule = edited ? (shown?.rule ?? null) : cadence;
+  const confirmPayload = {
+    ...(isNew
+      ? { newItemName: name.trim(), cadence: shownRule ?? undefined }
+      : { itemId: matchedId ?? undefined }),
+    note: note.trim() || null,
+  };
+  const rationaleText = edited
+    ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
+    : (shown?.rationale ?? '');
+  const showVoiceHint = mode === 'voice' && isVoiceGuidanceOn();
+
+  useSpokenConfirm({
+    enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
+    prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
+    onYes: () => onConfirm(confirmPayload),
+    onNo: () => (onCancel ?? onRetry)(),
+  });
 
   return (
     <>
@@ -174,30 +198,18 @@ export function ConfirmSheet({
           </div>
         </div>
 
-        <p className="mt-3 text-[13.5px] leading-[1.7] text-ink-3">
-          {edited
-            ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
-            : (shown?.rationale ?? '')}
-        </p>
+        {rationaleText || showVoiceHint ? (
+          <div className="mt-1 space-y-1 text-[13.5px] leading-[1.7] text-ink-3">
+            {rationaleText ? <p>{rationaleText}</p> : null}
+            {showVoiceHint ? <p>응이나 아니로 답해도 돼요</p> : null}
+          </div>
+        ) : null}
 
         <SheetActions
           primary={{
             label: committing ? '저장하는 중…' : '이대로 저장하기',
             disabled: committing || !name.trim(),
-            onClick: () =>
-              onConfirm({
-                /**
-                 * 화면에 보인 주기를 그대로 실어 보낸다.
-                 *
-                 * 예전에는 이름을 고쳐 주기가 다시 잡혀도 처음 받은 값이 저장돼,
-                 * 시트에 12달이라고 띄워 놓고 2주로 저장하는 일이 있었다.
-                 * 기존 항목에는 보내지 않는다 — 원래 주기가 사용자 지정으로 덮인다.
-                 */
-                ...(isNew
-                  ? { newItemName: name.trim(), cadence: shownRule ?? undefined }
-                  : { itemId: matchedId ?? undefined }),
-                note: note.trim() || null,
-              }),
+            onClick: () => onConfirm(confirmPayload),
           }}
           secondary={{ label: '다시 말하기', onClick: onRetry, disabled: committing }}
         />
