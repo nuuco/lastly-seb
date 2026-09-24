@@ -828,6 +828,7 @@ function GoldenRunner({
             {' '}
             · False Completion {runSummary.fcCount}/{runSummary.fcBase}
             {runSummary.errors ? ` · 오류 ${runSummary.errors}` : ''}
+            {runSummary.repaired ? ` · 형식 복구 ${runSummary.repaired}` : ''}
             {runSummary.total < goldenSet.cases.length ? ` · ${runSummary.total}문장까지만 실행` : ''}
           </span>
           <span className="block text-[12px] font-normal text-ink-3">
@@ -1209,6 +1210,7 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
                     {run.mode === 'app' && run.engine !== 'rule' ? ` · 모델 ${summary.usedModel}` : ''}
                     {summary.toServer ? ` · 서버행 ${summary.toServer}` : ''}
                     {summary.errors ? ` · 오류 ${summary.errors}` : ''}
+                    {summary.repaired ? ` · 형식 복구 ${summary.repaired}` : ''}
                   </td>
                 </tr>
               ))}
@@ -1218,7 +1220,7 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
       )}
       <p className="mt-2 text-[12px] text-ink-3">
         앱 경로의 Status 는 &quot;저장 / 저장 안 함&quot; 만 맞춰요 (했는지는 규칙이 정해서 엔진마다 같아요). 엔진별
-        Status · False Completion 비교는 실험 지시문 줄로 보세요. 미래 날짜는 채점하지 않아요.
+        Status · False Completion 비교는 실험 지시문 줄로 보세요. 미래 날짜는 채점하지 않아요. 형식 복구 = JSON 키 따옴표가 빠져 파서가 고쳐 읽은 문장 수.
       </p>
     </Section>
   );

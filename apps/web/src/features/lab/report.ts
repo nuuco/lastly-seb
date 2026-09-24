@@ -203,6 +203,7 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
         const extra = [
           run.mode === 'app' && run.engine !== 'rule' ? `모델 ${s!.usedModel}` : '',
           s!.errors ? `오류 ${s!.errors}` : '',
+          s!.repaired ? `형식 복구 ${s!.repaired}` : '',
         ]
           .filter(Boolean)
           .join(' · ');
@@ -211,6 +212,7 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
       '',
       '- 앱 경로: 규칙 먼저 → 규칙이 못 끝낸 문장만 모델(앱 지시문) → 규칙 덧씌움. 저장 여부는 규칙이 정해 엔진마다 Status · False Completion 이 같음',
       '- 실험 지시문: 규칙 없이 모델에 바로. 엔진끼리 Status · False Completion 비교는 이 줄로',
+      '- 형식 복구 = 모델이 JSON 키 따옴표를 빼먹어 파서가 고쳐 읽은 문장 수 (내용은 채점, 형식 준수도는 이 수로 봄)',
       '- 앱 경로에서 저장 안 하는 게 맞는 문장을 저장하지 않았으면 Activity · Date 는 채점하지 않음. 미래 날짜는 채점하지 않음',
       '',
     );

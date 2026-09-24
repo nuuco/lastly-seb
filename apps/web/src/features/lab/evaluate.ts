@@ -1,5 +1,6 @@
 import { generateOnDevice } from '@/features/on-device/engine';
 import { interpretLocally } from '@/features/on-device/parse-local';
+import { readJsonObject } from '@/features/on-device/parse-prompt';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 
 import { callCloudParse, callGemini, CLOUD_EXPERIMENT_SCHEMA, type CloudSettings } from './cloud-gemini';
@@ -281,6 +282,17 @@ export interface Table2Row {
   usedModel: number;
   toServer: number;
   errors: number;
+  /** 키 따옴표가 빠져 파서가 고쳐 읽은 문장 수. 형식 준수도. */
+  repaired: number;
+}
+
+function wasRepaired(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    return readJsonObject(raw).repaired;
+  } catch {
+    return false;
+  }
 }
 
 export function summarize(
@@ -326,5 +338,6 @@ export function summarize(
     usedModel: pairs.filter(({ got }) => got.usedModel).length,
     toServer: pairs.filter(({ got }) => got.toServer).length,
     errors: pairs.filter(({ got }) => got.error).length,
+    repaired: pairs.filter(({ got }) => wasRepaired(got.raw)).length,
   };
 }
