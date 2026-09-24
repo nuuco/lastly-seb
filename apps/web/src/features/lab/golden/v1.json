@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "온디바이스 비교용 골든셋. 이전 104문장(feat/lighter-ondevice-model) 기반, 2026-09-24 검토 반영. 115–120: 오타·음성 인식 오류 문장(동사·명사가 틀림, 기대값은 바르게 쓴 이름).",
+  "description": "온디바이스 비교용 골든셋. 이전 104문장(feat/lighter-ondevice-model) 기반, 2026-09-24 검토 반영. 114–120: 오타·음성 인식 오류 문장(동사·명사가 틀림, 기대값은 바르게 쓴 이름). 번호는 1–120 연속.",
   "dateRule": "date: 숫자=며칠 전(음수는 앞으로), 문자열=실행일 기준으로 계산하는 표현, null=채점 제외",
   "knownItems": [
     {
@@ -833,7 +833,7 @@
       "trap": false
     },
     {
-      "n": 71,
+      "n": 70,
       "text": "이불 빨래 한 지 얼마야?",
       "intent": "query",
       "status": "조회",
@@ -844,7 +844,7 @@
       "trap": false
     },
     {
-      "n": 72,
+      "n": 71,
       "text": "필터 언제 갈았어?",
       "intent": "query",
       "status": "조회",
@@ -855,7 +855,7 @@
       "trap": false
     },
     {
-      "n": 73,
+      "n": 72,
       "text": "에어컨 청소 언제 했어",
       "intent": "query",
       "status": "조회",
@@ -866,7 +866,7 @@
       "trap": false
     },
     {
-      "n": 74,
+      "n": 73,
       "text": "오늘 커튼 빨았어 14일마다 알려줘",
       "intent": "record",
       "status": "완료",
@@ -877,7 +877,7 @@
       "trap": false
     },
     {
-      "n": 75,
+      "n": 74,
       "text": "화장실 청소했어 이틀마다",
       "intent": "record",
       "status": "완료",
@@ -888,7 +888,7 @@
       "trap": false
     },
     {
-      "n": 76,
+      "n": 75,
       "text": "오늘 이불 빨았어 매주 금요일 알려줘",
       "intent": "record",
       "status": "완료",
@@ -899,7 +899,7 @@
       "trap": false
     },
     {
-      "n": 77,
+      "n": 76,
       "text": "오늘 필터 갈았어 매월 10일마다 알려줘",
       "intent": "record",
       "status": "완료",
@@ -910,7 +910,7 @@
       "trap": false
     },
     {
-      "n": 78,
+      "n": 77,
       "text": "오늘 화장실 청소했어 매월 마지막 수요일 알려줘",
       "intent": "record",
       "status": "완료",
@@ -921,7 +921,7 @@
       "trap": false
     },
     {
-      "n": 79,
+      "n": 78,
       "text": "오늘 커튼 빨았어 매월 둘째 일요일 알려줘",
       "intent": "record",
       "status": "완료",
@@ -932,7 +932,7 @@
       "trap": false
     },
     {
-      "n": 80,
+      "n": 79,
       "text": "어제 병원 갔다왔어",
       "intent": "record",
       "status": "완료",
@@ -943,7 +943,7 @@
       "trap": false
     },
     {
-      "n": 81,
+      "n": 80,
       "text": "지난주에 세차했어",
       "intent": "record",
       "status": "완료",
@@ -954,7 +954,7 @@
       "trap": false
     },
     {
-      "n": 82,
+      "n": 81,
       "text": "그저께 치과 검진 받았어",
       "intent": "record",
       "status": "완료",
@@ -965,7 +965,7 @@
       "trap": false
     },
     {
-      "n": 83,
+      "n": 82,
       "text": "오늘 독감 예방접종 맞았어",
       "intent": "record",
       "status": "완료",
@@ -976,7 +976,7 @@
       "trap": false
     },
     {
-      "n": 84,
+      "n": 83,
       "text": "안경 새로 맞췄어",
       "intent": "record",
       "status": "완료",
@@ -987,7 +987,7 @@
       "trap": false
     },
     {
-      "n": 85,
+      "n": 84,
       "text": "오늘 보험료 냈어",
       "intent": "record",
       "status": "완료",
@@ -998,7 +998,7 @@
       "trap": false
     },
     {
-      "n": 86,
+      "n": 85,
       "text": "오늘 미용실 다녀왔어",
       "intent": "record",
       "status": "완료",
@@ -1009,7 +1009,7 @@
       "trap": false
     },
     {
-      "n": 87,
+      "n": 86,
       "text": "어제 자동차 정비 받았어",
       "intent": "record",
       "status": "완료",
@@ -1020,7 +1020,7 @@
       "trap": false
     },
     {
-      "n": 88,
+      "n": 87,
       "text": "오늘 병원 다녀왔고, 3개월마다 갈 거야",
       "intent": "record",
       "status": "완료",
@@ -1031,7 +1031,7 @@
       "trap": false
     },
     {
-      "n": 89,
+      "n": 88,
       "text": "세차했어, 앞으로 한 달마다 할 거야",
       "intent": "record",
       "status": "완료",
@@ -1042,7 +1042,7 @@
       "trap": true
     },
     {
-      "n": 90,
+      "n": 89,
       "text": "미용실 다녀왔어, 두 달마다 갈 거야",
       "intent": "record",
       "status": "완료",
@@ -1053,7 +1053,7 @@
       "trap": false
     },
     {
-      "n": 91,
+      "n": 90,
       "text": "치과 검진 받았어, 6개월마다 할 거야",
       "intent": "record",
       "status": "완료",
@@ -1064,7 +1064,7 @@
       "trap": true
     },
     {
-      "n": 92,
+      "n": 91,
       "text": "지지난주에 커튼 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1075,7 +1075,7 @@
       "trap": true
     },
     {
-      "n": 93,
+      "n": 92,
       "text": "사흘 전에 화장실 청소했어",
       "intent": "record",
       "status": "완료",
@@ -1086,7 +1086,7 @@
       "trap": false
     },
     {
-      "n": 94,
+      "n": 93,
       "text": "지난달 15일에 정수기 필터 갈았어",
       "intent": "record",
       "status": "완료",
@@ -1097,7 +1097,7 @@
       "trap": false
     },
     {
-      "n": 95,
+      "n": 94,
       "text": "이번 주 초에 청소기 돌렸어",
       "intent": "record",
       "status": "애매",
@@ -1108,7 +1108,7 @@
       "trap": false
     },
     {
-      "n": 96,
+      "n": 95,
       "text": "얼마 전에 분리수거 했어",
       "intent": "record",
       "status": "애매",
@@ -1119,7 +1119,7 @@
       "trap": false
     },
     {
-      "n": 97,
+      "n": 96,
       "text": "오늘 설거지함",
       "intent": "record",
       "status": "완료",
@@ -1130,7 +1130,7 @@
       "trap": false
     },
     {
-      "n": 98,
+      "n": 97,
       "text": "어제 빨래했당",
       "intent": "record",
       "status": "완료",
@@ -1141,7 +1141,7 @@
       "trap": false
     },
     {
-      "n": 99,
+      "n": 98,
       "text": "쓰레기 버렸음",
       "intent": "record",
       "status": "완료",
@@ -1152,7 +1152,7 @@
       "trap": false
     },
     {
-      "n": 100,
+      "n": 99,
       "text": "필터 갈아치웠어",
       "intent": "record",
       "status": "완료",
@@ -1163,7 +1163,7 @@
       "trap": false
     },
     {
-      "n": 101,
+      "n": 100,
       "text": "병원 언제 갔었지?",
       "intent": "query",
       "status": "조회",
@@ -1174,7 +1174,7 @@
       "trap": false
     },
     {
-      "n": 102,
+      "n": 101,
       "text": "세차한 지 얼마나 됐어?",
       "intent": "query",
       "status": "조회",
@@ -1185,7 +1185,7 @@
       "trap": false
     },
     {
-      "n": 103,
+      "n": 102,
       "text": "미용실 다음 달에 갈 예정이야",
       "intent": "record",
       "status": "미래",
@@ -1196,7 +1196,7 @@
       "trap": true
     },
     {
-      "n": 104,
+      "n": 103,
       "text": "강아지 미용했어",
       "intent": "record",
       "status": "완료",
@@ -1207,7 +1207,7 @@
       "trap": false
     },
     {
-      "n": 105,
+      "n": 104,
       "text": "필터를 갈았던 것도 같은데",
       "intent": "record",
       "status": "애매",
@@ -1218,7 +1218,7 @@
       "trap": false
     },
     {
-      "n": 106,
+      "n": 105,
       "text": "필터 마지막에 언제 갈았지?",
       "intent": "query",
       "status": "조회",
@@ -1229,7 +1229,7 @@
       "trap": false
     },
     {
-      "n": 107,
+      "n": 106,
       "text": "오늘 책 읽었고 일주일에 한 번 알려줘",
       "intent": "record",
       "status": "완료",
@@ -1240,7 +1240,7 @@
       "trap": true
     },
     {
-      "n": 108,
+      "n": 107,
       "text": "난 오늘 설거지 했어",
       "intent": "record",
       "status": "완료",
@@ -1251,7 +1251,7 @@
       "trap": false
     },
     {
-      "n": 109,
+      "n": 108,
       "text": "나는 어제 이불 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1262,7 +1262,7 @@
       "trap": false
     },
     {
-      "n": 110,
+      "n": 109,
       "text": "나 그저께 거실 정수기 청소하고 필터 교체했어",
       "intent": "record",
       "status": "완료",
@@ -1273,7 +1273,7 @@
       "trap": true
     },
     {
-      "n": 111,
+      "n": 110,
       "text": "9/14에 이불 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1284,7 +1284,7 @@
       "trap": true
     },
     {
-      "n": 112,
+      "n": 111,
       "text": "9월 14일에 이불 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1295,7 +1295,7 @@
       "trap": true
     },
     {
-      "n": 113,
+      "n": 112,
       "text": "14일에 이불 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1306,7 +1306,7 @@
       "trap": true
     },
     {
-      "n": 114,
+      "n": 113,
       "text": "9.14 필터 갈았어",
       "intent": "record",
       "status": "완료",
@@ -1317,7 +1317,7 @@
       "trap": true
     },
     {
-      "n": 115,
+      "n": 114,
       "text": "어제 정수기 필터 갈앗어",
       "intent": "record",
       "status": "완료",
@@ -1328,7 +1328,7 @@
       "trap": true
     },
     {
-      "n": 116,
+      "n": 115,
       "text": "오늘 이블 빨았어",
       "intent": "record",
       "status": "완료",
@@ -1339,7 +1339,7 @@
       "trap": true
     },
     {
-      "n": 117,
+      "n": 116,
       "text": "그저께 에어콘 청소했어",
       "intent": "record",
       "status": "완료",
@@ -1350,7 +1350,7 @@
       "trap": true
     },
     {
-      "n": 118,
+      "n": 117,
       "text": "어제 화장시 청소 했어",
       "intent": "record",
       "status": "완료",
@@ -1361,7 +1361,7 @@
       "trap": true
     },
     {
-      "n": 119,
+      "n": 118,
       "text": "어제 강아지 목용 시켰어",
       "intent": "record",
       "status": "완료",
@@ -1372,7 +1372,7 @@
       "trap": true
     },
     {
-      "n": 120,
+      "n": 119,
       "text": "커튼 아직 못 빨앗어",
       "intent": "record",
       "status": "미완료",
@@ -1380,6 +1380,17 @@
       "date": null,
       "cadenceDays": null,
       "matchId": "item-6",
+      "trap": true
+    },
+    {
+      "n": 120,
+      "text": "정수기 필터 언제 갈앗지?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "정수기 필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-2",
       "trap": true
     }
   ]
