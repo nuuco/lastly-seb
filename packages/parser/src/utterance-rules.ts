@@ -189,12 +189,15 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
  * 같은 입력창에 "이불 빨았어"(기록)와 "이불 언제 빨았어?"(조회)가 함께 들어온다.
  * 둘을 구분하지 못하면 물어본 것을 기록으로 남겨 없던 일이 생긴다.
  */
-export function readIntent(text: string): Intent {
-  if (/\?|？/.test(text)) return 'query';
-  if (/언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|알려줄래/.test(text)) return 'query';
+const QUERY = [
+  /\?|？/,
+  /언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|알려줄래/,
   // "간 지 됐어" 처럼 묻는 꼴
-  if (/지\s*(얼마|몇)/.test(text)) return 'query';
-  return 'record';
+  /지\s*(얼마|몇)/,
+];
+
+export function readIntent(text: string): Intent {
+  return anyMatch(text, rules('query')) ? 'query' : 'record';
 }
 
 /* ─────────────────────────── 저장 여부 ─────────────────────────── */
@@ -230,7 +233,7 @@ function anyMatch(text: string, patterns: RegExp[]): boolean {
 }
 
 function hasCompletedMarker(text: string): boolean {
-  return anyMatch(text, COMPLETED);
+  return anyMatch(text, rules('completed'));
 }
 
 /** "빨았어, 일주일마다 알려줘" 는 조회가 아니라 기록+알림이다. */
@@ -249,10 +252,10 @@ function readIntentFixed(text: string): Intent {
  */
 function classifyKind(text: string): Exclude<SaveKind, 'query'> {
   const t = text.replace(/\s+/g, ' ');
-  if (anyMatch(t, INCOMPLETE)) return 'incomplete';
-  if (anyMatch(t, UNCERTAIN)) return 'uncertain';
-  const completed = anyMatch(t, COMPLETED);
-  if (anyMatch(t, PLANNED) && !completed) return 'planned';
+  if (anyMatch(t, rules('incomplete'))) return 'incomplete';
+  if (anyMatch(t, rules('uncertain'))) return 'uncertain';
+  const completed = anyMatch(t, rules('completed'));
+  if (anyMatch(t, rules('planned')) && !completed) return 'planned';
   if (completed) return 'completed';
   return 'none';
 }
@@ -407,7 +410,7 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
 
   // 행동을 명사로 바꾼다. 문장에서는 지우고 끝에 붙인다.
   let action: string | null = null;
-  for (const [pattern, noun] of ACTION_NOUNS) {
+  for (const [pattern, noun] of actionNouns()) {
     const m = s.match(pattern);
     if (m) {
       action = noun;
@@ -437,6 +440,78 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
   if (!s && !action) return { name: null, sawAction };
   if (!action) return { name: s || null, sawAction };
   return { name: s ? `${s} ${action}` : action, sawAction };
+}
+
+/* ─────────────────────────── 실험용 덧씌우기 ─────────────────────────── */
+
+/**
+ * 규칙 표를 코드 수정 없이 바꿔 보는 입구. 온디바이스 실험실만 부른다.
+ * 아무것도 넣지 않으면 위 표를 그대로 쓴다 — 앱·API 동작은 바뀌지 않는다.
+ *
+ * 추가한 패턴은 기존 표보다 먼저 본다. disabled 는 기존 표의 번호(0부터)다.
+ */
+export type RuleTableName = 'incomplete' | 'planned' | 'uncertain' | 'completed' | 'query';
+
+export interface RuleOverrides {
+  add?: Partial<Record<RuleTableName, string[]>> & { actionNouns?: Array<[string, string]> };
+  disabled?: Partial<Record<RuleTableName | 'actionNouns', number[]>>;
+}
+
+const BASE_TABLES: Record<RuleTableName, RegExp[]> = {
+  incomplete: INCOMPLETE,
+  planned: PLANNED,
+  uncertain: UNCERTAIN,
+  completed: COMPLETED,
+  query: QUERY,
+};
+
+let active: { tables: Record<RuleTableName, RegExp[]>; actionNouns: Array<[RegExp, string]> } | null =
+  null;
+
+function rules(name: RuleTableName): RegExp[] {
+  return active ? active.tables[name] : BASE_TABLES[name];
+}
+
+function actionNouns(): Array<[RegExp, string]> {
+  return active ? active.actionNouns : ACTION_NOUNS;
+}
+
+/** 잘못된 정규식이 있으면 던진다. null 을 넣으면 원래 표로 돌아간다. */
+export function setRuleOverrides(overrides: RuleOverrides | null): void {
+  if (!overrides) {
+    active = null;
+    return;
+  }
+  const off = (name: RuleTableName | 'actionNouns') => new Set(overrides.disabled?.[name] ?? []);
+  const tables = {} as Record<RuleTableName, RegExp[]>;
+  for (const name of Object.keys(BASE_TABLES) as RuleTableName[]) {
+    const disabled = off(name);
+    tables[name] = [
+      ...(overrides.add?.[name] ?? []).map((source) => new RegExp(source)),
+      ...BASE_TABLES[name].filter((_, i) => !disabled.has(i)),
+    ];
+  }
+  const nounsOff = off('actionNouns');
+  active = {
+    tables,
+    actionNouns: [
+      ...(overrides.add?.actionNouns ?? []).map(
+        ([source, noun]) => [new RegExp(source), noun] as [RegExp, string],
+      ),
+      ...ACTION_NOUNS.filter((_, i) => !nounsOff.has(i)),
+    ],
+  };
+}
+
+/** 원래 규칙 표. 실험실이 보여 주고 내려받는 용도. */
+export function getRuleTables(): Record<RuleTableName, string[]> & {
+  actionNouns: Array<[string, string]>;
+} {
+  const out = {} as Record<RuleTableName, string[]>;
+  for (const name of Object.keys(BASE_TABLES) as RuleTableName[]) {
+    out[name] = BASE_TABLES[name].map((pattern) => pattern.source);
+  }
+  return { ...out, actionNouns: ACTION_NOUNS.map(([pattern, noun]) => [pattern.source, noun]) };
 }
 
 /* ─────────────────────────── 한 번에 ─────────────────────────── */
