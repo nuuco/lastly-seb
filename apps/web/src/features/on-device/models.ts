@@ -45,22 +45,19 @@ const MODELS: Record<ModelId, ModelSpec> = {
     metaFile: 'gemma3-1b-it-int4-web.meta.json',
     maxTokens: 1280,
   },
-  /**
-   * 원본(litert-community)은 Gemma 라이선스 동의가 필요해 브라우저가 바로 못 받는다.
-   * `node apps/web/scripts/download-model.mjs gemma3-270m` 으로 public/models 에 받아 쓴다.
-   */
+  /** 원본(litert-community)은 라이선스 동의가 필요해 nuuco 에 올린 사본을 받는다. */
   'gemma3-270m': {
     runtime: 'mediapipe',
     id: 'gemma3-270m',
-    label: 'Gemma 3 270M int4',
+    label: 'Gemma 3 270M q8',
     url:
       process.env.NEXT_PUBLIC_ONDEVICE_MODEL_270M_URL ||
-      '/models/gemma3-270m-it-q4_0-web.task',
-    bytes: 249_000_000,
-    sizeLabel: '약 240MB',
-    opfsFile: 'gemma3-270m-it-q4_0-web.task',
-    metaFile: 'gemma3-270m-it-q4_0-web.meta.json',
-    maxTokens: 1024,
+      'https://huggingface.co/nuuco/gemma-3-270m-it-q8-web/resolve/main/gemma3-270m-it-q8-web.task',
+    bytes: 276_168_704,
+    sizeLabel: '약 260MB',
+    opfsFile: 'gemma3-270m-it-q8-web.task',
+    metaFile: 'gemma3-270m-it-q8-web.meta.json',
+    maxTokens: 1280,
   },
   /** 데스크톱 Chrome 148+ 만. Android Chrome 은 지원하지 않는다. */
   'chrome-nano': {
