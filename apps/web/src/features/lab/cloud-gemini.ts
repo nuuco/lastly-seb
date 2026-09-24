@@ -131,8 +131,8 @@ export function costUsd(settings: CloudSettings, tokensIn: number, tokensOut: nu
   return (tokensIn * settings.priceIn + tokensOut * settings.priceOut) / 1_000_000;
 }
 
-/** v2 지시문을 Gemini 스키마로. */
-export const CLOUD_V2_SCHEMA = {
+/** 실험 지시문의 응답 모양을 Gemini 스키마로. */
+export const CLOUD_EXPERIMENT_SCHEMA = {
   type: 'OBJECT',
   properties: {
     intent: { type: 'STRING', enum: ['record', 'query'] },

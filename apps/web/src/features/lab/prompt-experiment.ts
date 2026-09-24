@@ -4,14 +4,14 @@ import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import type { GoldenStatus } from './golden';
 
 /**
- * 실험실 전용 지시문 v2. 앱은 parse-prompt.ts 의 v1 을 쓴다.
+ * 실험 지시문. 실험실에서만 쓰고, 앱은 parse-prompt.ts 의 앱 지시문을 쓴다.
  *
- * v1 은 의도·이름·날짜만 묻고, 했는지 여부는 규칙이 정한다.
- * 그래서 v1 로는 엔진마다 False Completion 이 같다.
- * v2 는 모델에게 status 를 직접 묻고, 앞으로의 날짜를 음수로 받는다.
+ * 앱 지시문은 의도·이름·날짜만 묻고, 했는지 여부는 규칙이 정한다.
+ * 그래서 앱 경로로는 엔진마다 False Completion 이 같다.
+ * 실험 지시문은 모델에게 status 를 직접 묻고, 앞으로의 날짜를 음수로 받는다.
  * 예시 문장은 골든셋과 겹치지 않게 골랐다.
  */
-const INSTRUCTIONS_V2 = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
+const EXPERIMENT_INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
 
 status 규칙:
 - 완료: 이미 한 일 (했어, 빨았어, 갈았어)
@@ -43,7 +43,7 @@ item_name은 행동까지 명사구. 빨았어→빨래, 갈았어→교체, 닦
 예5 수건 언제 삶았지?
 {"intent":"query","status":"조회","item_name":"수건 삶기","days_ago":null,"stated_cadence_days":null}`;
 
-export function buildInstructionV2(
+export function buildExperimentInstruction(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
@@ -54,7 +54,7 @@ export function buildInstructionV2(
       ? '(없음)'
       : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
   return [
-    INSTRUCTIONS_V2,
+    EXPERIMENT_INSTRUCTIONS,
     `기준일 ${referenceDate} (${weekday}요일)`,
     '기존 항목:',
     items,
@@ -62,7 +62,7 @@ export function buildInstructionV2(
   ].join('\n');
 }
 
-export const RESPONSE_SCHEMA_V2 = {
+export const RESPONSE_SCHEMA_EXPERIMENT = {
   type: 'object',
   properties: {
     intent: { type: 'string', enum: ['record', 'query'] },
@@ -74,14 +74,14 @@ export const RESPONSE_SCHEMA_V2 = {
   required: ['intent', 'status', 'item_name', 'days_ago'],
 };
 
-export interface V2Result {
+export interface ExperimentResult {
   intent: 'record' | 'query';
   status: GoldenStatus | null;
   itemName: string | null;
   daysAgo: number | null;
 }
 
-export function parseV2(raw: string): V2Result {
+export function parseExperiment(raw: string): ExperimentResult {
   const parsed = JSON.parse(extractJsonObject(raw)) as Record<string, unknown>;
   const status = parsed.status;
   const days = Number(parsed.days_ago);

@@ -4,7 +4,7 @@ import type { CaseOutcome, EngineId, RunMode } from './evaluate';
  * 실험 결과를 이 브라우저에 쌓아 둔다. 엔진을 바꾸거나 새로고침해도 표가 남는다.
  * 저장이 막힌 브라우저에서도 화면은 돌아가야 해서 읽기·쓰기를 모두 감싼다.
  */
-const KEY = 'lastly-lab-v1';
+const KEY = 'lastly-lab-v2';
 
 export interface BenchRecord {
   /** 받은 파일 없이 캐시에서 올렸으면 true. 다운로드 시간은 없다. */

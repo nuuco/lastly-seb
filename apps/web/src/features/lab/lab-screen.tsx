@@ -59,7 +59,7 @@ import {
   type LabState,
   type RunRecord,
 } from './lab-store';
-import { buildInstructionV2 } from './prompt-v2';
+import { buildExperimentInstruction } from './prompt-experiment';
 import {
   applyRuleEdit,
   baseRules,
@@ -77,7 +77,7 @@ import {
 } from './rules-lab';
 
 const ENGINES: EngineId[] = ['rule', 'gemma3-1b', 'gemma3-270m', 'chrome-nano', 'cloud-gemini'];
-const MODES: RunMode[] = ['actual', 'model-v2'];
+const MODES: RunMode[] = ['app', 'experiment'];
 
 function todayIso(): string {
   const d = new Date();
@@ -275,7 +275,7 @@ export function LabScreen() {
         <p className="text-[12px] font-bold text-accent-ink">개발용 · 서버 없이 이 기기에서만 동작</p>
         <h1 className="mt-1 text-[22px] font-bold">온디바이스 실험실</h1>
         <p className="mt-1 text-[13px] text-ink-3">
-          실사용 = 캡처 화면과 같은 interpretLocally · 모델 판단 = 실험용 지시문 v2
+          앱 경로 = 캡처 화면과 같은 interpretLocally · 실험 지시문 = prompt-experiment.ts 를 모델에 바로 보냄 (앱 미사용)
           {tag ? ` · 규칙 수정본 #${tag} 적용 중` : ''}
         </p>
       </header>
@@ -466,26 +466,26 @@ function DirectInput({
         out.warning =
           engine === 'cloud-gemini'
             ? 'Gemini API 키를 ①에 넣어 주세요. 지금은 규칙으로만 나와요.'
-            : '모델이 준비 전이라 실사용 결과는 규칙으로만 나와요. ①에서 준비해 주세요.';
+            : '모델이 준비 전이라 앱 경로 결과는 규칙으로만 나와요. ①에서 준비해 주세요.';
       }
-      out.actual = await runCase(engine, 'actual', input, referenceDate, knownItems, context);
+      out.app = await runCase(engine, 'app', input, referenceDate, knownItems, context);
       if (engine !== 'rule' && modelReady) {
-        out.v2 = await runCase(engine, 'model-v2', input, referenceDate, knownItems, context);
+        out.experiment = await runCase(engine, 'experiment', input, referenceDate, knownItems, context);
       }
       if (engine === 'cloud-gemini') {
         out.promptCloud = `[system]\n${CLOUD_SYSTEM_PROMPT}\n\n[user]\n${buildCloudUserPrompt(input, referenceDate, knownItems)}`;
       } else {
-        out.promptV1 = buildParseInstruction(input, referenceDate, knownItems);
+        out.promptApp = buildParseInstruction(input, referenceDate, knownItems);
       }
-      out.promptV2 = buildInstructionV2(input, referenceDate, knownItems);
+      out.promptExperiment = buildExperimentInstruction(input, referenceDate, knownItems);
       setResult(out);
     } finally {
       setBusy(false);
     }
   };
 
-  const actual = result?.actual as (CaseOutcome & { detail: unknown }) | undefined;
-  const v2 = result?.v2 as (CaseOutcome & { detail: unknown }) | undefined;
+  const app = result?.app as (CaseOutcome & { detail: unknown }) | undefined;
+  const experiment = result?.experiment as (CaseOutcome & { detail: unknown }) | undefined;
 
   return (
     <Section title="② 직접 입력 (음성 · 텍스트)">
@@ -509,20 +509,20 @@ function DirectInput({
       {result ? (
         <div className="mt-3 space-y-3">
           {result.warning ? <p className="text-[13px] text-danger">{String(result.warning)}</p> : null}
-          {actual ? (
+          {app ? (
             <Verdict
-              title={`실사용 (앱 그대로) · ${actual.ms}ms · ${actual.usedModel ? '모델 사용' : '규칙으로 끝남'}`}
-              outcome={actual}
+              title={`앱 경로 · ${app.ms}ms · ${app.usedModel ? '모델 사용' : '규칙으로 끝남'}`}
+              outcome={app}
             />
           ) : null}
-          {v2 ? <Verdict title={`모델 판단 (v2) · ${v2.ms}ms`} outcome={v2} /> : null}
+          {experiment ? <Verdict title={`실험 지시문 · ${experiment.ms}ms`} outcome={experiment} /> : null}
           <Json title="규칙 결과" value={result.rules} />
-          {actual ? <Json title="실사용 전체" value={actual.detail} /> : null}
-          {actual?.raw ? <Json title="실사용 모델 원문" value={actual.raw} /> : null}
-          {v2 ? <Json title="v2 모델 원문" value={v2.raw ?? v2.error} /> : null}
-          {result.promptV1 ? <Json title="보낸 지시문 v1 (앱)" value={result.promptV1} /> : null}
+          {app ? <Json title="앱 경로 전체" value={app.detail} /> : null}
+          {app?.raw ? <Json title="앱 경로 모델 원문" value={app.raw} /> : null}
+          {experiment ? <Json title="실험 지시문 모델 원문" value={experiment.raw ?? experiment.error} /> : null}
+          {result.promptApp ? <Json title="보낸 앱 지시문 (parse-prompt.ts)" value={result.promptApp} /> : null}
           {result.promptCloud ? <Json title="보낸 지시문 (Cloud, apps/ai 와 같음)" value={result.promptCloud} /> : null}
-          <Json title="보낸 지시문 v2 (실험)" value={result.promptV2} />
+          <Json title="실험 지시문 (prompt-experiment.ts, 앱 미사용)" value={result.promptExperiment} />
         </div>
       ) : null}
     </Section>
@@ -578,7 +578,7 @@ function GoldenRunner({
   context: RunContext;
   tag: string;
 }) {
-  const [mode, setMode] = useState<RunMode>('actual');
+  const [mode, setMode] = useState<RunMode>('app');
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -604,8 +604,8 @@ function GoldenRunner({
       setError('①에 Gemini API 키를 넣어 주세요.');
       return;
     }
-    if (engine === 'rule' && mode === 'model-v2') {
-      setError('규칙 엔진은 실사용만 있어요.');
+    if (engine === 'rule' && mode === 'experiment') {
+      setError('규칙 엔진은 앱 경로만 있어요.');
       return;
     }
 
@@ -813,14 +813,14 @@ function Table1({
   };
 
   const accuracy = (engine: EngineId) => {
-    const actual = summary(engine, 'actual');
-    const v2 = summary(engine, 'model-v2');
-    if (!actual && !v2) return <Todo>③ 실행</Todo>;
+    const app = summary(engine, 'app');
+    const experiment = summary(engine, 'experiment');
+    if (!app && !experiment) return <Todo>③ 실행</Todo>;
     return (
       <>
-        {actual ? `실사용 ${pct(actual.all)}` : ''}
-        {actual && v2 ? ' · ' : ''}
-        {v2 ? `v2 ${pct(v2.all)}` : ''}
+        {app ? `앱 경로 ${pct(app.all)}` : ''}
+        {app && experiment ? ' · ' : ''}
+        {experiment ? `실험 지시문 ${pct(experiment.all)}` : ''}
       </>
     );
   };
@@ -856,7 +856,7 @@ function Table1({
     );
   };
 
-  const cloudSummary = summary('cloud-gemini', 'actual') ?? summary('cloud-gemini', 'model-v2');
+  const cloudSummary = summary('cloud-gemini', 'app') ?? summary('cloud-gemini', 'experiment');
   const cloudCalls = (() => {
     const runs = MODES.map((m) => lab.runs[runKey('cloud-gemini', m, goldenSet.version)]).filter(Boolean) as RunRecord[];
     const outs = runs.flatMap((r) => Object.values(r.outcomes)).filter((o) => o.tokensIn != null);
@@ -873,7 +873,7 @@ function Table1({
       engine: 'rule',
       items: [
         ['정확도', accuracy('rule')],
-        ['속도', summary('rule', 'actual') ? `평균 ${summary('rule', 'actual')!.avgMs}ms` : <Todo>③ 실행</Todo>],
+        ['속도', summary('rule', 'app') ? `평균 ${summary('rule', 'app')!.avgMs}ms` : <Todo>③ 실행</Todo>],
       ],
     },
     {
@@ -900,10 +900,10 @@ function Table1({
         [
           '응답 · 준비',
           <>
-            {summary(engine, 'actual')?.modelAvgMs != null
-              ? `모델 ${summary(engine, 'actual')!.modelAvgMs}ms`
-              : summary(engine, 'model-v2')
-                ? `v2 ${summary(engine, 'model-v2')!.avgMs}ms`
+            {summary(engine, 'app')?.modelAvgMs != null
+              ? `모델 ${summary(engine, 'app')!.modelAvgMs}ms`
+              : summary(engine, 'experiment')
+                ? `실험 지시문 ${summary(engine, 'experiment')!.avgMs}ms`
                 : '—'}
             {bench(engine)?.prepareMs != null ? ` · 준비 ${sec(bench(engine)!.prepareMs)}` : ''}
           </>,
@@ -965,7 +965,7 @@ function Table1({
       <p className="mt-2 text-[12px] text-ink-3">
         정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율 (원래 규칙 기준). 메모리는 JS 힙만이라 모델의
         GPU 메모리는 빠져 있어요 — 탭이 강제로 닫히면 &quot;탭 종료&quot;에 체크하세요.
-        {cloudSummary ? ' Cloud 실사용은 서버의 DB 매칭 단계가 빠진 근사치예요.' : ''}
+        {cloudSummary ? ' Cloud 앱 경로는 서버의 DB 매칭 단계가 빠진 근사치예요.' : ''}
       </p>
     </Section>
   );
@@ -1018,7 +1018,7 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
                     {ENGINE_LABELS[run.engine]}
                     {run.ruleTag ? <span className="font-normal text-accent-ink"> · 규칙 #{run.ruleTag}</span> : null}
                   </td>
-                  <td className="p-1">{run.mode === 'actual' ? '실사용' : 'v2'}</td>
+                  <td className="p-1">{MODE_LABELS[run.mode]}</td>
                   <td className="p-1">{pct(summary.intent)}</td>
                   <td className="p-1">{pct(summary.status)}</td>
                   <td className="p-1">
@@ -1035,7 +1035,7 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
                   </td>
                   <td className="p-1 text-ink-3">
                     {summary.total}
-                    {run.mode === 'actual' && run.engine !== 'rule' ? ` · 모델 ${summary.usedModel}` : ''}
+                    {run.mode === 'app' && run.engine !== 'rule' ? ` · 모델 ${summary.usedModel}` : ''}
                     {summary.toServer ? ` · 서버행 ${summary.toServer}` : ''}
                     {summary.errors ? ` · 오류 ${summary.errors}` : ''}
                   </td>
@@ -1046,8 +1046,8 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
         </div>
       )}
       <p className="mt-2 text-[12px] text-ink-3">
-        실사용의 Status 는 &quot;저장 / 저장 안 함&quot; 만 맞춰요 (했는지는 규칙이 정해서 엔진마다 같아요). 엔진별
-        Status · False Completion 비교는 v2 줄로 보세요. 미래 날짜는 채점하지 않아요.
+        앱 경로의 Status 는 &quot;저장 / 저장 안 함&quot; 만 맞춰요 (했는지는 규칙이 정해서 엔진마다 같아요). 엔진별
+        Status · False Completion 비교는 실험 지시문 줄로 보세요. 미래 날짜는 채점하지 않아요.
       </p>
     </Section>
   );

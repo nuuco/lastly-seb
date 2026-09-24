@@ -2,19 +2,19 @@ import { generateOnDevice } from '@/features/on-device/engine';
 import { interpretLocally } from '@/features/on-device/parse-local';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 
-import { callCloudParse, callGemini, CLOUD_V2_SCHEMA, type CloudSettings } from './cloud-gemini';
+import { callCloudParse, callGemini, CLOUD_EXPERIMENT_SCHEMA, type CloudSettings } from './cloud-gemini';
 import { resolveDaysAgo, type GoldenCase, type GoldenStatus } from './golden';
-import { buildInstructionV2, parseV2, RESPONSE_SCHEMA_V2 } from './prompt-v2';
+import { buildExperimentInstruction, parseExperiment, RESPONSE_SCHEMA_EXPERIMENT } from './prompt-experiment';
 
 /**
  * 엔진이 낸 결과를 표 2 칸으로 바꿔 채점한다.
  *
- * 실사용(v1): 캡처 화면과 같은 interpretLocally. 했는지 여부는 규칙이 정한다.
+ * 앱 경로: 캡처 화면과 같은 interpretLocally. 앱 지시문(parse-prompt.ts)을 쓰고, 했는지 여부는 규칙이 정한다.
  *   → 저장 / 저장 안 함 만 알 수 있어서 Status 는 그 두 갈래로만 맞춘다.
- * 모델 판단(v2): 모델에게 status 를 직접 묻는다. 규칙 없음.
+ * 실험 지시문: prompt-experiment.ts 를 모델에 그대로 보내 status 를 직접 묻는다. 규칙 없음.
  */
 export type EngineId = 'rule' | 'gemma3-1b' | 'gemma3-270m' | 'chrome-nano' | 'cloud-gemini';
-export type RunMode = 'actual' | 'model-v2';
+export type RunMode = 'app' | 'experiment';
 
 export const ENGINE_LABELS: Record<EngineId, string> = {
   rule: 'Rule Engine',
@@ -27,11 +27,11 @@ export const ENGINE_LABELS: Record<EngineId, string> = {
 export const isOnDevice = (engine: EngineId) => engine !== 'rule' && engine !== 'cloud-gemini';
 
 export const MODE_LABELS: Record<RunMode, string> = {
-  actual: '실사용 (앱 그대로)',
-  'model-v2': '모델 판단 (v2)',
+  app: '앱 경로',
+  experiment: '실험 지시문',
 };
 
-/** v1 은 "저장 안 함" 이 미완료·미래·애매 중 무엇인지 모른다. */
+/** 앱 경로는 "저장 안 함" 이 미완료·미래·애매 중 무엇인지 모른다. */
 export type GotStatus = GoldenStatus | '저장 안 함' | null;
 
 export interface CaseOutcome {
@@ -80,12 +80,12 @@ export async function runCase(
   const base = { text, n: 0 };
   let tokens: { tokensIn?: number; tokensOut?: number } = {};
 
-  if (mode === 'model-v2' && engine !== 'rule') {
+  if (mode === 'experiment' && engine !== 'rule') {
     let raw: string | null = null;
     try {
-      const instruction = buildInstructionV2(text, referenceDate, knownItems);
+      const instruction = buildExperimentInstruction(text, referenceDate, knownItems);
       if (engine === 'cloud-gemini') {
-        const res = await callGemini(context.cloud!, 'JSON 한 개로만 답한다.', instruction, CLOUD_V2_SCHEMA);
+        const res = await callGemini(context.cloud!, 'JSON 한 개로만 답한다.', instruction, CLOUD_EXPERIMENT_SCHEMA);
         raw = res.text;
         tokens = { tokensIn: res.tokensIn, tokensOut: res.tokensOut };
       } else {
@@ -94,10 +94,10 @@ export async function runCase(
           referenceDate,
           knownItems,
           instruction,
-          responseSchema: RESPONSE_SCHEMA_V2,
+          responseSchema: RESPONSE_SCHEMA_EXPERIMENT,
         });
       }
-      const got = parseV2(raw);
+      const got = parseExperiment(raw);
       return {
         ...base,
         intent: got.intent,
@@ -137,7 +137,7 @@ export async function runCase(
   });
 
   /**
-   * Cloud 실사용: 기기에서 못 채운 문장은 서버가 규칙을 한 번 더 보고, 그래도 이름이 없으면
+   * Cloud 앱 경로: 기기에서 못 채운 문장은 서버가 규칙을 한 번 더 보고, 그래도 이름이 없으면
    * Gemini 를 부른다. 기기 규칙과 서버 규칙이 같은 파서라 여기서는 곧장 Gemini 로 간다.
    * 서버의 기존 항목 매칭(DB) 단계는 빠져 있어 근사치다.
    */
