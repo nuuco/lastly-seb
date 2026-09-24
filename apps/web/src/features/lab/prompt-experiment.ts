@@ -51,15 +51,12 @@ export function buildExperimentInstruction(
   body: string = EXPERIMENT_INSTRUCTIONS,
 ): string {
   const weekday = '일월화수목금토'[new Date(`${referenceDate}T00:00:00`).getDay()] ?? '';
-  const items =
-    knownItems.length === 0
-      ? '(없음)'
-      : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
+  // 이 지시문은 항목 id 를 묻지 않는다. id 의 숫자(item-17)가 days_ago 로 새어 나가서 이름만 넘긴다.
+  const items = knownItems.length === 0 ? '(없음)' : knownItems.map((item) => item.name).join(', ');
   return [
     body,
     `기준일 ${referenceDate} (${weekday}요일)`,
-    '기존 항목:',
-    items,
+    `기존 항목: ${items}`,
     `문장: ${text}`,
   ].join('\n');
 }
