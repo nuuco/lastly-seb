@@ -61,3 +61,36 @@ export function saveLab(state: LabState): void {
     // 저장공간이 막혀도 이번 화면에서는 계속 쓴다.
   }
 }
+
+/**
+ * 준비 중인 엔진을 적어 두고, 끝나면 지운다.
+ * 다음에 열었을 때 남아 있으면 준비 도중 탭이 닫힌 것(대개 메모리 부족)이다.
+ */
+const PREPARING_KEY = 'lastly-lab-preparing';
+
+export function markPreparing(engine: EngineId): void {
+  try {
+    localStorage.setItem(PREPARING_KEY, engine);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearPreparing(): void {
+  try {
+    localStorage.removeItem(PREPARING_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** 지난번 준비가 끝나지 않고 탭이 닫혔으면 그 엔진. 읽으면서 지운다. */
+export function takeInterruptedPrepare(): EngineId | null {
+  try {
+    const engine = localStorage.getItem(PREPARING_KEY) as EngineId | null;
+    localStorage.removeItem(PREPARING_KEY);
+    return engine;
+  } catch {
+    return null;
+  }
+}

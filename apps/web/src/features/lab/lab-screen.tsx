@@ -11,6 +11,7 @@ import {
   activeModelSpec,
   clearModelFiles,
   engineErrorMessage,
+  isEngineCancelled,
   engineProgressLabel,
   ensureEngine,
   isEngineReady,
@@ -54,10 +55,13 @@ import {
   type GoldenSet,
 } from './golden';
 import {
+  clearPreparing,
   EMPTY_STATE,
   loadLab,
+  markPreparing,
   runKey,
   saveLab,
+  takeInterruptedPrepare,
   type BenchRecord,
   type LabState,
   type RunRecord,
@@ -116,7 +120,24 @@ export function LabScreen() {
   const [promptBody, setPromptBody] = useState(EXPERIMENT_INSTRUCTIONS);
 
   useEffect(() => {
-    setLab(loadLab());
+    const interrupted = takeInterruptedPrepare();
+    if (interrupted) {
+      const loaded = loadLab();
+      const next: LabState = {
+        ...loaded,
+        bench: {
+          ...loaded.bench,
+          [interrupted]: benchRecord(loaded.bench[interrupted], { crashed: true, support: '준비 중 탭 종료' }),
+        },
+      };
+      saveLab(next);
+      setLab(next);
+      setNotice(
+        `지난번 ${ENGINE_LABELS[interrupted]} 준비 중에 탭이 닫혔어요 (메모리 부족 추정). 표 1 에 "탭 종료"로 남겼어요. 직접 새로고침한 거라면 체크를 풀어 주세요.`,
+      );
+    } else {
+      setLab(loadLab());
+    }
     setCloud(loadCloudSettings());
     setPromptBody(loadPromptBody());
     const savedRules = loadRuleEdit();
@@ -192,6 +213,7 @@ export function LabScreen() {
     }
 
     setPreparing(true);
+    markPreparing(engine);
     if (fresh) await clearModelFiles(engine as ModelId);
 
     const t0 = performance.now();
@@ -226,6 +248,7 @@ export function LabScreen() {
             downloadBytes: bytes ?? prev.bench[engine]?.downloadBytes ?? null,
             prepareMs: Math.round(readyAt - compileStart),
             jsHeapMB: jsHeapMB(),
+            crashed: false,
             support: '지원',
           }),
         },
@@ -234,13 +257,16 @@ export function LabScreen() {
       const message = engineErrorMessage(err);
       setNotice(message);
       // GPU 가 없어 못 올린 것도 표 1 지원환경에 남긴다.
-      if (message === GPU_UNAVAILABLE || message === GPU_INSECURE) {
+      // 못 올린 것도 표 1 지원환경에 남긴다. 사용자가 멈춘 건 남기지 않는다.
+      if (!isEngineCancelled(err)) {
+        const support = message === GPU_UNAVAILABLE || message === GPU_INSECURE ? '미지원 (WebGPU)' : '준비 실패';
         update((prev) => ({
           ...prev,
-          bench: { ...prev.bench, [engine]: benchRecord(prev.bench[engine], { support: '미지원 (WebGPU)' }) },
+          bench: { ...prev.bench, [engine]: benchRecord(prev.bench[engine], { support }) },
         }));
       }
     } finally {
+      clearPreparing();
       unsub();
       setPreparing(false);
       void readDeviceInfo().then(setDevice);
@@ -317,7 +343,7 @@ export function LabScreen() {
       </header>
 
       <Section title="① 기기 · 엔진 준비">
-        <DeviceBox device={device} />
+        <DeviceBox device={device} bench={lab.bench} />
         <div className="mt-3 flex flex-wrap gap-2">
           {ENGINES.map((id) => (
             <Chip key={id} active={engine === id} onClick={() => selectEngine(id)}>
@@ -1336,11 +1362,11 @@ function PromptSection({
 
 /* ───────────── 작은 부품 ───────────── */
 
-function DeviceBox({ device }: { device: DeviceInfo | null }) {
+function DeviceBox({ device, bench }: { device: DeviceInfo | null; bench: LabState['bench'] }) {
   if (!device) return <p className="text-[13px] text-ink-3">기기 정보를 읽는 중…</p>;
   return (
     <div className="space-y-3">
-      <SupportBox device={device} />
+      <SupportBox device={device} bench={bench} />
       <DeviceList device={device} />
     </div>
   );
@@ -1387,12 +1413,13 @@ function DeviceList({ device }: { device: DeviceInfo }) {
 }
 
 /** 이 기기에서 엔진별로 되는지. 앱이 실제로 고를 경로도 함께 보인다. */
-function SupportBox({ device }: { device: DeviceInfo }) {
-  const v = engineVerdicts(device);
+function SupportBox({ device, bench }: { device: DeviceInfo; bench: LabState['bench'] }) {
+  const v = engineVerdicts(device, bench);
   const rows: Array<[string, Verdict]> = [
     ['Rule Engine', v.rule],
-    ['Gemma 270M · 1B', v.gemma],
-    ['Chrome Nano', v.nano],
+    ['Gemma 3 270M', v['gemma3-270m']],
+    ['Gemma 3 1B', v['gemma3-1b']],
+    ['Chrome Nano', v['chrome-nano']],
     ['앱이 쓰는 경로', v.app],
   ];
   return (
@@ -1401,12 +1428,17 @@ function SupportBox({ device }: { device: DeviceInfo }) {
       <ul className="space-y-1 text-[12px]">
         {rows.map(([label, verdict]) => (
           <li key={label} className="flex gap-2">
-            <span className={verdict.ok ? 'text-accent-ink' : 'text-danger'}>{verdict.ok ? '✓' : '✕'}</span>
+            <span className={verdict.ok ? 'text-accent-ink' : verdict.ok === null ? 'text-ink-3' : 'text-danger'}>
+              {verdict.ok ? '✓' : verdict.ok === null ? '?' : '✕'}
+            </span>
             <span className="w-[120px] shrink-0 font-semibold">{label}</span>
             <span className="text-ink-2">{verdict.text}</span>
           </li>
         ))}
       </ul>
+      <p className="mt-2 text-[11px] text-ink-3">
+        270M · 1B 는 WebGPU 조건이 같아도 메모리 때문에 결과가 갈릴 수 있어요. 각각 ① 준비를 눌러야 ✓/✕ 가 정해져요.
+      </p>
     </div>
   );
 }
