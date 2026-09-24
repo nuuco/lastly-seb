@@ -8,11 +8,16 @@ export interface DeviceInfo {
   webgpu: string;
   /** https 또는 localhost 인지. 아니면 WebGPU 를 못 쓴다. */
   secure: boolean;
+  /** Core 어댑터. 앱 엔진(MediaPipe)은 이것만 쓴다. */
   gpuAdapter: boolean;
+  /** Compatibility 모드 어댑터. 앱 엔진은 쓰지 않지만 기기 비교용으로 남긴다. */
+  compatAdapter: boolean | null;
   shaderF16: boolean | null;
   /** 한 버퍼에 올릴 수 있는 최대 크기(MB). 모델 가중치가 이 안에 들어가야 한다. */
   maxBufferMB: number | null;
   maxStorageBindingMB: number | null;
+  compatMaxBufferMB: number | null;
+  compatMaxStorageBindingMB: number | null;
   nano: string;
   storageUsedMB: number | null;
   storageQuotaMB: number | null;
@@ -28,7 +33,9 @@ type GpuAdapterLike = {
 export async function readDeviceInfo(): Promise<DeviceInfo> {
   const nav = navigator as Navigator & {
     deviceMemory?: number;
-    gpu?: { requestAdapter(options?: { powerPreference?: string }): Promise<GpuAdapterLike | null> };
+    gpu?: {
+      requestAdapter(options?: { powerPreference?: string; featureLevel?: string }): Promise<GpuAdapterLike | null>;
+    };
   };
 
   let webgpu = '없음';
@@ -36,6 +43,10 @@ export async function readDeviceInfo(): Promise<DeviceInfo> {
   let shaderF16: boolean | null = null;
   let maxBufferMB: number | null = null;
   let maxStorageBindingMB: number | null = null;
+  let compatAdapter: boolean | null = null;
+  let compatMaxBufferMB: number | null = null;
+  let compatMaxStorageBindingMB: number | null = null;
+  const toMB = (n?: number) => (n ? Math.round(n / 1_048_576) : null);
   if (nav.gpu) {
     try {
       // 엔진(mediapipe-model.ts)과 같은 옵션으로 묻는다.
@@ -44,7 +55,6 @@ export async function readDeviceInfo(): Promise<DeviceInfo> {
       gpuAdapter = Boolean(adapter);
       if (adapter) {
         shaderF16 = adapter.features?.has('shader-f16') ?? null;
-        const toMB = (n?: number) => (n ? Math.round(n / 1_048_576) : null);
         maxBufferMB = toMB(adapter.limits?.maxBufferSize);
         maxStorageBindingMB = toMB(adapter.limits?.maxStorageBufferBindingSize);
       }
@@ -53,6 +63,15 @@ export async function readDeviceInfo(): Promise<DeviceInfo> {
         : '어댑터 없음';
     } catch {
       webgpu = '오류';
+    }
+    // nuuco/test-ai-demo 와 같은 확인. Core 가 없어도 호환 모드로는 잡히는 기기가 있다.
+    try {
+      const compat = await nav.gpu.requestAdapter({ featureLevel: 'compatibility' });
+      compatAdapter = Boolean(compat);
+      compatMaxBufferMB = toMB(compat?.limits?.maxBufferSize);
+      compatMaxStorageBindingMB = toMB(compat?.limits?.maxStorageBufferBindingSize);
+    } catch {
+      compatAdapter = false;
     }
   }
 
@@ -74,9 +93,12 @@ export async function readDeviceInfo(): Promise<DeviceInfo> {
     webgpu,
     secure: window.isSecureContext,
     gpuAdapter,
+    compatAdapter,
     shaderF16,
     maxBufferMB,
     maxStorageBindingMB,
+    compatMaxBufferMB,
+    compatMaxStorageBindingMB,
     nano: nanoApi ? await chromeNanoAvailability() : 'API 없음',
     storageUsedMB,
     storageQuotaMB,
@@ -91,6 +113,9 @@ export function jsHeapMB(): number | null {
 
 export type Verdict = { ok: boolean | null; text: string };
 
+/** LiteRT 공식 Gemma 3 270M 웹 데모가 요구하는 버퍼 한도(640MiB). 앱 엔진(MediaPipe) 기준은 아니다. */
+export const LITERT_DEMO_BUFFER_MB = 640;
+
 /**
  * 엔진별로 이 기기에서 돌 수 있는지. 앱이 고르는 조건과 같게 판단한다.
  * - Gemma: https + WebGPU 어댑터 (mediapipe-model.ts createWebGpuDevice)
@@ -100,7 +125,15 @@ export function engineVerdicts(device: DeviceInfo): Record<'rule' | 'gemma' | 'n
   const gemma: Verdict = !device.secure
     ? { ok: false, text: 'https 가 아니라 WebGPU 를 쓸 수 없어요' }
     : !device.gpuAdapter
-      ? { ok: false, text: device.webgpu === '없음' ? '이 브라우저에 WebGPU 가 없어요' : 'WebGPU 어댑터를 못 받았어요' }
+      ? {
+          ok: false,
+          text:
+            device.webgpu === '없음'
+              ? '이 브라우저에 WebGPU 가 없어요'
+              : device.compatAdapter
+                ? 'Core 어댑터가 없어요 (호환 모드만 있음 — 앱 엔진은 호환 모드를 쓰지 않아요)'
+                : 'WebGPU 어댑터를 못 받았어요 (Core · 호환 모드 모두 없음)',
+        }
       : {
           ok: true,
           text: `가능${device.shaderF16 === false ? ' (shader-f16 없음 — 느릴 수 있어요)' : ''}`,
