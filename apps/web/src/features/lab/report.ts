@@ -10,9 +10,11 @@ import { runKey, type LabState, type RunRecord } from './lab-store';
  */
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const sec = (ms: number | null | undefined) => (ms == null ? null : `${(ms / 1000).toFixed(1)}초`);
-const mb = (bytes: number | null | undefined) => (bytes == null ? null : `${Math.round(bytes / 1_048_576)}MB`);
+const mb = (bytes: number | null | undefined) =>
+  bytes == null ? null : `${Math.round(bytes / 1_048_576)}MB`;
 const NONE = '미측정';
-const cell = (text: string | null | undefined) => (text ?? NONE).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+const cell = (text: string | null | undefined) =>
+  (text ?? NONE).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
 const ENGINES: EngineId[] = ['rule', 'chrome-nano', 'gemma3-270m', 'gemma3-1b', 'cloud-gemini'];
 const MODES: RunMode[] = ['app', 'experiment'];
@@ -28,7 +30,15 @@ interface ReportInput {
   commit: string | null;
 }
 
-export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag, commit }: ReportInput): string {
+export function labReportMd({
+  lab,
+  device,
+  goldenSet,
+  cloud,
+  ruleTag,
+  promptTag,
+  commit,
+}: ReportInput): string {
   const summary = (engine: EngineId, mode: RunMode, runTag = '') => {
     const run = lab.runs[runKey(engine, mode, goldenSet.version, runTag)];
     return run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
@@ -91,7 +101,9 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
       return [
         ...(s ? [`${MODE_LABELS[mode]} ${pct(s.all)} (${s.correctCount}/${s.total})`] : []),
         ...(edited
-          ? [`${MODE_LABELS[mode]} 수정 #${variant} ${pct(edited.all)} (${edited.correctCount}/${edited.total})`]
+          ? [
+              `${MODE_LABELS[mode]} 수정 #${variant} ${pct(edited.all)} (${edited.correctCount}/${edited.total})`,
+            ]
           : []),
       ];
     });
@@ -116,13 +128,19 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
     const b = bench(engine);
     if (!b) return null;
     const heap = b.jsHeapMB != null ? `JS ${b.jsHeapMB}MB (GPU 제외)` : null;
-    return [heap, b.crashed ? '탭 종료 있음' : heap ? '탭 종료 없음' : null].filter(Boolean).join(' · ') || null;
+    return (
+      [heap, b.crashed ? '탭 종료 있음' : heap ? '탭 종료 없음' : null]
+        .filter(Boolean)
+        .join(' · ') || null
+    );
   };
   const cloudCost = (() => {
-    const cloudRuns = MODES.map((m) => lab.runs[runKey('cloud-gemini', m, goldenSet.version)]).filter(
-      Boolean,
-    ) as RunRecord[];
-    const outs = cloudRuns.flatMap((r) => Object.values(r.outcomes)).filter((o) => o.tokensIn != null);
+    const cloudRuns = MODES.map(
+      (m) => lab.runs[runKey('cloud-gemini', m, goldenSet.version)],
+    ).filter(Boolean) as RunRecord[];
+    const outs = cloudRuns
+      .flatMap((r) => Object.values(r.outcomes))
+      .filter((o) => o.tokensIn != null);
     if (outs.length === 0) return { latency: null, cost: null };
     const tokensIn = outs.reduce((s, o) => s + (o.tokensIn ?? 0), 0) / outs.length;
     const tokensOut = outs.reduce((s, o) => s + (o.tokensOut ?? 0), 0) / outs.length;
@@ -166,16 +184,26 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
       bench('gemma3-1b')?.support ?? null,
       '',
     ],
-    'cloud-gemini': [accuracy('cloud-gemini'), cloudCost.latency, '', '', '', `${cloud.model} (API)`, cloudCost.cost],
+    'cloud-gemini': [
+      accuracy('cloud-gemini'),
+      cloudCost.latency,
+      '',
+      '',
+      '',
+      `${cloud.model} (API)`,
+      cloudCost.cost,
+    ],
   };
   out.push(
     '## ④ 표 1 — 방식별 비교',
     '',
     '| 방식 | 정확도 | 속도 · latency | 다운로드 | 메모리 | 준비시간 | 지원환경 | 비용 |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
-    ...ENGINES.map((engine) => `| ${ENGINE_LABELS[engine]} | ${t1[engine].map(cell).join(' | ')} |`),
+    ...ENGINES.map(
+      (engine) => `| ${ENGINE_LABELS[engine]} | ${t1[engine].map(cell).join(' | ')} |`,
+    ),
     '',
-    '- 정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율. 괄호는 정답 수 / 실행 문장 수. "수정 #번호" 는 내보낼 때 적용 중이던 규칙(앱 경로) · 실험 지시문 수정본 결과',
+    '- 정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율. 괄호는 정답 수 / 실행 문장 수. "수정 #번호" 는 내보낼 때 적용 중이던 규칙 · 앱 지시문(앱 경로), 실험 지시문 수정본 결과',
     '- 빈 칸은 그 방식에 해당하지 않는 항목, "미측정" 은 아직 재지 않은 항목',
     '- 메모리는 JS 힙만 (모델이 쓰는 GPU 메모리는 웹에서 잴 수 없음)',
     '- Cloud 앱 경로는 "서버에 Gemini 해석을 둔다면" 가정. 지금 앱 서버에는 없는 경로',
@@ -184,7 +212,9 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
 
   // ⑤ 표 2
   const order = (run: RunRecord) =>
-    ENGINES.indexOf(run.engine) * 10 + MODES.indexOf(run.mode) * 2 + (run.ruleTag || run.promptTag ? 1 : 0);
+    ENGINES.indexOf(run.engine) * 10 +
+    MODES.indexOf(run.mode) * 2 +
+    (run.ruleTag || run.promptTag || run.appPromptTag ? 1 : 0);
   const rows = runs
     .sort((a, b) => order(a) - order(b))
     .map((run) => ({ run, s: summarize(goldenSet.cases, run.outcomes, run.referenceDate) }))
@@ -197,7 +227,11 @@ export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag,
       '| 엔진 | 방식 | Intent | Status | Activity (부분) | Date | False Completion | 정답 |',
       '| --- | --- | --- | --- | --- | --- | --- | --- |',
       ...rows.map(({ run, s }) => {
-        const tag = [run.ruleTag ? `규칙 #${run.ruleTag}` : '', run.promptTag ? `지시문 #${run.promptTag}` : '']
+        const tag = [
+          run.ruleTag ? `규칙 #${run.ruleTag}` : '',
+          run.promptTag ? `지시문 #${run.promptTag}` : '',
+          run.appPromptTag ? `앱 지시문 #${run.appPromptTag}` : '',
+        ]
           .filter(Boolean)
           .join(' ');
         const extra = [

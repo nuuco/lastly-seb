@@ -58,7 +58,7 @@ export function modeSteps(engine: EngineId, mode: RunMode): string[] {
   }
   return [
     '규칙이 먼저 해석해요. 규칙으로 끝나면 모델을 부르지 않아요.',
-    '규칙이 못 끝낸 문장만 모델에 앱 지시문(parse-prompt.ts)을 보내요.',
+    '규칙이 못 끝낸 문장만 모델에 앱 지시문(parse-prompt.ts, ⑨에서 고쳤으면 수정본)을 보내요.',
     '모델이 낸 값 위에 규칙을 덧씌워요. 저장 여부는 규칙이 정해요.',
     ...tail,
   ];

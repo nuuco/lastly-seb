@@ -27,6 +27,8 @@ export interface RunRecord {
   ruleTag: string;
   /** 실험실에서 고친 실험 지시문으로 돌렸으면 그 표시. */
   promptTag?: string;
+  /** 앱 경로를 실험실에서 고친 앱 지시문으로 돌렸으면 그 표시. */
+  appPromptTag?: string;
   referenceDate: string;
   at: string;
   outcomes: Record<number, CaseOutcome>;

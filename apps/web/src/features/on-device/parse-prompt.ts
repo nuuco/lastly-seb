@@ -5,7 +5,7 @@ import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
  * Google 웹 샘플과 같이 Gemma 3 턴을 직접 열고, 모델 턴을 `{` 로 시작해
  * 1B가 문장으로 새지 않게 한다.
  */
-const INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
+export const APP_INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
 
 days_ago 규칙 (기준일 기준, 정수만):
 - 오늘 / 시간 없음 → 0
@@ -29,24 +29,42 @@ function weekdayLabel(isoDate: string): string {
   return '일월화수목금토'[day] ?? '';
 }
 
+export interface AppInstructionOverride {
+  body: string;
+  /** false 면 기존 항목을 id 없이 이름만 한 줄로 넘긴다. */
+  itemIds: boolean;
+}
+
+let override: AppInstructionOverride | null = null;
+
+/**
+ * 온디바이스 실험실 전용. 앱 경로 측정에서 지시문만 바꿔 보려고 둔 입구다.
+ * 앱 화면은 부르지 않으므로 늘 원래 지시문이다.
+ */
+export function setAppInstructionOverride(next: AppInstructionOverride | null): void {
+  override = next;
+}
+
 /** 모델에 줄 지시문. 채팅 템플릿은 런타임마다 다르게 붙인다. */
 export function buildParseInstruction(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
 ): string {
+  const header = `기준일 ${referenceDate} (${weekdayLabel(referenceDate)}요일)`;
+  if (override && !override.itemIds) {
+    const names =
+      knownItems.length === 0 ? '(없음)' : knownItems.map((item) => item.name).join(', ');
+    return [override.body, header, `기존 항목: ${names}`, `문장: ${text}`].join('\n');
+  }
+
   const items =
     knownItems.length === 0
       ? '(없음)'
       : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
 
-  return [
-    INSTRUCTIONS,
-    `기준일 ${referenceDate} (${weekdayLabel(referenceDate)}요일)`,
-    '기존 항목:',
-    items,
-    `문장: ${text}`,
-  ].join('\n');
+  const body = override?.body ?? APP_INSTRUCTIONS;
+  return [body, header, '기존 항목:', items, `문장: ${text}`].join('\n');
 }
 
 /** Gemma 3 턴을 직접 열고 모델 턴을 `{` 로 시작한다. */

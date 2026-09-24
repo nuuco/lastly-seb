@@ -21,7 +21,11 @@ import {
   type EngineProgress,
 } from '@/features/on-device/engine';
 import type { ModelId } from '@/features/on-device/models';
-import { buildParseInstruction } from '@/features/on-device/parse-prompt';
+import {
+  buildParseInstruction,
+  setAppInstructionOverride,
+  type AppInstructionOverride,
+} from '@/features/on-device/parse-prompt';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 
 import {
@@ -70,7 +74,17 @@ import {
 } from './lab-store';
 import { buildExperimentInstruction, EXPERIMENT_INSTRUCTIONS } from './prompt-experiment';
 import { labReportMd } from './report';
-import { isOriginalPrompt, loadPromptBody, promptTag, savePromptBody } from './prompt-lab';
+import {
+  appPromptTag,
+  isOriginalAppPrompt,
+  isOriginalPrompt,
+  loadAppPrompt,
+  loadPromptBody,
+  ORIGINAL_APP_PROMPT,
+  promptTag,
+  saveAppPrompt,
+  savePromptBody,
+} from './prompt-lab';
 import {
   applyRuleEdit,
   baseRules,
@@ -122,6 +136,8 @@ export function LabScreen() {
   const [rules, setRules] = useState<RuleEdit>(EMPTY_EDIT);
   const [promptBody, setPromptBody] = useState(EXPERIMENT_INSTRUCTIONS);
   const [promptDirty, setPromptDirty] = useState(false);
+  const [appPrompt, setAppPrompt] = useState<AppInstructionOverride>(ORIGINAL_APP_PROMPT);
+  const [appDirty, setAppDirty] = useState(false);
 
   useEffect(() => {
     const interrupted = takeInterruptedPrepare();
@@ -144,6 +160,9 @@ export function LabScreen() {
     }
     setCloud(loadCloudSettings());
     setPromptBody(loadPromptBody());
+    const savedApp = loadAppPrompt();
+    setAppInstructionOverride(isOriginalAppPrompt(savedApp) ? null : savedApp);
+    setAppPrompt(savedApp);
     const savedRules = loadRuleEdit();
     try {
       applyRuleEdit(savedRules);
@@ -182,6 +201,9 @@ export function LabScreen() {
   );
   const tag = ruleTag(rules);
   const pTag = promptTag(promptBody);
+  const aTag = appPromptTag(appPrompt);
+  /** 앱 경로 결과를 가르는 표시: 규칙 수정본 + 앱 지시문 수정본. */
+  const appRunTag = aTag ? `${tag}+${aTag}` : tag;
 
   /** 고른 엔진이 실제로 올라갔는지. Nano 가 없는 기기는 1B 로 대체되므로 막는다. */
   const engineMatches = useCallback(() => {
@@ -287,6 +309,12 @@ export function LabScreen() {
     }
   };
 
+  const changeAppPrompt = (next: AppInstructionOverride) => {
+    setAppInstructionOverride(isOriginalAppPrompt(next) ? null : next);
+    setAppPrompt(next);
+    saveAppPrompt(next);
+  };
+
   const changePrompt = (next: string) => {
     setPromptBody(next);
     savePromptBody(next);
@@ -305,6 +333,7 @@ export function LabScreen() {
       setVersion: run.setVersion,
       ruleTag: run.ruleTag,
       promptTag: run.promptTag ?? '',
+      appPromptTag: run.appPromptTag ?? '',
       referenceDate: run.referenceDate,
       at: run.at,
       summary: summarize(
@@ -324,6 +353,7 @@ export function LabScreen() {
           cloud: { model: cloud.model, priceIn: cloud.priceIn, priceOut: cloud.priceOut },
           rules: isEmptyEdit(rules) ? null : { tag, ...rules },
           experimentPrompt: pTag ? { tag: pTag, body: promptBody } : null,
+          appPrompt: aTag ? { tag: aTag, ...appPrompt } : null,
           tables,
           runs: lab.runs,
         },
@@ -343,6 +373,7 @@ export function LabScreen() {
           앱 경로 = 캡처 화면과 같은 interpretLocally · 실험 지시문 = prompt-experiment.ts 를 모델에 바로 보냄 (앱 미사용)
           {tag ? ` · 규칙 수정본 #${tag} 적용 중` : ''}
           {pTag ? ` · 실험 지시문 수정본 #${pTag} 적용 중` : ''}
+          {aTag ? ` · 앱 지시문 수정본 #${aTag} 적용 중 (앱 경로)` : ''}
         </p>
       </header>
 
@@ -385,6 +416,7 @@ export function LabScreen() {
         engineMatches={engineMatches}
         context={context}
         promptBody={promptBody}
+        aTag={aTag}
       />
 
       <GoldenRunner
@@ -400,10 +432,13 @@ export function LabScreen() {
         context={context}
         tag={tag}
         pTag={pTag}
+        aTag={aTag}
+        appRunTag={appRunTag}
         promptDirty={promptDirty}
+        appDirty={appDirty}
       />
 
-      <Table1 lab={lab} goldenSet={goldenSet} update={update} cloud={cloud} tag={tag} pTag={pTag} />
+      <Table1 lab={lab} goldenSet={goldenSet} update={update} cloud={cloud} tag={appRunTag} pTag={pTag} />
       <Table2 lab={lab} goldenSet={goldenSet} />
 
       <Section title="⑥ 내보내기">
@@ -418,7 +453,7 @@ export function LabScreen() {
                   device,
                   goldenSet,
                   cloud,
-                  ruleTag: tag,
+                  ruleTag: appRunTag,
                   promptTag: pTag,
                   commit: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? null,
                 }),
@@ -443,7 +478,62 @@ export function LabScreen() {
       </Section>
 
       <RulesSection rules={rules} onChange={changeRules} tag={tag} />
-      <PromptSection body={promptBody} onChange={changePrompt} tag={pTag} onDirtyChange={setPromptDirty} />
+      <PromptSection
+        title="⑧ 실험 지시문 고쳐 보기"
+        original={EXPERIMENT_INSTRUCTIONS}
+        filePrefix="experiment-prompt"
+        body={promptBody}
+        onChange={changePrompt}
+        tag={pTag}
+        onDirtyChange={setPromptDirty}
+        intro={
+          <>
+            <p className="text-[13px] text-ink-2">
+              원본: <code>apps/web/src/features/lab/prompt-experiment.ts</code>. &quot;실험 지시문&quot; 방식에서만 쓰고, 규칙 없이
+              모델에 바로 가요. 기준일 · 기존 항목(이름만) · 문장 줄은 아래 본문 뒤에 자동으로 붙어요.
+            </p>
+            <p className="mt-1 text-[13px] text-ink-2">
+              채점은 응답의 <code>intent · status · item_name · days_ago</code> 칸을 읽어요. 이 이름과 status 값(완료 ·
+              미완료 · 미래 · 애매 · 조회)은 그대로 두세요.
+            </p>
+          </>
+        }
+        footer={'고친 뒤 ③에서 "실험 지시문"으로 다시 돌리면 표 2에 "지시문 #번호" 줄이 원본 줄과 나란히 생겨요.'}
+      />
+      <PromptSection
+        title="⑨ 앱 지시문 고쳐 보기 (앱 경로)"
+        original={ORIGINAL_APP_PROMPT.body}
+        filePrefix="app-prompt"
+        body={appPrompt.body}
+        onChange={(body) => changeAppPrompt({ ...appPrompt, body })}
+        onReset={() => changeAppPrompt(ORIGINAL_APP_PROMPT)}
+        tag={aTag}
+        onDirtyChange={setAppDirty}
+        intro={
+          <>
+            <p className="text-[13px] text-ink-2">
+              원본: <code>apps/web/src/features/on-device/parse-prompt.ts</code> (앱이 실제로 쓰는 지시문). 여기서 고치면
+              ③ &quot;앱 경로&quot;와 ② 직접 입력의 앱 경로에서 <b>규칙이 먼저 돌고, 규칙이 못 끝낸 문장만</b> 이
+              지시문으로 모델에 가요. 이 기기의 실험실에만 적용되고 앱 화면은 그대로예요.
+            </p>
+            <p className="mt-1 text-[13px] text-ink-2">
+              응답은 <code>intent · item_name · days_ago · stated_cadence_days</code> 칸을 읽어요. 저장 여부는 규칙이 정해요.
+              Gemma · Nano 에 적용되고, Cloud 앱 경로는 apps/ai 지시문이라 무관해요.
+            </p>
+          </>
+        }
+        extra={
+          <label className="mt-2 flex items-center gap-2 text-[13px]">
+            <input
+              type="checkbox"
+              checked={appPrompt.itemIds}
+              onChange={(e) => changeAppPrompt({ ...appPrompt, itemIds: e.target.checked })}
+            />
+            기존 항목에 id 붙이기 (끄면 <code>기존 항목: 이불 빨래, …</code> 처럼 이름만)
+          </label>
+        }
+        footer={'고친 뒤 ③에서 "앱 경로"로 다시 돌리면 표 2에 "앱 지시문 #번호" 줄이 원본 줄과 나란히 생겨요.'}
+      />
     </main>
   );
 }
@@ -530,6 +620,7 @@ function DirectInput({
   engineMatches,
   context,
   promptBody,
+  aTag,
 }: {
   engine: EngineId;
   referenceDate: string;
@@ -537,6 +628,7 @@ function DirectInput({
   engineMatches: () => boolean;
   context: RunContext;
   promptBody: string;
+  aTag: string;
 }) {
   const speech = useSpeechRecognition();
   const [text, setText] = useState('');
@@ -626,7 +718,12 @@ function DirectInput({
           {app ? <Json title="앱 경로 전체" value={app.detail} /> : null}
           {app?.raw ? <Json title="앱 경로 모델 원문" value={app.raw} /> : null}
           {experiment ? <Json title="실험 지시문 모델 원문" value={experiment.raw ?? experiment.error} /> : null}
-          {result.promptApp ? <Json title="보낸 앱 지시문 (parse-prompt.ts)" value={result.promptApp} /> : null}
+          {result.promptApp ? (
+            <Json
+              title={aTag ? `보낸 앱 지시문 (⑨ 수정본 #${aTag})` : '보낸 앱 지시문 (parse-prompt.ts)'}
+              value={result.promptApp}
+            />
+          ) : null}
           {result.promptCloud ? <Json title="보낸 지시문 (Cloud, apps/ai 와 같음)" value={result.promptCloud} /> : null}
           <Json
             title={isOriginalPrompt(promptBody) ? '실험 지시문 (prompt-experiment.ts, 앱 미사용)' : '실험 지시문 (⑧ 수정본, 앱 미사용)'}
@@ -676,7 +773,10 @@ function GoldenRunner({
   context,
   tag,
   pTag,
+  aTag,
+  appRunTag,
   promptDirty,
+  appDirty,
 }: {
   engine: EngineId;
   goldenSet: GoldenSet;
@@ -690,7 +790,10 @@ function GoldenRunner({
   context: RunContext;
   tag: string;
   pTag: string;
+  aTag: string;
+  appRunTag: string;
   promptDirty: boolean;
+  appDirty: boolean;
 }) {
   const [mode, setMode] = useState<RunMode>('app');
   const [running, setRunning] = useState(false);
@@ -700,8 +803,13 @@ function GoldenRunner({
   const stopRef = useRef(false);
 
   /** 앱 경로는 규칙 수정에, 실험 지시문은 지시문 수정에 따라 결과가 갈린다. */
-  const runTag = mode === 'app' ? tag : pTag;
-  const tagLabel = runTag ? (mode === 'app' ? ` · 규칙 #${runTag}` : ` · 지시문 #${runTag}`) : '';
+  const runTag = mode === 'app' ? appRunTag : pTag;
+  const tagLabel =
+    mode === 'app'
+      ? `${tag ? ` · 규칙 #${tag}` : ''}${aTag ? ` · 앱 지시문 #${aTag}` : ''}`
+      : pTag
+        ? ` · 지시문 #${pTag}`
+        : '';
   const key = runKey(engine, mode, goldenSet.version, runTag);
   const run = lab.runs[key];
   const runSummary = run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
@@ -745,6 +853,7 @@ function GoldenRunner({
             setVersion: goldenSet.version,
             ruleTag: mode === 'app' ? tag : '',
             promptTag: mode === 'experiment' ? pTag : '',
+            appPromptTag: mode === 'app' ? aTag : '',
             referenceDate,
             at: new Date().toISOString(),
             outcomes: { ...outcomes },
@@ -833,14 +942,19 @@ function GoldenRunner({
           </span>
           <span className="block text-[12px] font-normal text-ink-3">
             {mode === 'app'
-              ? `규칙: ${tag ? `수정본 #${tag}` : '원본'} 기준 결과`
+              ? `규칙: ${tag ? `수정본 #${tag}` : '원본'} · 앱 지시문: ${aTag ? `수정본 #${aTag}` : '원본'} 기준 결과`
               : `실험 지시문: ${pTag ? `수정본 #${pTag}` : '원본'} 기준 결과`}
           </span>
         </p>
       ) : null}
       {mode === 'app' && (pTag || promptDirty) ? (
         <p className="mt-2 text-[12px] text-ink-3">
-          앱 경로는 앱 지시문을 써서 ⑧ 실험 지시문 수정과 무관해요. 수정본을 재려면 &quot;실험 지시문&quot;을 고르세요.
+          앱 경로는 ⑨ 앱 지시문을 써서 ⑧ 실험 지시문 수정과 무관해요. 앱 경로의 지시문은 ⑨에서 고치세요.
+        </p>
+      ) : null}
+      {mode === 'app' && appDirty ? (
+        <p className="mt-2 text-[12px] text-danger">
+          ⑨에서 고친 내용을 아직 &quot;적용&quot;하지 않았어요. 지금 실행하면 {aTag ? `수정본 #${aTag}` : '원본'}으로 돌아요.
         </p>
       ) : null}
       {mode === 'experiment' && promptDirty ? (
@@ -1159,7 +1273,7 @@ function Todo({ children }: { children: React.ReactNode }) {
 
 function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
   const order = (run: RunRecord) =>
-    ENGINES.indexOf(run.engine) * 10 + MODES.indexOf(run.mode) * 2 + (run.ruleTag || run.promptTag ? 1 : 0);
+    ENGINES.indexOf(run.engine) * 10 + MODES.indexOf(run.mode) * 2 + (run.ruleTag || run.promptTag || run.appPromptTag ? 1 : 0);
   const rows = Object.values(lab.runs)
     .filter((run) => run.setVersion === goldenSet.version)
     .sort((a, b) => order(a) - order(b))
@@ -1184,11 +1298,14 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
             </thead>
             <tbody>
               {rows.map(({ run, summary }) => (
-                <tr key={`${run.engine}-${run.mode}-${run.ruleTag}-${run.promptTag ?? ''}`} className="border-t border-line">
+                <tr key={`${run.engine}-${run.mode}-${run.ruleTag}-${run.promptTag ?? ''}-${run.appPromptTag ?? ''}`} className="border-t border-line">
                   <td className="p-1 font-bold">
                     {ENGINE_LABELS[run.engine]}
                     {run.ruleTag ? <span className="font-normal text-accent-ink"> · 규칙 #{run.ruleTag}</span> : null}
                     {run.promptTag ? <span className="font-normal text-accent-ink"> · 지시문 #{run.promptTag}</span> : null}
+                    {run.appPromptTag ? (
+                      <span className="font-normal text-accent-ink"> · 앱 지시문 #{run.appPromptTag}</span>
+                    ) : null}
                   </td>
                   <td className="p-1">{MODE_LABELS[run.mode]}</td>
                   <td className="p-1">{pct(summary.intent)}</td>
@@ -1391,15 +1508,30 @@ function RulesSection({
 /* ───────────── ⑧ 실험 지시문 ───────────── */
 
 function PromptSection({
+  title,
+  original,
+  filePrefix,
   body,
   onChange,
+  onReset,
   tag,
   onDirtyChange,
+  intro,
+  extra,
+  footer,
 }: {
+  title: string;
+  original: string;
+  filePrefix: string;
   body: string;
   onChange: (next: string) => void;
+  /** 없으면 본문을 원본으로 되돌린다. */
+  onReset?: () => void;
   tag: string;
   onDirtyChange: (dirty: boolean) => void;
+  intro: React.ReactNode;
+  extra?: React.ReactNode;
+  footer: string;
 }) {
   const [draft, setDraft] = useState(body);
   useEffect(() => setDraft(body), [body]);
@@ -1412,15 +1544,9 @@ function PromptSection({
   };
 
   return (
-    <Section title="⑧ 실험 지시문 고쳐 보기">
-      <p className="text-[13px] text-ink-2">
-        원본: <code>apps/web/src/features/lab/prompt-experiment.ts</code>. &quot;실험 지시문&quot; 방식에서만 쓰고, 앱
-        지시문(parse-prompt.ts)은 바뀌지 않아요. 기준일 · 기존 항목 · 문장 줄은 아래 본문 뒤에 자동으로 붙어요.
-      </p>
-      <p className="mt-1 text-[13px] text-ink-2">
-        채점은 응답의 <code>intent · status · item_name · days_ago</code> 칸을 읽어요. 이 이름과 status 값(완료 ·
-        미완료 · 미래 · 애매 · 조회)은 그대로 두세요.
-      </p>
+    <Section title={title}>
+      {intro}
+      {extra}
       <p className="mt-1 text-[13px] font-bold">{tag ? `지금 지시문: 수정본 #${tag}` : '지금 지시문: 원본'}</p>
       <textarea
         value={draft}
@@ -1433,10 +1559,10 @@ function PromptSection({
         <Button onClick={() => onChange(draft)} disabled={!dirty || !draft.trim()}>
           적용
         </Button>
-        <Button onClick={() => onChange(EXPERIMENT_INSTRUCTIONS)} disabled={!tag && !dirty}>
+        <Button onClick={() => (onReset ? onReset() : onChange(original))} disabled={!tag && !dirty}>
           원래 지시문으로
         </Button>
-        <Button onClick={() => download(`experiment-prompt-${tag || 'original'}.txt`, body, 'text/plain')}>
+        <Button onClick={() => download(`${filePrefix}-${tag || 'original'}.txt`, body, 'text/plain')}>
           .txt 내려받기
         </Button>
         <label className="inline-flex h-10 cursor-pointer items-center rounded-md border border-line bg-bg px-3 text-[13px] font-semibold">
@@ -1453,9 +1579,7 @@ function PromptSection({
         </label>
       </div>
       {dirty ? <p className="mt-1 text-[12px] text-ink-3">고친 내용은 &quot;적용&quot;을 눌러야 실행에 쓰여요.</p> : null}
-      <p className="mt-1 text-[12px] text-ink-3">
-        고친 뒤 ③에서 &quot;실험 지시문&quot;으로 다시 돌리면 표 2에 &quot;지시문 #번호&quot; 줄이 원본 줄과 나란히 생겨요.
-      </p>
+      <p className="mt-1 text-[12px] text-ink-3">{footer}</p>
     </Section>
   );
 }
