@@ -234,8 +234,11 @@ export function markCase(gold: GoldenCase, got: CaseOutcome, referenceDate: stri
     got.status === gold.status ||
     (got.status === '저장 안 함' && ['미완료', '미래', '애매'].includes(gold.status));
 
+  // 앱 경로가 저장하지 않는 게 맞는 말을 저장하지 않았으면 이름·날짜는 쓰이지 않으므로 채점하지 않는다.
+  const rightlyNotSaved = got.status === '저장 안 함' && statusOk;
+
   let activity: CaseMarks['activity'] = 'skip';
-  if (gold.activity) {
+  if (gold.activity && !rightlyNotSaved) {
     const want = squash(gold.activity);
     const have = got.activity ? squash(got.activity) : '';
     activity = have === want ? 'exact' : have && (have.includes(want) || want.includes(have)) ? 'partial' : 'miss';
@@ -243,7 +246,7 @@ export function markCase(gold: GoldenCase, got: CaseOutcome, referenceDate: stri
 
   const wantDays = resolveDaysAgo(gold.date, referenceDate);
   const dateScored =
-    wantDays !== null && wantDays >= 0 && gold.status !== '조회' && gold.status !== '미래';
+    wantDays !== null && wantDays >= 0 && gold.status !== '조회' && gold.status !== '미래' && !rightlyNotSaved;
 
   return {
     intent: got.intent === gold.intent,
