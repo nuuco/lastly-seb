@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { Sheet } from '@/components/ui/sheet';
 import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import {
+  activeModelSpec,
   engineProgressLabel,
   isEngineBusy,
   type EngineProgress,
 } from '@/features/on-device/engine';
-import { activeModel } from '@/features/on-device/models';
 
 /**
  * 모델 파일을 받기 전에 한 번 묻는다. 기록은 막지 않는다.
@@ -71,7 +71,7 @@ export function ModelConsentSheet({
           <h2 className="mt-2 text-[22px] font-bold leading-[1.4] tracking-[-.03em] text-ink">
             AI 모델을 받을까요?
             <br />
-            {activeModel().sizeLabel}예요
+            {activeModelSpec().sizeLabel}예요
           </h2>
           <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
             Wi-Fi에서 받기를 권해요. 안 받아도 규칙으로 동작해요.{' '}

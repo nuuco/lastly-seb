@@ -4,7 +4,7 @@ import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import { hasModelConsent } from './consent';
 import {
   ensureEngine,
-  hasWebGpu,
+  isEngineSupported,
   isEngineReady,
   parseOnDevice,
 } from './engine';
@@ -31,7 +31,7 @@ export async function parseCaptureLocally(
 ): Promise<OnDeviceParseResult | null> {
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
 
-  if (!rulesFinished(rules) && hasModelConsent() && hasWebGpu()) {
+  if (!rulesFinished(rules) && hasModelConsent() && isEngineSupported()) {
     if (isEngineReady()) {
       try {
         return await parseOnDevice(text, referenceDate, knownItems);
