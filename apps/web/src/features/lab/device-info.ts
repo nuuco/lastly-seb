@@ -113,9 +113,6 @@ export function jsHeapMB(): number | null {
 
 export type Verdict = { ok: boolean | null; text: string };
 
-/** LiteRT 공식 Gemma 3 270M 웹 데모가 요구하는 버퍼 한도(640MiB). 앱 엔진(MediaPipe) 기준은 아니다. */
-export const LITERT_DEMO_BUFFER_MB = 640;
-
 /**
  * 엔진별로 이 기기에서 돌 수 있는지. 앱이 고르는 조건과 같게 판단한다.
  * - Gemma: https + WebGPU 어댑터 (mediapipe-model.ts createWebGpuDevice)

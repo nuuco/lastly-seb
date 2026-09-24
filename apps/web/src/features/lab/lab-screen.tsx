@@ -32,7 +32,7 @@ import {
   type CloudSettings,
 } from './cloud-gemini';
 import { CLOUD_SYSTEM_PROMPT } from './cloud-prompt.generated';
-import { engineVerdicts, jsHeapMB, LITERT_DEMO_BUFFER_MB, readDeviceInfo, type DeviceInfo, type Verdict } from './device-info';
+import { engineVerdicts, jsHeapMB, readDeviceInfo, type DeviceInfo, type Verdict } from './device-info';
 import {
   ENGINE_LABELS,
   isOnDevice,
@@ -1373,15 +1373,6 @@ function DeviceList({ device }: { device: DeviceInfo }) {
         {device.maxBufferMB != null
           ? `버퍼 ${device.maxBufferMB}MB · 저장 바인딩 ${device.maxStorageBindingMB ?? '—'}MB`
           : '—'}
-        {device.maxBufferMB != null ? (
-          <span className="block text-ink-3">
-            LiteRT 공식 270M 데모 기준 {LITERT_DEMO_BUFFER_MB}MB{' '}
-            {Math.min(device.maxBufferMB, device.maxStorageBindingMB ?? 0) >= LITERT_DEMO_BUFFER_MB
-              ? '이상 ✓'
-              : '미만 — 그 데모는 실패할 수 있어요'}
-            . 앱 엔진(MediaPipe)은 기준이 달라 ① 준비로 확인해요.
-          </span>
-        ) : null}
       </dd>
       <dt className="text-ink-3">Chrome Nano</dt>
       <dd>{device.nano}</dd>
