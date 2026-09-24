@@ -11,7 +11,8 @@ import type { GoldenStatus } from './golden';
  * 실험 지시문은 모델에게 status 를 직접 묻고, 앞으로의 날짜를 음수로 받는다.
  * 예시 문장은 골든셋과 겹치지 않게 골랐다.
  */
-const EXPERIMENT_INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
+/** 원본 본문. 실험실 ⑧에서 고친 본문이 있으면 그걸 대신 쓴다. */
+export const EXPERIMENT_INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
 
 status 규칙:
 - 완료: 이미 한 일 (했어, 빨았어, 갈았어)
@@ -47,6 +48,7 @@ export function buildExperimentInstruction(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
+  body: string = EXPERIMENT_INSTRUCTIONS,
 ): string {
   const weekday = '일월화수목금토'[new Date(`${referenceDate}T00:00:00`).getDay()] ?? '';
   const items =
@@ -54,7 +56,7 @@ export function buildExperimentInstruction(
       ? '(없음)'
       : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
   return [
-    EXPERIMENT_INSTRUCTIONS,
+    body,
     `기준일 ${referenceDate} (${weekday}요일)`,
     '기존 항목:',
     items,

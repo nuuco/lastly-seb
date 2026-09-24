@@ -25,6 +25,8 @@ export interface RunRecord {
   setVersion: string;
   /** 실험실에서 바꾼 규칙으로 돌렸으면 그 표시. 원래 규칙이면 빈 문자열. */
   ruleTag: string;
+  /** 실험실에서 고친 실험 지시문으로 돌렸으면 그 표시. */
+  promptTag?: string;
   referenceDate: string;
   at: string;
   outcomes: Record<number, CaseOutcome>;

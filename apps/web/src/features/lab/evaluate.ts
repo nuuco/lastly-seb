@@ -57,6 +57,8 @@ export interface CaseOutcome {
 export interface RunContext {
   rules?: boolean;
   cloud?: CloudSettings;
+  /** 실험실 ⑧에서 고친 실험 지시문 본문. 없으면 원본. */
+  experimentBody?: string;
 }
 
 export interface CaseMarks {
@@ -83,7 +85,7 @@ export async function runCase(
   if (mode === 'experiment' && engine !== 'rule') {
     let raw: string | null = null;
     try {
-      const instruction = buildExperimentInstruction(text, referenceDate, knownItems);
+      const instruction = buildExperimentInstruction(text, referenceDate, knownItems, context.experimentBody);
       if (engine === 'cloud-gemini') {
         const res = await callGemini(context.cloud!, 'JSON 한 개로만 답한다.', instruction, CLOUD_EXPERIMENT_SCHEMA);
         raw = res.text;
