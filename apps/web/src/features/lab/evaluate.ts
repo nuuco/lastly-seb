@@ -31,6 +31,38 @@ export const MODE_LABELS: Record<RunMode, string> = {
   experiment: '실험 지시문',
 };
 
+/** 고른 엔진·방식에서 문장 하나가 거치는 순서. 실험실 화면 설명용. */
+export function modeSteps(engine: EngineId, mode: RunMode): string[] {
+  if (mode === 'experiment') {
+    return [
+      '규칙은 쓰지 않아요.',
+      '실험 지시문(prompt-experiment.ts, ⑧에서 고쳤으면 수정본)을 모델에 바로 보내요.',
+      '모델이 status 를 "완료"로 답한 문장만 저장한 것으로 봐요.',
+    ];
+  }
+  const tail = [
+    '못 한 일 · 앞으로 할 일 · 애매한 말이면 "아직 안 한 일은 기록하지 않아요" 로 끝나고 저장하지 않아요.',
+    '나머지는 서버로 보낼 칸(이름 · 날짜)이 정해져요. 서버의 항목 매칭은 재지 않아요.',
+  ];
+  if (engine === 'rule') {
+    return ['규칙만으로 의도 · 이름 · 날짜 · 저장 여부를 정해요. 모델은 부르지 않아요.', ...tail];
+  }
+  if (engine === 'cloud-gemini') {
+    return [
+      '규칙이 먼저 해석해요. 규칙으로 끝나면 여기서 멈춰요.',
+      '규칙이 못 끝낸 문장만 Gemini 에 apps/ai 와 같은 지시문으로 보내요.',
+      '※ 지금 앱 서버는 이 단계 없이 되묻기로 가요. 이 줄은 "서버에 Gemini 해석을 둔다면" 가정이에요.',
+      ...tail,
+    ];
+  }
+  return [
+    '규칙이 먼저 해석해요. 규칙으로 끝나면 모델을 부르지 않아요.',
+    '규칙이 못 끝낸 문장만 모델에 앱 지시문(parse-prompt.ts)을 보내요.',
+    '모델이 낸 값 위에 규칙을 덧씌워요. 저장 여부는 규칙이 정해요.',
+    ...tail,
+  ];
+}
+
 /** 앱 경로는 "저장 안 함" 이 미완료·미래·애매 중 무엇인지 모른다. */
 export type GotStatus = GoldenStatus | '저장 안 함' | null;
 

@@ -39,6 +39,7 @@ import {
   isOnDevice,
   markCase,
   MODE_LABELS,
+  modeSteps,
   runCase,
   summarize,
   type CaseOutcome,
@@ -577,10 +578,23 @@ function DirectInput({
           {app ? (
             <Verdict
               title={`앱 경로 · ${app.ms}ms · ${app.usedModel ? '모델 사용' : '규칙으로 끝남'}`}
+              hint={
+                engine === 'rule'
+                  ? '규칙만으로 정했어요.'
+                  : app.usedModel
+                    ? '규칙이 못 끝내서 모델까지 갔어요. 모델 값 위에 규칙을 덧씌웠어요 (저장 여부는 규칙).'
+                    : '규칙이 먼저 끝내서 모델은 부르지 않았어요.'
+              }
               outcome={app}
             />
           ) : null}
-          {experiment ? <Verdict title={`실험 지시문 · ${experiment.ms}ms`} outcome={experiment} /> : null}
+          {experiment ? (
+            <Verdict
+              title={`실험 지시문 · ${experiment.ms}ms`}
+              hint="규칙 없이 실험 지시문을 모델에 바로 보냈어요. status 가 완료일 때만 저장."
+              outcome={experiment}
+            />
+          ) : null}
           <Json title="규칙 결과" value={result.rules} />
           {app ? <Json title="앱 경로 전체" value={app.detail} /> : null}
           {app?.raw ? <Json title="앱 경로 모델 원문" value={app.raw} /> : null}
@@ -597,10 +611,11 @@ function DirectInput({
   );
 }
 
-function Verdict({ title, outcome }: { title: string; outcome: CaseOutcome }) {
+function Verdict({ title, hint, outcome }: { title: string; hint?: string; outcome: CaseOutcome }) {
   return (
     <div className="rounded-md border border-line bg-card p-3">
       <p className="text-[12px] font-bold text-ink-3">{title}</p>
+      {hint ? <p className="text-[11px] text-ink-3">{hint}</p> : null}
       <p className="mt-1">
         {outcome.intent === 'query' ? '조회' : '기록'} · {outcome.status ?? '—'} ·{' '}
         {outcome.activity ?? '(이름 없음)'} · {outcome.daysAgo ?? '—'}일 전 ·{' '}
@@ -726,6 +741,13 @@ function GoldenRunner({
           </Chip>
         ))}
       </div>
+      {engine === 'rule' && mode === 'experiment' ? null : (
+        <ol className="mt-2 list-decimal space-y-0.5 rounded-md bg-bg py-2 pl-7 pr-3 text-[12px] text-ink-2">
+          {modeSteps(engine, mode).map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-ink-2">
         <span>
           세트 {goldenSet.version} · {goldenSet.cases.length}문장
