@@ -4,7 +4,7 @@ import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contrac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
-import { parseCaptureLocally, toClientSlots } from '@/features/on-device/parse-local';
+import { DEFERRED_MESSAGE, interpretLocally } from '@/features/on-device/parse-local';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { speak } from '@/features/on-device/voice-guidance';
 import { captureApi } from '@/lib/api/capture';
@@ -70,21 +70,17 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       asrConfidence?: number;
       knownItems?: OnDeviceKnownItem[];
     }) => {
-      const parsed = await parseCaptureLocally(
-        input.text,
-        todayIso(),
-        input.knownItems ?? [],
-      );
+      const local = await interpretLocally(input.text, todayIso(), input.knownItems ?? []);
 
-      if (parsed && !parsed.willSave && parsed.intent === 'record') {
-        return { deferred: '아직 안 한 일은 기록하지 않아요' as const };
+      if (local.deferred) {
+        return { deferred: DEFERRED_MESSAGE };
       }
 
       return captureApi.interpret({
         text: input.text,
         mode: input.mode,
         asrConfidence: input.asrConfidence,
-        slots: parsed ? toClientSlots(parsed) : undefined,
+        slots: local.slots,
       });
     },
     onMutate: (input) => {

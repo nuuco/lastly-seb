@@ -20,29 +20,67 @@ export function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
   };
 }
 
+export const DEFERRED_MESSAGE = '아직 안 한 일은 기록하지 않아요';
+
+export interface LocalInterpretation {
+  /** null 이면 기기에서 못 채웠다. 서버가 규칙·되묻기로 이어간다. */
+  parsed: OnDeviceParseResult | null;
+  /** 저장하지 않을 말(못 함·예정·애매). 서버로 보내지 않는다. */
+  deferred: boolean;
+  /** 서버로 보낼 칸. */
+  slots: ClientParseSlots | undefined;
+  /** 모델까지 돌았는지. 규칙으로 끝났거나 모델이 준비 전이면 false. */
+  usedModel: boolean;
+  modelError: string | null;
+}
+
+/**
+ * 캡처가 서버로 보내기 전까지 기기에서 하는 일 전부.
+ * 캡처 화면과 온디바이스 실험실이 같은 함수를 부른다.
+ */
+export async function interpretLocally(
+  text: string,
+  referenceDate: string,
+  knownItems: OnDeviceKnownItem[],
+  options: { allowModel?: boolean } = {},
+): Promise<LocalInterpretation> {
+  const local = await parseCaptureLocally(text, referenceDate, knownItems, options.allowModel ?? true);
+  const { parsed } = local;
+  const deferred = Boolean(parsed && !parsed.willSave && parsed.intent === 'record');
+  return {
+    ...local,
+    deferred,
+    slots: !deferred && parsed ? toClientSlots(parsed) : undefined,
+  };
+}
+
 /**
  * 이 기기에서 칸을 채운다. 규칙이 못 끝낸 문장만 모델을 돌린다.
  * 이름도 의도도 없으면 null — 그때는 서버가 규칙·되묻기로 이어간다.
  */
-export async function parseCaptureLocally(
+async function parseCaptureLocally(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
-): Promise<OnDeviceParseResult | null> {
+  allowModel: boolean,
+): Promise<{ parsed: OnDeviceParseResult | null; usedModel: boolean; modelError: string | null }> {
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
+  let modelError: string | null = null;
 
-  if (!rulesFinished(rules) && hasModelConsent() && isEngineSupported()) {
+  if (allowModel && !rulesFinished(rules) && hasModelConsent() && isEngineSupported()) {
     if (isEngineReady()) {
       try {
-        return await parseOnDevice(text, referenceDate, knownItems);
-      } catch {
+        const parsed = await parseOnDevice(text, referenceDate, knownItems);
+        return { parsed, usedModel: true, modelError: null };
+      } catch (err) {
         // 모델이 깨져도 기록은 규칙·서버로 이어간다.
+        modelError = err instanceof Error ? err.message : String(err);
       }
     } else {
       void ensureEngine().catch(() => undefined);
     }
   }
 
-  if (rules.itemName || rules.intent === 'query' || !rules.willSave) return rules;
-  return null;
+  const parsed = rules.itemName || rules.intent === 'query' || !rules.willSave ? rules : null;
+  return { parsed, usedModel: false, modelError };
 }
