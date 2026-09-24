@@ -20,18 +20,36 @@ import type { ModelId } from '@/features/on-device/models';
 import { buildParseInstruction } from '@/features/on-device/parse-prompt';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 
+import {
+  buildCloudUserPrompt,
+  costUsd,
+  EMPTY_CLOUD,
+  loadCloudSettings,
+  saveCloudSettings,
+  type CloudSettings,
+} from './cloud-gemini';
+import { CLOUD_SYSTEM_PROMPT } from './cloud-prompt.generated';
 import { jsHeapMB, readDeviceInfo, type DeviceInfo } from './device-info';
 import {
   ENGINE_LABELS,
+  isOnDevice,
   markCase,
   MODE_LABELS,
   runCase,
   summarize,
   type CaseOutcome,
   type EngineId,
+  type RunContext,
   type RunMode,
+  type Table2Row,
 } from './evaluate';
-import { GOLDEN_V1, parseGoldenCsv, resolveDaysAgo, type GoldenSet } from './golden';
+import {
+  GOLDEN_V1,
+  goldenToCsv,
+  parseGoldenCsv,
+  resolveDaysAgo,
+  type GoldenSet,
+} from './golden';
 import {
   EMPTY_STATE,
   loadLab,
@@ -39,10 +57,26 @@ import {
   saveLab,
   type BenchRecord,
   type LabState,
+  type RunRecord,
 } from './lab-store';
 import { buildInstructionV2 } from './prompt-v2';
+import {
+  applyRuleEdit,
+  baseRules,
+  EMPTY_EDIT,
+  isEmptyEdit,
+  loadRuleEdit,
+  parseRuleEditJson,
+  RULE_TABLES,
+  ruleEditJson,
+  ruleEditTs,
+  ruleTag,
+  saveRuleEdit,
+  type RuleEdit,
+  type RuleKey,
+} from './rules-lab';
 
-const ENGINES: EngineId[] = ['rule', 'gemma3-1b', 'gemma3-270m', 'chrome-nano'];
+const ENGINES: EngineId[] = ['rule', 'gemma3-1b', 'gemma3-270m', 'chrome-nano', 'cloud-gemini'];
 const MODES: RunMode[] = ['actual', 'model-v2'];
 
 function todayIso(): string {
@@ -52,8 +86,17 @@ function todayIso(): string {
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-const sec = (ms: number | null) => (ms === null ? '—' : `${(ms / 1000).toFixed(1)}초`);
-const mb = (bytes: number | null) => (bytes === null ? '—' : `${Math.round(bytes / 1_048_576)}MB`);
+const sec = (ms: number | null | undefined) => (ms == null ? null : `${(ms / 1000).toFixed(1)}초`);
+const mb = (bytes: number | null | undefined) => (bytes == null ? null : `${Math.round(bytes / 1_048_576)}MB`);
+
+function download(name: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function LabScreen() {
   const [lab, setLab] = useState<LabState>(EMPTY_STATE);
@@ -64,9 +107,19 @@ export function LabScreen() {
   const [progress, setProgress] = useState<EngineProgress | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [cloud, setCloud] = useState<CloudSettings>(EMPTY_CLOUD);
+  const [rules, setRules] = useState<RuleEdit>(EMPTY_EDIT);
 
   useEffect(() => {
     setLab(loadLab());
+    setCloud(loadCloudSettings());
+    const savedRules = loadRuleEdit();
+    try {
+      applyRuleEdit(savedRules);
+      setRules(savedRules);
+    } catch {
+      saveRuleEdit(EMPTY_EDIT);
+    }
     void readDeviceInfo().then(setDevice);
     return subscribeEngineProgress(setProgress);
   }, []);
@@ -79,25 +132,36 @@ export function LabScreen() {
     });
   }, []);
 
+  const updateCloud = (patch: Partial<CloudSettings>) => {
+    setCloud((prev) => {
+      const next = { ...prev, ...patch };
+      saveCloudSettings(next);
+      return next;
+    });
+  };
+
   const knownItems: OnDeviceKnownItem[] = useMemo(
     () => goldenSet.knownItems.map((item) => ({ ...item, lastDoneOn: null })),
     [goldenSet],
   );
 
+  const context: RunContext = useMemo(() => ({ cloud }), [cloud]);
+  const tag = ruleTag(rules);
+
   /** 고른 엔진이 실제로 올라갔는지. Nano 가 없는 기기는 1B 로 대체되므로 막는다. */
   const engineMatches = useCallback(() => {
-    if (engine === 'rule') return true;
+    if (!isOnDevice(engine)) return true;
     return activeModelSpec().id === engine;
   }, [engine]);
 
   const selectEngine = (next: EngineId) => {
     setEngine(next);
     setNotice(null);
-    if (next !== 'rule') setActiveModel(next as ModelId);
+    if (isOnDevice(next)) setActiveModel(next as ModelId);
   };
 
   const prepare = async (fresh: boolean) => {
-    if (engine === 'rule') return;
+    if (!isOnDevice(engine)) return;
     setNotice(null);
     setModelConsent('granted');
     setActiveModel(engine as ModelId);
@@ -130,15 +194,16 @@ export function LabScreen() {
     try {
       await ensureEngine();
       const readyAt = performance.now();
-      const compileStart: number = compileAt ?? t0;
+      // Nano 는 compiling 단계가 없다. 받기가 끝나면 곧 준비다.
+      const compileStart: number = compileAt ?? (sawDownload ? readyAt : t0);
       update((prev) => ({
         ...prev,
         bench: {
           ...prev.bench,
           [engine]: benchRecord(prev.bench[engine], {
             fromCache: !sawDownload,
-            downloadMs: sawDownload ? Math.round(compileStart - t0) : null,
-            downloadBytes: bytes,
+            downloadMs: sawDownload ? Math.round(compileStart - t0) : prev.bench[engine]?.downloadMs ?? null,
+            downloadBytes: bytes ?? prev.bench[engine]?.downloadBytes ?? null,
             prepareMs: Math.round(readyAt - compileStart),
             jsHeapMB: jsHeapMB(),
             support: '지원',
@@ -164,11 +229,18 @@ export function LabScreen() {
     }
   };
 
+  const changeRules = (next: RuleEdit) => {
+    applyRuleEdit(next);
+    setRules(next);
+    saveRuleEdit(next);
+  };
+
   const exportJson = () => {
     const tables = Object.values(lab.runs).map((run) => ({
       engine: run.engine,
       mode: run.mode,
       setVersion: run.setVersion,
+      ruleTag: run.ruleTag,
       referenceDate: run.referenceDate,
       at: run.at,
       summary: summarize(
@@ -177,29 +249,24 @@ export function LabScreen() {
         run.referenceDate,
       ),
     }));
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            exportedAt: new Date().toISOString(),
-            commit: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? null,
-            device,
-            bench: lab.bench,
-            tables,
-            runs: lab.runs,
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: 'application/json' },
+    download(
+      `lastly-lab-${todayIso()}.json`,
+      JSON.stringify(
+        {
+          exportedAt: new Date().toISOString(),
+          commit: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? null,
+          device,
+          bench: lab.bench,
+          cloud: { model: cloud.model, priceIn: cloud.priceIn, priceOut: cloud.priceOut },
+          rules: isEmptyEdit(rules) ? null : { tag, ...rules },
+          tables,
+          runs: lab.runs,
+        },
+        null,
+        2,
+      ),
+      'application/json',
     );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lastly-lab-${todayIso()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -209,6 +276,7 @@ export function LabScreen() {
         <h1 className="mt-1 text-[22px] font-bold">온디바이스 실험실</h1>
         <p className="mt-1 text-[13px] text-ink-3">
           실사용 = 캡처 화면과 같은 interpretLocally · 모델 판단 = 실험용 지시문 v2
+          {tag ? ` · 규칙 수정본 #${tag} 적용 중` : ''}
         </p>
       </header>
 
@@ -221,9 +289,9 @@ export function LabScreen() {
             </Chip>
           ))}
         </div>
-        {engine !== 'rule' ? (
+        {isOnDevice(engine) ? (
           <div className="mt-3 space-y-2">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button onClick={() => void prepare(false)} disabled={preparing}>
                 준비
               </Button>
@@ -236,6 +304,8 @@ export function LabScreen() {
               {isEngineReady() && engineMatches() ? ' · 준비 완료' : ''}
             </p>
           </div>
+        ) : engine === 'cloud-gemini' ? (
+          <CloudBox cloud={cloud} onChange={updateCloud} />
         ) : (
           <p className="mt-3 text-[13px] text-ink-3">규칙 엔진은 받을 파일이 없어요.</p>
         )}
@@ -247,6 +317,7 @@ export function LabScreen() {
         referenceDate={referenceDate}
         knownItems={knownItems}
         engineMatches={engineMatches}
+        context={context}
       />
 
       <GoldenRunner
@@ -259,9 +330,11 @@ export function LabScreen() {
         update={update}
         engineMatches={engineMatches}
         onCsv={onCsv}
+        context={context}
+        tag={tag}
       />
 
-      <Table1 lab={lab} goldenSet={goldenSet} update={update} />
+      <Table1 lab={lab} goldenSet={goldenSet} update={update} cloud={cloud} />
       <Table2 lab={lab} goldenSet={goldenSet} />
 
       <Section title="⑥ 내보내기">
@@ -276,6 +349,8 @@ export function LabScreen() {
           </Button>
         </div>
       </Section>
+
+      <RulesSection rules={rules} onChange={changeRules} tag={tag} />
     </main>
   );
 }
@@ -295,6 +370,64 @@ function benchRecord(prev: BenchRecord | undefined, patch: Partial<BenchRecord>)
   };
 }
 
+/* ───────────── ① Cloud 설정 ───────────── */
+
+function CloudBox({
+  cloud,
+  onChange,
+}: {
+  cloud: CloudSettings;
+  onChange: (patch: Partial<CloudSettings>) => void;
+}) {
+  const num = (v: string) => (v.trim() === '' ? null : Number(v));
+  return (
+    <div className="mt-3 space-y-2 text-[13px]">
+      <label className="block">
+        <span className="text-ink-3">Gemini API 키 (이 기기에만 저장)</span>
+        <input
+          type="password"
+          value={cloud.apiKey}
+          onChange={(e) => onChange({ apiKey: e.target.value.trim() })}
+          className="mt-1 h-10 w-full rounded-md border border-line bg-bg px-3"
+          placeholder="AI Studio 에서 받은 키"
+        />
+      </label>
+      <label className="block">
+        <span className="text-ink-3">모델 (apps/ai 기본값과 같게)</span>
+        <input
+          value={cloud.model}
+          onChange={(e) => onChange({ model: e.target.value.trim() })}
+          className="mt-1 h-10 w-full rounded-md border border-line bg-bg px-3"
+        />
+      </label>
+      <div className="flex gap-2">
+        <label className="flex-1">
+          <span className="text-ink-3">입력 단가 $/1M</span>
+          <input
+            inputMode="decimal"
+            value={cloud.priceIn ?? ''}
+            onChange={(e) => onChange({ priceIn: num(e.target.value) })}
+            className="mt-1 h-10 w-full rounded-md border border-line bg-bg px-3"
+          />
+        </label>
+        <label className="flex-1">
+          <span className="text-ink-3">출력 단가 $/1M</span>
+          <input
+            inputMode="decimal"
+            value={cloud.priceOut ?? ''}
+            onChange={(e) => onChange({ priceOut: num(e.target.value) })}
+            className="mt-1 h-10 w-full rounded-md border border-line bg-bg px-3"
+          />
+        </label>
+      </div>
+      <p className="text-[12px] text-ink-3">
+        운영 키 말고 테스트용 키를 쓰고, AI Studio 에서 키 사용처를 이 배포 주소로 제한해 두세요. 단가는
+        Gemini 가격표에서 그 모델 값을 넣으면 표 1 비용이 계산돼요.
+      </p>
+    </div>
+  );
+}
+
 /* ───────────── ② 직접 입력 ───────────── */
 
 function DirectInput({
@@ -302,11 +435,13 @@ function DirectInput({
   referenceDate,
   knownItems,
   engineMatches,
+  context,
 }: {
   engine: EngineId;
   referenceDate: string;
   knownItems: OnDeviceKnownItem[];
   engineMatches: () => boolean;
+  context: RunContext;
 }) {
   const speech = useSpeechRecognition();
   const [text, setText] = useState('');
@@ -322,20 +457,26 @@ function DirectInput({
     if (!input) return;
     setBusy(true);
     try {
-      const rules = parseWithRulesOnly(input, referenceDate, knownItems);
-      const out: Record<string, unknown> = { rules };
-      if (engine !== 'rule' && !engineMatches()) {
-        out.warning = '고른 엔진이 이 기기에서 올라가지 않았어요. ①에서 준비해 주세요.';
+      const out: Record<string, unknown> = {
+        rules: parseWithRulesOnly(input, referenceDate, knownItems),
+      };
+      const modelReady =
+        engine === 'cloud-gemini' ? Boolean(context.cloud?.apiKey) : isOnDevice(engine) && isEngineReady() && engineMatches();
+      if (engine !== 'rule' && !modelReady) {
+        out.warning =
+          engine === 'cloud-gemini'
+            ? 'Gemini API 키를 ①에 넣어 주세요. 지금은 규칙으로만 나와요.'
+            : '모델이 준비 전이라 실사용 결과는 규칙으로만 나와요. ①에서 준비해 주세요.';
       }
-      if (engine !== 'rule' && !isEngineReady()) {
-        out.warning = '모델이 준비 전이라 실사용 결과는 규칙으로만 나와요. ①에서 준비해 주세요.';
+      out.actual = await runCase(engine, 'actual', input, referenceDate, knownItems, context);
+      if (engine !== 'rule' && modelReady) {
+        out.v2 = await runCase(engine, 'model-v2', input, referenceDate, knownItems, context);
       }
-      const actual = await runCase(engine, 'actual', input, referenceDate, knownItems);
-      out.actual = actual;
-      if (engine !== 'rule' && isEngineReady()) {
-        out.v2 = await runCase(engine, 'model-v2', input, referenceDate, knownItems);
+      if (engine === 'cloud-gemini') {
+        out.promptCloud = `[system]\n${CLOUD_SYSTEM_PROMPT}\n\n[user]\n${buildCloudUserPrompt(input, referenceDate, knownItems)}`;
+      } else {
+        out.promptV1 = buildParseInstruction(input, referenceDate, knownItems);
       }
-      out.promptV1 = buildParseInstruction(input, referenceDate, knownItems);
       out.promptV2 = buildInstructionV2(input, referenceDate, knownItems);
       setResult(out);
     } finally {
@@ -376,10 +517,11 @@ function DirectInput({
           ) : null}
           {v2 ? <Verdict title={`모델 판단 (v2) · ${v2.ms}ms`} outcome={v2} /> : null}
           <Json title="규칙 결과" value={result.rules} />
-          {actual ? <Json title="실사용 전체 (interpretLocally)" value={actual.detail} /> : null}
+          {actual ? <Json title="실사용 전체" value={actual.detail} /> : null}
           {actual?.raw ? <Json title="실사용 모델 원문" value={actual.raw} /> : null}
           {v2 ? <Json title="v2 모델 원문" value={v2.raw ?? v2.error} /> : null}
-          <Json title="보낸 지시문 v1 (앱)" value={result.promptV1} />
+          {result.promptV1 ? <Json title="보낸 지시문 v1 (앱)" value={result.promptV1} /> : null}
+          {result.promptCloud ? <Json title="보낸 지시문 (Cloud, apps/ai 와 같음)" value={result.promptCloud} /> : null}
           <Json title="보낸 지시문 v2 (실험)" value={result.promptV2} />
         </div>
       ) : null}
@@ -397,6 +539,12 @@ function Verdict({ title, outcome }: { title: string; outcome: CaseOutcome }) {
         <b className={outcome.saved ? 'text-accent-ink' : 'text-ink-2'}>
           {outcome.saved ? '완료로 저장' : '저장 안 함'}
         </b>
+        {outcome.tokensIn != null ? (
+          <span className="text-ink-3">
+            {' '}
+            · 토큰 {outcome.tokensIn}/{outcome.tokensOut}
+          </span>
+        ) : null}
       </p>
       {outcome.error ? <p className="mt-1 text-[12px] text-danger">{outcome.error}</p> : null}
     </div>
@@ -415,6 +563,8 @@ function GoldenRunner({
   update,
   engineMatches,
   onCsv,
+  context,
+  tag,
 }: {
   engine: EngineId;
   goldenSet: GoldenSet;
@@ -425,20 +575,22 @@ function GoldenRunner({
   update: (fn: (prev: LabState) => LabState) => void;
   engineMatches: () => boolean;
   onCsv: (file: File) => void;
+  context: RunContext;
+  tag: string;
 }) {
   const [mode, setMode] = useState<RunMode>('actual');
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [showRows, setShowRows] = useState(false);
+  const [view, setView] = useState<'none' | 'set' | 'result'>('none');
   const stopRef = useRef(false);
 
-  const key = runKey(engine, mode, goldenSet.version);
+  const key = runKey(engine, mode, goldenSet.version, tag);
   const run = lab.runs[key];
 
   const start = async () => {
     setError(null);
-    if (engine !== 'rule') {
+    if (isOnDevice(engine)) {
       if (!engineMatches()) {
         setError('고른 엔진이 이 기기에서 올라가지 않았어요.');
         return;
@@ -447,6 +599,10 @@ function GoldenRunner({
         setError('①에서 먼저 "준비"를 눌러 모델을 올려 주세요. 준비 전이면 결과가 규칙으로만 나와요.');
         return;
       }
+    }
+    if (engine === 'cloud-gemini' && !context.cloud?.apiKey) {
+      setError('①에 Gemini API 키를 넣어 주세요.');
+      return;
     }
     if (engine === 'rule' && mode === 'model-v2') {
       setError('규칙 엔진은 실사용만 있어요.');
@@ -466,6 +622,7 @@ function GoldenRunner({
             engine,
             mode,
             setVersion: goldenSet.version,
+            ruleTag: tag,
             referenceDate,
             at: new Date().toISOString(),
             outcomes: { ...outcomes },
@@ -475,7 +632,7 @@ function GoldenRunner({
 
     for (const [index, gold] of goldenSet.cases.entries()) {
       if (stopRef.current) break;
-      const got = await runCase(engine, mode, gold.text, referenceDate, knownItems);
+      const got = await runCase(engine, mode, gold.text, referenceDate, knownItems, context);
       const { detail: _detail, ...outcome } = got;
       outcomes[gold.n] = { ...outcome, n: gold.n };
       setDone(index + 1);
@@ -483,6 +640,7 @@ function GoldenRunner({
     }
     save();
     setRunning(false);
+    setView('result');
   };
 
   return (
@@ -494,10 +652,20 @@ function GoldenRunner({
           </Chip>
         ))}
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-ink-2">
         <span>
           세트 {goldenSet.version} · {goldenSet.cases.length}문장
         </span>
+        <button type="button" className="underline" onClick={() => setView(view === 'set' ? 'none' : 'set')}>
+          {view === 'set' ? '세트 접기' : '세트 보기'}
+        </button>
+        <button
+          type="button"
+          className="underline"
+          onClick={() => download(`golden-${goldenSet.version}.csv`, goldenToCsv(goldenSet), 'text/csv')}
+        >
+          CSV 내려받기
+        </button>
         <label className="cursor-pointer underline">
           CSV 올리기
           <input
@@ -510,6 +678,8 @@ function GoldenRunner({
             }}
           />
         </label>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-[13px] text-ink-2">
         <span>기준일</span>
         <input
           type="date"
@@ -518,15 +688,20 @@ function GoldenRunner({
           className="rounded border border-line bg-card px-2 py-1"
         />
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {running ? (
           <Button onClick={() => (stopRef.current = true)}>멈추기</Button>
         ) : (
           <Button onClick={() => void start()}>
-            {ENGINE_LABELS[engine]} · {MODE_LABELS[mode]} 실행
+            {ENGINE_LABELS[engine]} · {MODE_LABELS[mode]}
+            {tag ? ` · 규칙 #${tag}` : ''} 실행
           </Button>
         )}
-        {run ? <Button onClick={() => setShowRows((v) => !v)}>{showRows ? '문장별 접기' : '문장별 보기'}</Button> : null}
+        {run ? (
+          <Button onClick={() => setView(view === 'result' ? 'none' : 'result')}>
+            {view === 'result' ? '문장별 접기' : '문장별 결과'}
+          </Button>
+        ) : null}
       </div>
       {running ? (
         <p className="mt-2 text-[13px] text-ink-2">
@@ -534,48 +709,88 @@ function GoldenRunner({
         </p>
       ) : null}
       {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
-      {run && showRows ? (
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead className="text-ink-3">
-              <tr>
-                <th className="p-1 text-left">#</th>
-                <th className="p-1 text-left">문장</th>
-                <th className="p-1 text-left">기대</th>
-                <th className="p-1 text-left">결과</th>
-                <th className="p-1">판정</th>
-              </tr>
-            </thead>
-            <tbody>
-              {goldenSet.cases.map((gold) => {
-                const got = run.outcomes[gold.n];
-                if (!got) return null;
-                const m = markCase(gold, got, run.referenceDate);
-                const want = resolveDaysAgo(gold.date, run.referenceDate);
-                const bad =
-                  m.falseCompletion || !m.intent || !m.status || m.activity === 'miss' || m.date === false;
-                return (
-                  <tr key={gold.n} className={`border-t border-line align-top ${bad ? 'bg-[#fff1ef]' : ''}`}>
-                    <td className="p-1">{gold.n}</td>
-                    <td className="p-1">{gold.text}</td>
-                    <td className="p-1 text-ink-2">
-                      {gold.status} · {gold.activity ?? '—'} · {want ?? '—'}
-                    </td>
-                    <td className="p-1">
-                      {got.status ?? '—'} · {got.activity ?? '—'} · {got.daysAgo ?? '—'}
-                      {got.error ? <span className="text-danger"> · 오류</span> : null}
-                    </td>
-                    <td className="p-1 text-center">
-                      {m.falseCompletion ? 'FC' : bad ? '✗' : '✓'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+
+      {view === 'set' ? <SetTable goldenSet={goldenSet} referenceDate={referenceDate} /> : null}
+      {view === 'result' && run ? <ResultTable goldenSet={goldenSet} run={run} /> : null}
     </Section>
+  );
+}
+
+function SetTable({ goldenSet, referenceDate }: { goldenSet: GoldenSet; referenceDate: string }) {
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full min-w-[520px] text-[12px]">
+        <thead className="text-ink-3">
+          <tr>
+            {['#', '문장', 'Intent', 'Status', 'Activity', 'Date', '함정'].map((h) => (
+              <th key={h} className="p-1 text-left">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {goldenSet.cases.map((c) => {
+            const days = resolveDaysAgo(c.date, referenceDate);
+            return (
+              <tr key={c.n} className="border-t border-line align-top">
+                <td className="p-1">{c.n}</td>
+                <td className="p-1">{c.text}</td>
+                <td className="p-1">{c.intent === 'query' ? '조회' : '기록'}</td>
+                <td className="p-1">{c.status}</td>
+                <td className="p-1">{c.activity ?? '—'}</td>
+                <td className="p-1">
+                  {c.date === null ? '—' : typeof c.date === 'string' ? `${c.date} (${days})` : c.date}
+                </td>
+                <td className="p-1">{c.trap ? 'O' : ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="mt-1 text-[12px] text-ink-3">Date: 며칠 전(음수는 앞으로). 표현은 기준일로 계산한 값을 괄호에.</p>
+    </div>
+  );
+}
+
+function ResultTable({ goldenSet, run }: { goldenSet: GoldenSet; run: RunRecord }) {
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full text-[12px]">
+        <thead className="text-ink-3">
+          <tr>
+            <th className="p-1 text-left">#</th>
+            <th className="p-1 text-left">문장</th>
+            <th className="p-1 text-left">기대</th>
+            <th className="p-1 text-left">결과</th>
+            <th className="p-1">판정</th>
+          </tr>
+        </thead>
+        <tbody>
+          {goldenSet.cases.map((gold) => {
+            const got = run.outcomes[gold.n];
+            if (!got) return null;
+            const m = markCase(gold, got, run.referenceDate);
+            const want = resolveDaysAgo(gold.date, run.referenceDate);
+            const bad = m.falseCompletion || !m.intent || !m.status || m.activity === 'miss' || m.date === false;
+            return (
+              <tr key={gold.n} className={`border-t border-line align-top ${bad ? 'bg-[#fff1ef]' : ''}`}>
+                <td className="p-1">{gold.n}</td>
+                <td className="p-1">{gold.text}</td>
+                <td className="p-1 text-ink-2">
+                  {gold.status} · {gold.activity ?? '—'} · {want ?? '—'}
+                </td>
+                <td className="p-1">
+                  {got.status ?? '—'} · {got.activity ?? '—'} · {got.daysAgo ?? '—'}
+                  {got.error ? <span className="text-danger"> · 오류</span> : null}
+                </td>
+                <td className="p-1 text-center">{m.falseCompletion ? 'FC' : bad ? '✗' : '✓'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -585,98 +800,200 @@ function Table1({
   lab,
   goldenSet,
   update,
+  cloud,
 }: {
   lab: LabState;
   goldenSet: GoldenSet;
   update: (fn: (prev: LabState) => LabState) => void;
+  cloud: CloudSettings;
 }) {
-  const accuracy = (engine: EngineId, mode: RunMode) => {
+  const summary = (engine: EngineId, mode: RunMode): Table2Row | null => {
     const run = lab.runs[runKey(engine, mode, goldenSet.version)];
     return run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
   };
 
+  const accuracy = (engine: EngineId) => {
+    const actual = summary(engine, 'actual');
+    const v2 = summary(engine, 'model-v2');
+    if (!actual && !v2) return <Todo>③ 실행</Todo>;
+    return (
+      <>
+        {actual ? `실사용 ${pct(actual.all)}` : ''}
+        {actual && v2 ? ' · ' : ''}
+        {v2 ? `v2 ${pct(v2.all)}` : ''}
+      </>
+    );
+  };
+
+  const bench = (engine: EngineId) => lab.bench[engine];
+
+  const download = (engine: EngineId) => {
+    const b = bench(engine);
+    if (!b || (b.downloadMs == null && !b.fromCache)) return <Todo>① 새로 받기</Todo>;
+    if (b.downloadMs == null) return <Todo>캐시에서 올림 — ① 새로 받기</Todo>;
+    return `${sec(b.downloadMs)} · ${mb(b.downloadBytes) ?? '용량 —'}`;
+  };
+
+  const memory = (engine: EngineId) => {
+    const b = bench(engine);
+    return (
+      <span className="inline-flex items-center gap-1">
+        {b?.jsHeapMB != null ? `JS ${b.jsHeapMB}MB` : <Todo>① 준비</Todo>}
+        <label className="inline-flex items-center gap-1 text-ink-3">
+          <input
+            type="checkbox"
+            checked={b?.crashed ?? false}
+            onChange={(e) =>
+              update((prev) => ({
+                ...prev,
+                bench: { ...prev.bench, [engine]: benchRecord(prev.bench[engine], { crashed: e.target.checked }) },
+              }))
+            }
+          />
+          탭 종료
+        </label>
+      </span>
+    );
+  };
+
+  const cloudSummary = summary('cloud-gemini', 'actual') ?? summary('cloud-gemini', 'model-v2');
+  const cloudCalls = (() => {
+    const runs = MODES.map((m) => lab.runs[runKey('cloud-gemini', m, goldenSet.version)]).filter(Boolean) as RunRecord[];
+    const outs = runs.flatMap((r) => Object.values(r.outcomes)).filter((o) => o.tokensIn != null);
+    if (outs.length === 0) return null;
+    const tokensIn = outs.reduce((s, o) => s + (o.tokensIn ?? 0), 0) / outs.length;
+    const tokensOut = outs.reduce((s, o) => s + (o.tokensOut ?? 0), 0) / outs.length;
+    const ms = outs.reduce((s, o) => s + o.ms, 0) / outs.length;
+    return { tokensIn, tokensOut, ms, maxMs: Math.max(...outs.map((o) => o.ms)), count: outs.length };
+  })();
+  const perCall = cloudCalls ? costUsd(cloud, cloudCalls.tokensIn, cloudCalls.tokensOut) : null;
+
+  const rows: Array<{ engine: EngineId; items: Array<[string, React.ReactNode]> }> = [
+    {
+      engine: 'rule',
+      items: [
+        ['정확도', accuracy('rule')],
+        ['속도', summary('rule', 'actual') ? `평균 ${summary('rule', 'actual')!.avgMs}ms` : <Todo>③ 실행</Todo>],
+      ],
+    },
+    {
+      engine: 'chrome-nano',
+      items: [
+        ['정확도', accuracy('chrome-nano')],
+        [
+          '준비시간',
+          bench('chrome-nano')?.prepareMs != null ? (
+            `${sec(bench('chrome-nano')!.prepareMs)}${bench('chrome-nano')!.downloadMs != null ? ` (받기 ${sec(bench('chrome-nano')!.downloadMs)})` : ''}`
+          ) : (
+            <Todo>① 준비</Todo>
+          ),
+        ],
+        ['지원환경', bench('chrome-nano')?.support ?? <Todo>① 준비</Todo>],
+      ],
+    },
+    ...(['gemma3-270m', 'gemma3-1b'] as EngineId[]).map((engine) => ({
+      engine,
+      items: [
+        ['정확도', accuracy(engine)],
+        ['다운로드', download(engine)],
+        ['메모리', memory(engine)],
+        [
+          '응답 · 준비',
+          <>
+            {summary(engine, 'actual')?.modelAvgMs != null
+              ? `모델 ${summary(engine, 'actual')!.modelAvgMs}ms`
+              : summary(engine, 'model-v2')
+                ? `v2 ${summary(engine, 'model-v2')!.avgMs}ms`
+                : '—'}
+            {bench(engine)?.prepareMs != null ? ` · 준비 ${sec(bench(engine)!.prepareMs)}` : ''}
+          </>,
+        ],
+      ] as Array<[string, React.ReactNode]>,
+    })),
+    {
+      engine: 'cloud-gemini',
+      items: [
+        ['정확도', accuracy('cloud-gemini')],
+        [
+          'latency',
+          cloudCalls ? `평균 ${Math.round(cloudCalls.ms)}ms · 최대 ${cloudCalls.maxMs}ms` : <Todo>③ 실행 (키 필요)</Todo>,
+        ],
+        [
+          '비용',
+          cloudCalls ? (
+            perCall != null ? (
+              `호출당 $${perCall.toFixed(6)} · 1000회 $${(perCall * 1000).toFixed(3)} · 토큰 ${Math.round(cloudCalls.tokensIn)}/${Math.round(cloudCalls.tokensOut)}`
+            ) : (
+              <>
+                토큰 {Math.round(cloudCalls.tokensIn)}/{Math.round(cloudCalls.tokensOut)} <Todo>① 단가 입력</Todo>
+              </>
+            )
+          ) : (
+            <Todo>③ 실행</Todo>
+          ),
+        ],
+      ],
+    },
+  ];
+
   return (
     <Section title="④ 표 1 — 방식별 비교">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-[12px]">
+        <table className="w-full min-w-[360px] text-[12px]">
           <thead className="text-ink-3">
             <tr>
-              {['방식', '정확도 실사용', '정확도 v2', '평균 응답', '다운로드', '용량', '준비', 'JS 메모리', '탭 종료', '지원'].map(
-                (h) => (
-                  <th key={h} className="p-1 text-left">
-                    {h}
-                  </th>
-                ),
-              )}
+              <th className="w-[112px] p-1 text-left">방식</th>
+              <th className="p-1 text-left">비교할 것</th>
             </tr>
           </thead>
           <tbody>
-            {ENGINES.map((engine) => {
-              const actual = accuracy(engine, 'actual');
-              const v2 = accuracy(engine, 'model-v2');
-              const bench = lab.bench[engine];
-              return (
-                <tr key={engine} className="border-t border-line">
-                  <td className="p-1 font-bold">{ENGINE_LABELS[engine]}</td>
-                  <td className="p-1">{actual ? pct(actual.all) : '—'}</td>
-                  <td className="p-1">{v2 ? pct(v2.all) : '—'}</td>
-                  <td className="p-1">
-                    {actual ? `${actual.avgMs}ms` : '—'}
-                    {v2 ? ` / v2 ${v2.avgMs}ms` : ''}
-                  </td>
-                  <td className="p-1">{bench?.fromCache ? '캐시' : sec(bench?.downloadMs ?? null)}</td>
-                  <td className="p-1">{mb(bench?.downloadBytes ?? null)}</td>
-                  <td className="p-1">{sec(bench?.prepareMs ?? null)}</td>
-                  <td className="p-1">{bench?.jsHeapMB != null ? `${bench.jsHeapMB}MB` : '—'}</td>
-                  <td className="p-1">
-                    {engine === 'rule' ? (
-                      '—'
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={bench?.crashed ?? false}
-                        onChange={(e) =>
-                          update((prev) => ({
-                            ...prev,
-                            bench: {
-                              ...prev.bench,
-                              [engine]: benchRecord(prev.bench[engine], { crashed: e.target.checked }),
-                            },
-                          }))
-                        }
-                      />
-                    )}
-                  </td>
-                  <td className="p-1">{engine === 'rule' ? '전부' : (bench?.support ?? '—')}</td>
-                </tr>
-              );
-            })}
-            <tr className="border-t border-line text-ink-3">
-              <td className="p-1 font-bold">Cloud LLM</td>
-              <td className="p-1" colSpan={9}>
-                서버가 필요해 이 페이지에서는 재지 않아요 (latency · 비용은 PC 에서 따로)
-              </td>
-            </tr>
+            {rows.map(({ engine, items }) => (
+              <tr key={engine} className="border-t border-line align-top">
+                <td className="p-1 font-bold">{ENGINE_LABELS[engine]}</td>
+                <td className="p-1">
+                  <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-0.5">
+                    {items.map(([label, value]) => (
+                      <FragmentRow key={label} label={label} value={value} />
+                    ))}
+                  </dl>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       <p className="mt-2 text-[12px] text-ink-3">
-        정확도 = Intent · Status · Activity · Date 가 모두 맞은 문장 비율. 메모리는 JS 힙만이라 모델의 GPU
-        메모리는 빠져 있어요 — 탭이 강제로 닫히면 &quot;탭 종료&quot;에 체크하세요.
+        정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율 (원래 규칙 기준). 메모리는 JS 힙만이라 모델의
+        GPU 메모리는 빠져 있어요 — 탭이 강제로 닫히면 &quot;탭 종료&quot;에 체크하세요.
+        {cloudSummary ? ' Cloud 실사용은 서버의 DB 매칭 단계가 빠진 근사치예요.' : ''}
       </p>
     </Section>
   );
 }
 
+function FragmentRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <>
+      <dt className="text-ink-3">{label}</dt>
+      <dd className="min-w-0 break-words">{value}</dd>
+    </>
+  );
+}
+
+function Todo({ children }: { children: React.ReactNode }) {
+  return <span className="text-ink-3">— {children}</span>;
+}
+
 /* ───────────── ⑤ 표 2 ───────────── */
 
 function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
-  const rows = ENGINES.flatMap((engine) =>
-    MODES.map((mode) => {
-      const run = lab.runs[runKey(engine, mode, goldenSet.version)];
-      return run ? { engine, mode, summary: summarize(goldenSet.cases, run.outcomes, run.referenceDate) } : null;
-    }),
-  ).filter((row): row is NonNullable<typeof row> => Boolean(row?.summary));
+  const order = (run: RunRecord) =>
+    ENGINES.indexOf(run.engine) * 10 + MODES.indexOf(run.mode) * 2 + (run.ruleTag ? 1 : 0);
+  const rows = Object.values(lab.runs)
+    .filter((run) => run.setVersion === goldenSet.version)
+    .sort((a, b) => order(a) - order(b))
+    .map((run) => ({ run, summary: summarize(goldenSet.cases, run.outcomes, run.referenceDate) }))
+    .filter((row): row is { run: RunRecord; summary: Table2Row } => Boolean(row.summary));
 
   return (
     <Section title="⑤ 표 2 — 정확도 자세히">
@@ -695,29 +1012,32 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ engine, mode, summary }) => (
-                <tr key={`${engine}-${mode}`} className="border-t border-line">
-                  <td className="p-1 font-bold">{ENGINE_LABELS[engine]}</td>
-                  <td className="p-1">{mode === 'actual' ? '실사용' : 'v2'}</td>
-                  <td className="p-1">{pct(summary!.intent)}</td>
-                  <td className="p-1">{pct(summary!.status)}</td>
-                  <td className="p-1">
-                    {pct(summary!.activity)}
-                    <span className="text-ink-3"> (부분 {pct(summary!.activityPartial)})</span>
-                  </td>
-                  <td className="p-1">{pct(summary!.date)}</td>
+              {rows.map(({ run, summary }) => (
+                <tr key={`${run.engine}-${run.mode}-${run.ruleTag}`} className="border-t border-line">
                   <td className="p-1 font-bold">
-                    {pct(summary!.falseCompletion)}
+                    {ENGINE_LABELS[run.engine]}
+                    {run.ruleTag ? <span className="font-normal text-accent-ink"> · 규칙 #{run.ruleTag}</span> : null}
+                  </td>
+                  <td className="p-1">{run.mode === 'actual' ? '실사용' : 'v2'}</td>
+                  <td className="p-1">{pct(summary.intent)}</td>
+                  <td className="p-1">{pct(summary.status)}</td>
+                  <td className="p-1">
+                    {pct(summary.activity)}
+                    <span className="text-ink-3"> (부분 {pct(summary.activityPartial)})</span>
+                  </td>
+                  <td className="p-1">{pct(summary.date)}</td>
+                  <td className="p-1 font-bold">
+                    {pct(summary.falseCompletion)}
                     <span className="font-normal text-ink-3">
                       {' '}
-                      ({summary!.fcCount}/{summary!.fcBase})
+                      ({summary.fcCount}/{summary.fcBase})
                     </span>
                   </td>
                   <td className="p-1 text-ink-3">
-                    {summary!.total}
-                    {mode === 'actual' && engine !== 'rule' ? ` · 모델 ${summary!.usedModel}` : ''}
-                    {summary!.toServer ? ` · 서버행 ${summary!.toServer}` : ''}
-                    {summary!.errors ? ` · 오류 ${summary!.errors}` : ''}
+                    {summary.total}
+                    {run.mode === 'actual' && run.engine !== 'rule' ? ` · 모델 ${summary.usedModel}` : ''}
+                    {summary.toServer ? ` · 서버행 ${summary.toServer}` : ''}
+                    {summary.errors ? ` · 오류 ${summary.errors}` : ''}
                   </td>
                 </tr>
               ))}
@@ -729,6 +1049,168 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
         실사용의 Status 는 &quot;저장 / 저장 안 함&quot; 만 맞춰요 (했는지는 규칙이 정해서 엔진마다 같아요). 엔진별
         Status · False Completion 비교는 v2 줄로 보세요. 미래 날짜는 채점하지 않아요.
       </p>
+    </Section>
+  );
+}
+
+/* ───────────── ⑦ 규칙 ───────────── */
+
+function RulesSection({
+  rules,
+  onChange,
+  tag,
+}: {
+  rules: RuleEdit;
+  onChange: (next: RuleEdit) => void;
+  tag: string;
+}) {
+  const base = useMemo(() => baseRules(), []);
+  const [open, setOpen] = useState<RuleKey | null>(null);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const apply = (next: RuleEdit) => {
+    try {
+      onChange(next);
+      setError(null);
+    } catch (err) {
+      setError(`정규식 오류: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const toggle = (key: RuleKey, index: number) => {
+    const current = new Set(rules.disabled[key] ?? []);
+    if (current.has(index)) current.delete(index);
+    else current.add(index);
+    apply({ ...rules, disabled: { ...rules.disabled, [key]: [...current].sort((a, b) => a - b) } });
+  };
+
+  const addPattern = (key: RuleKey) => {
+    const input = draft.trim();
+    if (!input) return;
+    if (key === 'actionNouns') {
+      const [source, noun] = input.split(/\s*(?:→|->)\s*/);
+      if (!source || !noun) {
+        setError('"정규식 → 명사" 모양으로 넣어 주세요. 예: 맞(?:았|췄)[가-힣]* → 맞춤');
+        return;
+      }
+      apply({ ...rules, add: { ...rules.add, actionNouns: [...(rules.add.actionNouns ?? []), [source, noun]] } });
+    } else {
+      apply({ ...rules, add: { ...rules.add, [key]: [...(rules.add[key] ?? []), input] } });
+    }
+    setDraft('');
+  };
+
+  const removeAdded = (key: RuleKey, index: number) => {
+    const list = [...((rules.add[key as keyof RuleEdit['add']] as unknown[]) ?? [])];
+    list.splice(index, 1);
+    apply({ ...rules, add: { ...rules.add, [key]: list } });
+  };
+
+  const onJson = async (file: File) => {
+    try {
+      apply(parseRuleEditJson(await file.text()));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <Section title="⑦ 규칙 보기 · 실험">
+      <p className="text-[13px] text-ink-2">
+        원본: <code>packages/parser/src/utterance-rules.ts</code> (앱·API 공용). 여기서 바꾼 규칙은 이 기기의 실험실에만
+        적용돼요. 바꾼 뒤 ③을 다시 돌리면 표 2에 &quot;규칙 #번호&quot; 줄이 원래 규칙 줄과 나란히 생겨요.
+      </p>
+      <p className="mt-1 text-[13px] font-bold">
+        {tag ? `지금 규칙: 수정본 #${tag}` : '지금 규칙: 원본'}
+      </p>
+      <div className="mt-3 space-y-2">
+        {RULE_TABLES.map((table) => {
+          const patterns =
+            table.key === 'actionNouns'
+              ? base.actionNouns.map(([source, noun]) => `${source} → ${noun}`)
+              : base[table.key];
+          const added =
+            table.key === 'actionNouns'
+              ? (rules.add.actionNouns ?? []).map(([source, noun]) => `${source} → ${noun}`)
+              : (rules.add[table.key] ?? []);
+          const off = new Set(rules.disabled[table.key] ?? []);
+          const isOpen = open === table.key;
+          return (
+            <div key={table.key} className="rounded-md border border-line bg-bg">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between px-3 py-2 text-left"
+                onClick={() => {
+                  setOpen(isOpen ? null : table.key);
+                  setDraft('');
+                  setError(null);
+                }}
+              >
+                <span>
+                  <b>{table.label}</b> <span className="text-[12px] text-ink-3">{table.constName}</span>
+                </span>
+                <span className="text-[12px] text-ink-3">
+                  {patterns.length}개{added.length ? ` · +${added.length}` : ''}
+                  {off.size ? ` · 끔 ${off.size}` : ''}
+                </span>
+              </button>
+              {isOpen ? (
+                <div className="space-y-1 px-3 pb-3 text-[12px]">
+                  <p className="text-ink-3">{table.hint}</p>
+                  {added.map((source, i) => (
+                    <div key={`a${i}`} className="flex items-start gap-2 text-accent-ink">
+                      <button type="button" onClick={() => removeAdded(table.key, i)} className="shrink-0 underline">
+                        빼기
+                      </button>
+                      <code className="break-all">+ {source}</code>
+                    </div>
+                  ))}
+                  {patterns.map((source, i) => (
+                    <label key={i} className="flex items-start gap-2">
+                      <input type="checkbox" checked={!off.has(i)} onChange={() => toggle(table.key, i)} />
+                      <code className={`break-all ${off.has(i) ? 'text-ink-3 line-through' : ''}`}>{source}</code>
+                    </label>
+                  ))}
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder={table.key === 'actionNouns' ? '정규식 → 명사' : '정규식 (예: 것도\\s*같)'}
+                      className="h-9 min-w-0 flex-1 rounded border border-line bg-card px-2"
+                    />
+                    <Button onClick={() => addPattern(table.key)}>추가</Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button onClick={() => download(`rules-${tag || 'original'}.json`, ruleEditJson(rules), 'application/json')}>
+          규칙 JSON 내려받기
+        </Button>
+        <Button onClick={() => download(`rules-${tag || 'original'}.ts`, ruleEditTs(rules), 'text/plain')}>
+          적용용 코드 내려받기
+        </Button>
+        <label className="inline-flex h-10 cursor-pointer items-center rounded-md border border-line bg-bg px-3 text-[13px] font-semibold">
+          규칙 JSON 올리기
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void onJson(file);
+            }}
+          />
+        </label>
+        <Button onClick={() => apply(EMPTY_EDIT)} disabled={!tag}>
+          원래 규칙으로
+        </Button>
+      </div>
     </Section>
   );
 }

@@ -23,6 +23,8 @@ export interface RunRecord {
   engine: EngineId;
   mode: RunMode;
   setVersion: string;
+  /** 실험실에서 바꾼 규칙으로 돌렸으면 그 표시. 원래 규칙이면 빈 문자열. */
+  ruleTag: string;
   referenceDate: string;
   at: string;
   outcomes: Record<number, CaseOutcome>;
@@ -35,8 +37,8 @@ export interface LabState {
 
 export const EMPTY_STATE: LabState = { bench: {}, runs: {} };
 
-export function runKey(engine: EngineId, mode: RunMode, setVersion: string): string {
-  return `${engine}|${mode}|${setVersion}`;
+export function runKey(engine: EngineId, mode: RunMode, setVersion: string, ruleTag = ''): string {
+  return `${engine}|${mode}|${setVersion}|${ruleTag}`;
 }
 
 export function loadLab(): LabState {

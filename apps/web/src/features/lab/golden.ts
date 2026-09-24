@@ -136,6 +136,31 @@ export function parseGoldenCsv(text: string, version: string): GoldenSet {
   return { version, knownItems: GOLDEN_V1.knownItems, cases };
 }
 
+/** 세트를 구글 시트용 CSV 로. parseGoldenCsv 로 다시 읽을 수 있다. */
+export function goldenToCsv(set: GoldenSet): string {
+  const esc = (value: unknown) => {
+    const text = value === null || value === undefined ? '' : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const head = ['n', '문장', 'Intent', 'Status', 'Activity', 'Date', '주기', '매칭', '함정'];
+  const rows = set.cases.map((c) =>
+    [
+      c.n,
+      c.text,
+      c.intent === 'query' ? '조회' : '기록',
+      c.status,
+      c.activity,
+      c.date,
+      c.cadenceDays,
+      c.matchId,
+      c.trap ? 'O' : '',
+    ]
+      .map(esc)
+      .join(','),
+  );
+  return '\ufeff' + [head.join(','), ...rows].join('\n') + '\n';
+}
+
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
