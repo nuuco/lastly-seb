@@ -15,8 +15,8 @@ import { pipeline } from 'node:stream/promises';
 
 const SOURCES = {
   'gemma3-270m': {
-    file: 'gemma3-270m-it-q4_0-web.task',
-    url: 'https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/gemma3-270m-it-q4_0-web.task',
+    file: 'gemma3-270m-it-q8-web.task',
+    url: 'https://huggingface.co/nuuco/gemma-3-270m-it-q8-web/resolve/main/gemma3-270m-it-q8-web.task',
   },
   'gemma3-1b': {
     file: 'gemma3-1b-it-int4-web.task',
