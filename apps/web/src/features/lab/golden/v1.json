@@ -1,0 +1,1320 @@
+{
+  "version": "v1",
+  "description": "온디바이스 비교용 골든셋. 이전 104문장(feat/lighter-ondevice-model) 기반, 2026-09-24 검토 반영.",
+  "dateRule": "date: 숫자=며칠 전(음수는 앞으로), 문자열=실행일 기준으로 계산하는 표현, null=채점 제외",
+  "knownItems": [
+    {
+      "id": "item-1",
+      "name": "이불 빨래"
+    },
+    {
+      "id": "item-2",
+      "name": "정수기 필터 교체"
+    },
+    {
+      "id": "item-3",
+      "name": "설거지"
+    },
+    {
+      "id": "item-4",
+      "name": "에어컨 청소"
+    },
+    {
+      "id": "item-5",
+      "name": "화장실 청소"
+    },
+    {
+      "id": "item-6",
+      "name": "커튼 빨래"
+    },
+    {
+      "id": "item-7",
+      "name": "쓰레기 버리기"
+    },
+    {
+      "id": "item-8",
+      "name": "청소기 돌리기"
+    },
+    {
+      "id": "item-9",
+      "name": "강아지 목욕"
+    },
+    {
+      "id": "item-10",
+      "name": "세탁기 청소"
+    },
+    {
+      "id": "item-11",
+      "name": "분리수거"
+    },
+    {
+      "id": "item-12",
+      "name": "베개 빨래"
+    },
+    {
+      "id": "item-13",
+      "name": "바닥 청소"
+    },
+    {
+      "id": "item-14",
+      "name": "물통 교체"
+    },
+    {
+      "id": "item-15",
+      "name": "가습기 필터 교체"
+    },
+    {
+      "id": "item-16",
+      "name": "병원 방문"
+    },
+    {
+      "id": "item-17",
+      "name": "미용실 방문"
+    }
+  ],
+  "cases": [
+    {
+      "n": 1,
+      "text": "오늘 이불 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 2,
+      "text": "어제 정수기 필터 갈았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "정수기 필터 교체",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-2",
+      "trap": false
+    },
+    {
+      "n": 3,
+      "text": "지난 토요일에 에어컨 청소했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "에어컨 청소",
+      "date": "지난 토요일",
+      "cadenceDays": null,
+      "matchId": "item-4",
+      "trap": false
+    },
+    {
+      "n": 4,
+      "text": "그저께 화장실 청소했다",
+      "intent": "record",
+      "status": "완료",
+      "activity": "화장실 청소",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 5,
+      "text": "오늘 아침 설거지 끝냈어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 6,
+      "text": "이틀 전에 커튼 빨아놨어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "커튼 빨래",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 7,
+      "text": "오늘 쓰레기 버렸어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "쓰레기 버리기",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 8,
+      "text": "어제 청소기 돌렸어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "청소기 돌리기",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 9,
+      "text": "오늘 강아지 목욕시켰어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "강아지 목욕",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-9",
+      "trap": false
+    },
+    {
+      "n": 10,
+      "text": "지난주에 세탁기 청소했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "세탁기 청소",
+      "date": 7,
+      "cadenceDays": null,
+      "matchId": "item-10",
+      "trap": false
+    },
+    {
+      "n": 11,
+      "text": "오늘 이불은 안 건드리고 베개만 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "베개 빨래",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-12",
+      "trap": true
+    },
+    {
+      "n": 12,
+      "text": "필터는 그대로 두고 물통만 갈았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "물통 교체",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-14",
+      "trap": true
+    },
+    {
+      "n": 13,
+      "text": "청소는 내일로 미루고 설거지만 했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": true
+    },
+    {
+      "n": 14,
+      "text": "빨래는 나중에 하고 분리수거만 끝냈어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "분리수거",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-11",
+      "trap": true
+    },
+    {
+      "n": 15,
+      "text": "창문은 안 닦고 바닥만 닦았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "바닥 청소",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-13",
+      "trap": true
+    },
+    {
+      "n": 16,
+      "text": "내일 이불 빨 거야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "이불 빨래",
+      "date": -1,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 17,
+      "text": "주말에 필터 바꿀 예정이야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 18,
+      "text": "모레 에어컨 청소하려고",
+      "intent": "record",
+      "status": "미래",
+      "activity": "에어컨 청소",
+      "date": -2,
+      "cadenceDays": null,
+      "matchId": "item-4",
+      "trap": false
+    },
+    {
+      "n": 19,
+      "text": "오늘 저녁에 설거지할게",
+      "intent": "record",
+      "status": "미래",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 20,
+      "text": "이따가 쓰레기 버릴게",
+      "intent": "record",
+      "status": "미래",
+      "activity": "쓰레기 버리기",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 21,
+      "text": "다음 주에 커튼 빨 거야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "커튼 빨래",
+      "date": -7,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 22,
+      "text": "내일 아침 청소기 돌릴 예정이야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "청소기 돌리기",
+      "date": -1,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 23,
+      "text": "주말에 강아지 목욕시킬게",
+      "intent": "record",
+      "status": "미래",
+      "activity": "강아지 목욕",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-9",
+      "trap": false
+    },
+    {
+      "n": 24,
+      "text": "오늘 밤 화장실 청소하려고",
+      "intent": "record",
+      "status": "미래",
+      "activity": "화장실 청소",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 25,
+      "text": "다음에 세탁기 청소할 거야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "세탁기 청소",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-10",
+      "trap": false
+    },
+    {
+      "n": 26,
+      "text": "어제 하려고 했는데 내일 이불 빨 거야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "이불 빨래",
+      "date": -1,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 27,
+      "text": "필터는 아직이고 주말에 갈 예정이야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 28,
+      "text": "청소는 못 했고 내일 하려고",
+      "intent": "record",
+      "status": "미래",
+      "activity": "청소",
+      "date": -1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 29,
+      "text": "설거지는 안 했고 이따가 할게",
+      "intent": "record",
+      "status": "미래",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": true
+    },
+    {
+      "n": 30,
+      "text": "빨래는 끝낸 줄 알았는데 내일 다시 빨 거야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "빨래",
+      "date": -1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 31,
+      "text": "오늘 이불 못 빨았어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "이불 빨래",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 32,
+      "text": "필터 아직 안 갈았어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 33,
+      "text": "오늘 청소하려다 못 했어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "청소",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 34,
+      "text": "어제 설거지 안 했어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "설거지",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 35,
+      "text": "쓰레기 아직 못 버렸어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "쓰레기 버리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 36,
+      "text": "커튼은 아직 안 빨았어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "커튼 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 37,
+      "text": "청소기 돌리다가 못 했어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "청소기 돌리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 38,
+      "text": "강아지 목욕은 안 시켰어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "강아지 목욕",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-9",
+      "trap": false
+    },
+    {
+      "n": 39,
+      "text": "화장실 청소를 하지 못했어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "화장실 청소",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 40,
+      "text": "세탁기 청소는 아직이야",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "세탁기 청소",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-10",
+      "trap": false
+    },
+    {
+      "n": 41,
+      "text": "오늘 빨래는 못 했고 설거지만 했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": true
+    },
+    {
+      "n": 42,
+      "text": "어제 빨려고 했는데 안 했어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "빨래",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 43,
+      "text": "필터는 갈았는데 이불은 못 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "필터 교체",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 44,
+      "text": "청소는 했어도 창문은 안 닦았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "청소",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 45,
+      "text": "쓰레기 버렸는데 분리수거는 못 했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "쓰레기 버리기",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": true
+    },
+    {
+      "n": 46,
+      "text": "지난주쯤 이불 빨았던 것 같은데",
+      "intent": "record",
+      "status": "애매",
+      "activity": "이불 빨래",
+      "date": 7,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 47,
+      "text": "필터 언제 갈았더라",
+      "intent": "query",
+      "status": "조회",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 48,
+      "text": "아마 어제 청소했던가",
+      "intent": "record",
+      "status": "애매",
+      "activity": "청소",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 49,
+      "text": "이불 빨았던 게 지난주였나",
+      "intent": "record",
+      "status": "애매",
+      "activity": "이불 빨래",
+      "date": 7,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 50,
+      "text": "그저께쯤 설거지한 것 같아",
+      "intent": "record",
+      "status": "애매",
+      "activity": "설거지",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 51,
+      "text": "쓰레기 버린 지가 며칠 됐지 싶어",
+      "intent": "query",
+      "status": "조회",
+      "activity": "쓰레기 버리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 52,
+      "text": "커튼은 아마 지난달에 빨았나",
+      "intent": "record",
+      "status": "애매",
+      "activity": "커튼 빨래",
+      "date": 30,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 53,
+      "text": "청소기 돌린 게 언제였더라",
+      "intent": "query",
+      "status": "조회",
+      "activity": "청소기 돌리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 54,
+      "text": "강아지 목욕시킨 지 꽤 된 것 같아",
+      "intent": "record",
+      "status": "애매",
+      "activity": "강아지 목욕",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-9",
+      "trap": false
+    },
+    {
+      "n": 55,
+      "text": "화장실 청소가 저번 주쯤이었나",
+      "intent": "record",
+      "status": "애매",
+      "activity": "화장실 청소",
+      "date": 7,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 56,
+      "text": "빨래는 한 것 같기도 하고 안 한 것 같기도 해",
+      "intent": "record",
+      "status": "애매",
+      "activity": "빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 57,
+      "text": "필터는 간 것 같은데 정확히 언제인지 모르겠어",
+      "intent": "record",
+      "status": "애매",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 58,
+      "text": "청소는 못 한 것 같기도 하고 한 것 같기도 해",
+      "intent": "record",
+      "status": "애매",
+      "activity": "청소",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 59,
+      "text": "설거지는 어제인가 그저께인가 했어",
+      "intent": "record",
+      "status": "애매",
+      "activity": "설거지",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": true
+    },
+    {
+      "n": 60,
+      "text": "이불은 빨았나 안 빨았나 기억이 안 나",
+      "intent": "record",
+      "status": "애매",
+      "activity": "이불 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 61,
+      "text": "나 이불 빨래 언제 했어?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "이불 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 62,
+      "text": "필터 갈아끼운 지 며칠이야?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 63,
+      "text": "청소기 돌린 지 며칠 됐어?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "청소기 돌리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 64,
+      "text": "마지막에 커튼 언제 빨았어?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "커튼 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 65,
+      "text": "설거지 언제 했지?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "설거지",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 66,
+      "text": "오늘 이불 빨았어, 일주일마다 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": 0,
+      "cadenceDays": 7,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 67,
+      "text": "어제 필터 갈았어 3일마다",
+      "intent": "record",
+      "status": "완료",
+      "activity": "필터 교체",
+      "date": 1,
+      "cadenceDays": 3,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 68,
+      "text": "쓰레기 버렸어 보름마다 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "쓰레기 버리기",
+      "date": 0,
+      "cadenceDays": 15,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 69,
+      "text": "강아지 목욕시켰어 한 달마다",
+      "intent": "record",
+      "status": "완료",
+      "activity": "강아지 목욕",
+      "date": 0,
+      "cadenceDays": 30,
+      "matchId": "item-9",
+      "trap": false
+    },
+    {
+      "n": 71,
+      "text": "이불 빨래 한 지 얼마야?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "이불 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 72,
+      "text": "필터 언제 갈았어?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 73,
+      "text": "에어컨 청소 언제 했어",
+      "intent": "query",
+      "status": "조회",
+      "activity": "에어컨 청소",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-4",
+      "trap": false
+    },
+    {
+      "n": 74,
+      "text": "오늘 커튼 빨았어 14일마다 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "커튼 빨래",
+      "date": 0,
+      "cadenceDays": 14,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 75,
+      "text": "화장실 청소했어 이틀마다",
+      "intent": "record",
+      "status": "완료",
+      "activity": "화장실 청소",
+      "date": 0,
+      "cadenceDays": 2,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 76,
+      "text": "오늘 이불 빨았어 매주 금요일 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": 0,
+      "cadenceDays": 7,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 77,
+      "text": "오늘 필터 갈았어 매월 10일마다 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "필터 교체",
+      "date": 0,
+      "cadenceDays": 30,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 78,
+      "text": "오늘 화장실 청소했어 매월 마지막 수요일 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "화장실 청소",
+      "date": 0,
+      "cadenceDays": 30,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 79,
+      "text": "오늘 커튼 빨았어 매월 둘째 일요일 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "커튼 빨래",
+      "date": 0,
+      "cadenceDays": 30,
+      "matchId": "item-6",
+      "trap": false
+    },
+    {
+      "n": 80,
+      "text": "어제 병원 갔다왔어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "병원 방문",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-16",
+      "trap": false
+    },
+    {
+      "n": 81,
+      "text": "지난주에 세차했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "세차",
+      "date": 7,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 82,
+      "text": "그저께 치과 검진 받았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "치과 검진",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 83,
+      "text": "오늘 독감 예방접종 맞았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "독감 예방접종",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 84,
+      "text": "안경 새로 맞췄어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "안경 맞춤",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 85,
+      "text": "오늘 보험료 냈어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "보험료 납부",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 86,
+      "text": "오늘 미용실 다녀왔어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "미용실 방문",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-17",
+      "trap": false
+    },
+    {
+      "n": 87,
+      "text": "어제 자동차 정비 받았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "자동차 정비",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 88,
+      "text": "오늘 병원 다녀왔고, 3개월마다 갈 거야",
+      "intent": "record",
+      "status": "완료",
+      "activity": "병원 방문",
+      "date": 0,
+      "cadenceDays": 90,
+      "matchId": "item-16",
+      "trap": false
+    },
+    {
+      "n": 89,
+      "text": "세차했어, 앞으로 한 달마다 할 거야",
+      "intent": "record",
+      "status": "완료",
+      "activity": "세차",
+      "date": 0,
+      "cadenceDays": 30,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 90,
+      "text": "미용실 다녀왔어, 두 달마다 갈 거야",
+      "intent": "record",
+      "status": "완료",
+      "activity": "미용실 방문",
+      "date": 0,
+      "cadenceDays": 60,
+      "matchId": "item-17",
+      "trap": false
+    },
+    {
+      "n": 91,
+      "text": "치과 검진 받았어, 6개월마다 할 거야",
+      "intent": "record",
+      "status": "완료",
+      "activity": "치과 검진",
+      "date": 0,
+      "cadenceDays": 180,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 92,
+      "text": "지지난주에 커튼 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "커튼 빨래",
+      "date": 14,
+      "cadenceDays": null,
+      "matchId": "item-6",
+      "trap": true
+    },
+    {
+      "n": 93,
+      "text": "사흘 전에 화장실 청소했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "화장실 청소",
+      "date": 3,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": false
+    },
+    {
+      "n": 94,
+      "text": "지난달 15일에 정수기 필터 갈았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "정수기 필터 교체",
+      "date": "지난달 15일",
+      "cadenceDays": null,
+      "matchId": "item-2",
+      "trap": false
+    },
+    {
+      "n": 95,
+      "text": "이번 주 초에 청소기 돌렸어",
+      "intent": "record",
+      "status": "애매",
+      "activity": "청소기 돌리기",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-8",
+      "trap": false
+    },
+    {
+      "n": 96,
+      "text": "얼마 전에 분리수거 했어",
+      "intent": "record",
+      "status": "애매",
+      "activity": "분리수거",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-11",
+      "trap": false
+    },
+    {
+      "n": 97,
+      "text": "오늘 설거지함",
+      "intent": "record",
+      "status": "완료",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 98,
+      "text": "어제 빨래했당",
+      "intent": "record",
+      "status": "완료",
+      "activity": "빨래",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 99,
+      "text": "쓰레기 버렸음",
+      "intent": "record",
+      "status": "완료",
+      "activity": "쓰레기 버리기",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-7",
+      "trap": false
+    },
+    {
+      "n": 100,
+      "text": "필터 갈아치웠어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "필터 교체",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 101,
+      "text": "병원 언제 갔었지?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "병원 방문",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-16",
+      "trap": false
+    },
+    {
+      "n": 102,
+      "text": "세차한 지 얼마나 됐어?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "세차",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 103,
+      "text": "미용실 다음 달에 갈 예정이야",
+      "intent": "record",
+      "status": "미래",
+      "activity": "미용실 방문",
+      "date": -30,
+      "cadenceDays": null,
+      "matchId": "item-17",
+      "trap": true
+    },
+    {
+      "n": 104,
+      "text": "강아지 미용했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "강아지 미용",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 105,
+      "text": "필터를 갈았던 것도 같은데",
+      "intent": "record",
+      "status": "애매",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 106,
+      "text": "필터 마지막에 언제 갈았지?",
+      "intent": "query",
+      "status": "조회",
+      "activity": "필터 교체",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": false
+    },
+    {
+      "n": 107,
+      "text": "오늘 책 읽었고 일주일에 한 번 알려줘",
+      "intent": "record",
+      "status": "완료",
+      "activity": "책 읽기",
+      "date": 0,
+      "cadenceDays": 7,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 108,
+      "text": "난 오늘 설거지 했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "설거지",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-3",
+      "trap": false
+    },
+    {
+      "n": 109,
+      "text": "나는 어제 이불 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": false
+    },
+    {
+      "n": 110,
+      "text": "나 그저께 거실 정수기 청소하고 필터 교체했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "거실 정수기 청소",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 111,
+      "text": "9/14에 이불 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": "9/14",
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 112,
+      "text": "9월 14일에 이불 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": "9/14",
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 113,
+      "text": "14일에 이불 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": "14일",
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 114,
+      "text": "9.14 필터 갈았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "필터 교체",
+      "date": "9/14",
+      "cadenceDays": null,
+      "matchId": null,
+      "trap": true
+    }
+  ]
+}
