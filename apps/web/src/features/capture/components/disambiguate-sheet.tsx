@@ -44,16 +44,17 @@ export function DisambiguateSheet({
   const candidates = result.candidates;
   const [name, setName] = useState(result.normalizedName ?? result.transcript);
   const notice = describeNotice(result.degraded, candidates.length > 0, mode);
-  const candidateKey = candidates.map((c) => c.itemId).join(',');
+  // 문자열로 만들어 두면 렌더마다 새로 생기는 배열 때문에 다시 읽지 않는다.
+  const spoken =
+    candidates.length > 0
+      ? `혹시 ${candidates.map((c) => c.name).join(', ')} 중 어떤 건가요?`
+      : notice.title;
 
   useEffect(() => {
     if (!open) return;
-    const names = candidates.map((c) => c.name);
-    const text =
-      names.length > 0 ? `혹시 ${names.join(', ')} 중 어떤 건가요?` : notice.title;
-    speak(text);
+    speak(spoken);
     return () => stopSpeaking();
-  }, [open, notice.title, candidateKey]);
+  }, [open, spoken]);
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 고르기">
