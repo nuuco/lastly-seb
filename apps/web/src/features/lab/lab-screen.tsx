@@ -6,6 +6,7 @@ import { MicButton } from '@/features/capture/components/capture-bar';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { parseWithRulesOnly } from '@/features/on-device/apply-rules';
 import { setModelConsent } from '@/features/on-device/consent';
+import { GPU_INSECURE, GPU_UNAVAILABLE } from '@/features/on-device/engine-errors';
 import {
   activeModelSpec,
   clearModelFiles,
@@ -13,6 +14,7 @@ import {
   engineProgressLabel,
   ensureEngine,
   isEngineReady,
+  isEngineSupported,
   setActiveModel,
   subscribeEngineProgress,
   type EngineProgress,
@@ -30,7 +32,7 @@ import {
   type CloudSettings,
 } from './cloud-gemini';
 import { CLOUD_SYSTEM_PROMPT } from './cloud-prompt.generated';
-import { jsHeapMB, readDeviceInfo, type DeviceInfo } from './device-info';
+import { engineVerdicts, jsHeapMB, readDeviceInfo, type DeviceInfo, type Verdict } from './device-info';
 import {
   ENGINE_LABELS,
   isOnDevice,
@@ -173,14 +175,19 @@ export function LabScreen() {
     setNotice(null);
     setModelConsent('granted');
     setActiveModel(engine as ModelId);
-    if (!engineMatches()) {
+    const markUnsupported = () => {
       setNotice(
-        `이 기기에서는 ${ENGINE_LABELS[engine]} 를 쓸 수 없어요. 앱은 ${activeModelSpec().label} 로 대체해요.`,
+        isEngineSupported()
+          ? `이 기기에서는 ${ENGINE_LABELS[engine]} 를 쓸 수 없어요. 앱은 ${activeModelSpec().label} 로 대체해요.`
+          : `이 기기에서는 ${ENGINE_LABELS[engine]} 를 쓸 수 없어요. 앱은 로컬 AI 없이 규칙만 써요.`,
       );
       update((prev) => ({
         ...prev,
         bench: { ...prev.bench, [engine]: benchRecord(prev.bench[engine], { support: '미지원' }) },
       }));
+    };
+    if (!engineMatches()) {
+      markUnsupported();
       return;
     }
 
@@ -201,6 +208,11 @@ export function LabScreen() {
 
     try {
       await ensureEngine();
+      // Nano API 는 있는데 사양이 모자라면 엔진이 준비 중에 Gemma 로 바꾼다. 그 기록을 Nano 로 남기지 않는다.
+      if (!engineMatches()) {
+        markUnsupported();
+        return;
+      }
       const readyAt = performance.now();
       // Nano 는 compiling 단계가 없다. 받기가 끝나면 곧 준비다.
       const compileStart: number = compileAt ?? (sawDownload ? readyAt : t0);
@@ -219,7 +231,15 @@ export function LabScreen() {
         },
       }));
     } catch (err) {
-      setNotice(engineErrorMessage(err));
+      const message = engineErrorMessage(err);
+      setNotice(message);
+      // GPU 가 없어 못 올린 것도 표 1 지원환경에 남긴다.
+      if (message === GPU_UNAVAILABLE || message === GPU_INSECURE) {
+        update((prev) => ({
+          ...prev,
+          bench: { ...prev.bench, [engine]: benchRecord(prev.bench[engine], { support: '미지원 (WebGPU)' }) },
+        }));
+      }
     } finally {
       unsub();
       setPreparing(false);
@@ -857,6 +877,7 @@ function Table1({
 
   const download = (engine: EngineId) => {
     const b = bench(engine);
+    if (b?.support.startsWith('미지원') && b.downloadMs == null) return <span className="text-danger">{b.support}</span>;
     if (!b || (b.downloadMs == null && !b.fromCache)) return <Todo>① 새로 받기</Todo>;
     if (b.downloadMs == null) return <Todo>캐시에서 올림 — ① 새로 받기</Todo>;
     return `${sec(b.downloadMs)} · ${mb(b.downloadBytes) ?? '용량 —'}`;
@@ -1318,13 +1339,32 @@ function PromptSection({
 function DeviceBox({ device }: { device: DeviceInfo | null }) {
   if (!device) return <p className="text-[13px] text-ink-3">기기 정보를 읽는 중…</p>;
   return (
+    <div className="space-y-3">
+      <SupportBox device={device} />
+      <DeviceList device={device} />
+    </div>
+  );
+}
+
+function DeviceList({ device }: { device: DeviceInfo }) {
+  return (
     <dl className="grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-[12px]">
       <dt className="text-ink-3">RAM 등급</dt>
       <dd>{device.deviceMemory ? `${device.deviceMemory}GB 이상` : '알 수 없음'}</dd>
       <dt className="text-ink-3">CPU 코어</dt>
       <dd>{device.cores ?? '—'}</dd>
+      <dt className="text-ink-3">보안 연결</dt>
+      <dd>{device.secure ? '예 (https · localhost)' : '아니오'}</dd>
       <dt className="text-ink-3">WebGPU</dt>
       <dd>{device.webgpu}</dd>
+      <dt className="text-ink-3">shader-f16</dt>
+      <dd>{device.shaderF16 == null ? '—' : device.shaderF16 ? '있음' : '없음'}</dd>
+      <dt className="text-ink-3">GPU 버퍼 한도</dt>
+      <dd>
+        {device.maxBufferMB != null
+          ? `버퍼 ${device.maxBufferMB}MB · 저장 바인딩 ${device.maxStorageBindingMB ?? '—'}MB`
+          : '—'}
+      </dd>
       <dt className="text-ink-3">Chrome Nano</dt>
       <dd>{device.nano}</dd>
       <dt className="text-ink-3">저장공간</dt>
@@ -1334,6 +1374,31 @@ function DeviceBox({ device }: { device: DeviceInfo | null }) {
       <dt className="text-ink-3">브라우저</dt>
       <dd className="break-all text-ink-3">{device.userAgent}</dd>
     </dl>
+  );
+}
+
+/** 이 기기에서 엔진별로 되는지. 앱이 실제로 고를 경로도 함께 보인다. */
+function SupportBox({ device }: { device: DeviceInfo }) {
+  const v = engineVerdicts(device);
+  const rows: Array<[string, Verdict]> = [
+    ['Rule Engine', v.rule],
+    ['Gemma 270M · 1B', v.gemma],
+    ['Chrome Nano', v.nano],
+    ['앱이 쓰는 경로', v.app],
+  ];
+  return (
+    <div className="rounded-md border border-line bg-bg p-3">
+      <p className="mb-2 text-[13px] font-bold">이 기기에서 로컬 AI</p>
+      <ul className="space-y-1 text-[12px]">
+        {rows.map(([label, verdict]) => (
+          <li key={label} className="flex gap-2">
+            <span className={verdict.ok ? 'text-accent-ink' : 'text-danger'}>{verdict.ok ? '✓' : '✕'}</span>
+            <span className="w-[120px] shrink-0 font-semibold">{label}</span>
+            <span className="text-ink-2">{verdict.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
