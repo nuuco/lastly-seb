@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "온디바이스 비교용 골든셋. 이전 104문장(feat/lighter-ondevice-model) 기반, 2026-09-24 검토 반영.",
+  "description": "온디바이스 비교용 골든셋. 이전 104문장(feat/lighter-ondevice-model) 기반, 2026-09-24 검토 반영. 115–120: 오타·음성 인식 오류 문장(동사·명사가 틀림, 기대값은 바르게 쓴 이름).",
   "dateRule": "date: 숫자=며칠 전(음수는 앞으로), 문자열=실행일 기준으로 계산하는 표현, null=채점 제외",
   "knownItems": [
     {
@@ -1314,6 +1314,72 @@
       "date": "9/14",
       "cadenceDays": null,
       "matchId": null,
+      "trap": true
+    },
+    {
+      "n": 115,
+      "text": "어제 정수기 필터 갈앗어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "정수기 필터 교체",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-2",
+      "trap": true
+    },
+    {
+      "n": 116,
+      "text": "오늘 이블 빨았어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "이불 빨래",
+      "date": 0,
+      "cadenceDays": null,
+      "matchId": "item-1",
+      "trap": true
+    },
+    {
+      "n": 117,
+      "text": "그저께 에어콘 청소했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "에어컨 청소",
+      "date": 2,
+      "cadenceDays": null,
+      "matchId": "item-4",
+      "trap": true
+    },
+    {
+      "n": 118,
+      "text": "어제 화장시 청소 했어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "화장실 청소",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-5",
+      "trap": true
+    },
+    {
+      "n": 119,
+      "text": "어제 강아지 목용 시켰어",
+      "intent": "record",
+      "status": "완료",
+      "activity": "강아지 목욕",
+      "date": 1,
+      "cadenceDays": null,
+      "matchId": "item-9",
+      "trap": true
+    },
+    {
+      "n": 120,
+      "text": "커튼 아직 못 빨앗어",
+      "intent": "record",
+      "status": "미완료",
+      "activity": "커튼 빨래",
+      "date": null,
+      "cadenceDays": null,
+      "matchId": "item-6",
       "trap": true
     }
   ]
