@@ -1,7 +1,15 @@
 import { overlayWithRules } from './apply-rules';
+import { createChromeNanoModel, NANO_UNAVAILABLE } from './chrome-nano-model';
 import type { LocalModel } from './local-model';
 import { createMediaPipeModel, hasWebGpu } from './mediapipe-model';
-import { defaultModelId, getModel, listModels, type ModelId, type ModelSpec } from './models';
+import {
+  defaultModelId,
+  FALLBACK_MODEL,
+  getModel,
+  listModels,
+  type ModelId,
+  type ModelSpec,
+} from './models';
 import { parseModelJson } from './parse-prompt';
 import type {
   EngineProgress,
@@ -43,6 +51,8 @@ export function engineProgressHint(progress: EngineProgress): string | null {
 const progressHandlers = new Set<(progress: EngineProgress) => void>();
 const instances = new Map<ModelId, LocalModel>();
 let activeId: ModelId = defaultModelId();
+/** API 는 있는데 사양이 모자라 못 쓴다고 확인된 모델. */
+const unavailable = new Set<ModelId>();
 
 function emit(progress: EngineProgress) {
   for (const handler of progressHandlers) handler(progress);
@@ -51,13 +61,24 @@ function emit(progress: EngineProgress) {
 function modelFor(id: ModelId): LocalModel {
   const existing = instances.get(id);
   if (existing) return existing;
-  const model = createMediaPipeModel(getModel(id), emit);
+  const spec = getModel(id);
+  const model =
+    spec.runtime === 'chrome-builtin'
+      ? createChromeNanoModel(spec, emit)
+      : createMediaPipeModel(spec, emit);
   instances.set(id, model);
   return model;
 }
 
+/**
+ * 고른 모델을 이 브라우저에서 못 쓰면 대체 모델로 간다.
+ * Nano 는 Android Chrome 에 API 가 없어 여기서 Gemma 로 바뀐다.
+ */
 function current(): LocalModel {
-  return modelFor(activeId);
+  const chosen = modelFor(activeId);
+  if (activeId === FALLBACK_MODEL) return chosen;
+  if (chosen.isSupported() && !unavailable.has(activeId)) return chosen;
+  return modelFor(FALLBACK_MODEL);
 }
 
 export function subscribeEngineProgress(handler: (progress: EngineProgress) => void): () => void {
@@ -88,8 +109,15 @@ export function isEngineSupported(): boolean {
   return current().isSupported();
 }
 
-export function ensureEngine(): Promise<void> {
-  return current().prepare();
+export async function ensureEngine(): Promise<void> {
+  const model = current();
+  try {
+    await model.prepare();
+  } catch (err) {
+    if (!(err instanceof Error) || err.message !== NANO_UNAVAILABLE) throw err;
+    unavailable.add(model.spec.id);
+    await current().prepare();
+  }
 }
 
 export function isEngineReady(): boolean {

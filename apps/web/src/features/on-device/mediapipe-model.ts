@@ -6,7 +6,7 @@ import {
   isEngineCancelled,
 } from './engine-errors';
 import type { LocalModel, ParseInput } from './local-model';
-import type { ModelSpec } from './models';
+import type { MediaPipeSpec as ModelSpec } from './models';
 import { buildParsePrompt } from './parse-prompt';
 import type { EngineProgress } from './types';
 

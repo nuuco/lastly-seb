@@ -2,9 +2,13 @@
  * 온디바이스 모델 목록. 모델을 바꾸거나 더할 때는 이 파일만 고친다.
  * 워커·엔진·동의 시트는 여기 값을 받아 쓴다.
  */
-export type ModelId = 'gemma3-1b' | 'gemma3-270m';
+export type ModelId = 'gemma3-1b' | 'gemma3-270m' | 'chrome-nano';
 
-export interface ModelSpec {
+export type ModelSpec = MediaPipeSpec | ChromeBuiltinSpec;
+
+/** .task 파일을 받아 WebGPU 로 돌리는 모델. */
+export interface MediaPipeSpec {
+  runtime: 'mediapipe';
   id: ModelId;
   label: string;
   /** 브라우저가 GET 할 주소. */
@@ -19,8 +23,17 @@ export interface ModelSpec {
   maxTokens: number;
 }
 
+/** Chrome 내장 Gemini Nano. 파일은 Chrome 이 받는다. */
+export interface ChromeBuiltinSpec {
+  runtime: 'chrome-builtin';
+  id: ModelId;
+  label: string;
+  sizeLabel: string;
+}
+
 const MODELS: Record<ModelId, ModelSpec> = {
   'gemma3-1b': {
+    runtime: 'mediapipe',
     id: 'gemma3-1b',
     label: 'Gemma 3 1B int4',
     url:
@@ -37,6 +50,7 @@ const MODELS: Record<ModelId, ModelSpec> = {
    * `node apps/web/scripts/download-model.mjs gemma3-270m` 으로 public/models 에 받아 쓴다.
    */
   'gemma3-270m': {
+    runtime: 'mediapipe',
     id: 'gemma3-270m',
     label: 'Gemma 3 270M int4',
     url:
@@ -48,7 +62,17 @@ const MODELS: Record<ModelId, ModelSpec> = {
     metaFile: 'gemma3-270m-it-q4_0-web.meta.json',
     maxTokens: 1024,
   },
+  /** 데스크톱 Chrome 148+ 만. Android Chrome 은 지원하지 않는다. */
+  'chrome-nano': {
+    runtime: 'chrome-builtin',
+    id: 'chrome-nano',
+    label: 'Chrome Gemini Nano',
+    sizeLabel: 'Chrome이 따로 받는 약 4GB',
+  },
 };
+
+/** Nano 를 못 쓰는 기기에서 대신 쓸 모델. */
+export const FALLBACK_MODEL: ModelId = 'gemma3-1b';
 
 function isModelId(value: string | undefined): value is ModelId {
   return value !== undefined && value in MODELS;
