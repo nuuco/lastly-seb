@@ -20,6 +20,9 @@ const WASM_ROOT = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/w
 const COMPILE_TIMEOUT_MS = 240_000;
 const COMPILE_ESTIMATE_MS = 90_000;
 const INIT_STALL_MS = 60_000;
+/** maxTokens 는 입력+출력 합계다. JSON 한 개를 낼 자리를 남긴다. */
+const OUTPUT_RESERVE_TOKENS = 160;
+export const INPUT_TOO_LONG = '문장과 기존 항목이 모델이 한 번에 받을 수 있는 길이를 넘었어요.';
 
 type GpuDevice = { destroy?: () => void };
 
@@ -29,6 +32,8 @@ type LlmHandle = {
     cb?: (partial: string, done: boolean) => void,
   ): Promise<string>;
   cancelProcessing(): void;
+  /** 0.10.x 에 있다. 없는 버전이면 길이 검사를 건너뛴다. */
+  sizeInTokens?: (text: string) => number | undefined;
   close?: () => void;
 };
 
@@ -122,16 +127,39 @@ async function generateRaw(spec: ModelSpec, input: ParseInput): Promise<string> 
   const prompt = input.instruction
     ? wrapGemmaTurn(input.instruction)
     : buildParsePrompt(input.text, input.referenceDate, input.knownItems);
+  // 한도를 넘는 입력을 보내면 MediaPipe 가 "처리 중" 상태에 갇혀 이후 호출이 모두 실패한다. 보내기 전에 막는다.
+  const limit = spec.maxTokens - OUTPUT_RESERVE_TOKENS;
+  let size: number | undefined;
+  try {
+    size = llm.sizeInTokens?.(prompt);
+  } catch {
+    size = undefined;
+  }
+  if (size !== undefined && size > limit) {
+    throw new Error(`${INPUT_TOO_LONG} (입력 ${size}토큰, 한도 ${limit}토큰)`);
+  }
+
   let acc = '';
-  const textOut = await llm.generateResponse(prompt, (partial, done) => {
-    acc += partial;
-    // 프롬프트가 '{' 로 끝나서(wrapGemmaTurn) 출력은 대개 '{' 없이 시작한다. 붙여서 닫힘을 본다.
-    const json = acc.trimStart().startsWith('{') ? acc : `{${acc}`;
-    if (!done && (hasClosedJson(json) || isDegenerate(acc))) {
-      llm?.cancelProcessing();
-    }
-  });
-  return (acc || textOut || '').trim();
+  let stoppedEarly = false;
+  try {
+    const textOut = await llm.generateResponse(prompt, (partial, done) => {
+      acc += partial;
+      // 프롬프트가 '{' 로 끝나서(wrapGemmaTurn) 출력은 대개 '{' 없이 시작한다. 붙여서 닫힘을 본다.
+      const json = acc.trimStart().startsWith('{') ? acc : `{${acc}`;
+      if (!done && (hasClosedJson(json) || isDegenerate(acc))) {
+        stoppedEarly = true;
+        llm?.cancelProcessing();
+      }
+    });
+    return (acc || textOut || '').trim();
+  } catch (err) {
+    if (stoppedEarly && acc) return acc.trim();
+    // 실패한 인스턴스는 다음 호출도 막는다. 내려 두고, 다음 준비 때 다시 올린다(파일은 OPFS 에 남아 있다).
+    bumpGeneration();
+    teardownRuntime();
+    emit({ status: 'idle', loaded: 0, total: 0, message: '' });
+    throw err;
+  }
 }
 
 function getWorker(): Worker {
