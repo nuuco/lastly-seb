@@ -15,7 +15,7 @@ const EMPTY_LLM: OnDeviceParseResult = {
 };
 
 /**
- * 1B는 칸을 자주 틀린다. 의도·날짜·주기·이름·저장 여부는 규칙이 먼저 채우고,
+ * 작은 모델은 칸을 자주 틀린다. 의도·날짜·주기·이름·저장 여부는 규칙이 먼저 채우고,
  * 모델 값은 규칙이 비울 때만 쓴다. 못/안·완료는 Gemma가 뒤집지 못한다.
  */
 export function overlayWithRules(

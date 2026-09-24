@@ -2,9 +2,11 @@
  * Gemma 파일을 OPFS에 받는 워커.
  * GPU 장치는 복제할 수 없어서 올리기는 페이지에서 한다.
  */
-const MODEL_OPFS_FILE = 'gemma3-1b-it-int4-web.task';
-const MODEL_META_FILE = 'gemma3-1b-it-int4-web.meta.json';
-const DEFAULT_MODEL_BYTES = 700_383_232;
+const MODEL_OPFS_FILE = 'gemma3-270m-it-q8-web.task';
+const MODEL_META_FILE = 'gemma3-270m-it-q8-web.meta.json';
+const DEFAULT_MODEL_BYTES = 276_168_704;
+/** 이전에 받던 1B 파일. 새 모델을 받기 전에 지운다. */
+const LEGACY_OPFS_FILES = ['gemma3-1b-it-int4-web.task', 'gemma3-1b-it-int4-web.meta.json'];
 const DOWNLOAD_STALL_MS = 30_000;
 
 self.onmessage = async (event) => {
@@ -26,6 +28,7 @@ self.onmessage = async (event) => {
 
 async function ensureModelFile(modelUrl, requestId) {
   const modelUrlAbs = new URL(modelUrl, self.location.origin).href;
+  await removeLegacyFiles();
   const cached = await openCachedFile(modelUrlAbs);
   if (cached) return cached;
 
@@ -57,6 +60,15 @@ async function openCachedFile(url) {
     return file;
   } catch {
     return null;
+  }
+}
+
+async function removeLegacyFiles() {
+  try {
+    const root = await navigator.storage.getDirectory();
+    await Promise.allSettled(LEGACY_OPFS_FILES.map((name) => root.removeEntry(name)));
+  } catch {
+    // ignore
   }
 }
 

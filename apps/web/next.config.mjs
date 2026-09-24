@@ -9,7 +9,7 @@ import path from 'node:path';
 const repoRoot = path.join(import.meta.dirname, '../..');
 nextEnv.loadEnvConfig(repoRoot);
 
-const localModelPath = path.join(import.meta.dirname, 'public/models/gemma3-1b-it-int4-web.task');
+const localModelPath = path.join(import.meta.dirname, 'public/models/gemma3-270m-it-q8-web.task');
 const hasLocalModel = fs.existsSync(localModelPath);
 
 /** @type {import('next').NextConfig} */
@@ -29,9 +29,9 @@ const nextConfig = {
     if (hasLocalModel) return [];
     return [
       {
-        source: '/models/gemma3-1b-it-int4-web.task',
+        source: '/models/gemma3-270m-it-q8-web.task',
         destination:
-          'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task',
+          'https://huggingface.co/nuuco/gemma-3-270m-it-q8-web/resolve/main/gemma3-270m-it-q8-web.task',
         permanent: false,
       },
     ];

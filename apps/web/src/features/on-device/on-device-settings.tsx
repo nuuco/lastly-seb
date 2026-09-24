@@ -100,7 +100,7 @@ export function OnDeviceSettings() {
         ? engineProgressLabel(progress!)
         : consent === 'granted'
           ? '모델을 준비하고 있어요.'
-          : '약 670MB. Wi-Fi에서 받기를 권해요.';
+          : '약 260MB. Wi-Fi에서 받기를 권해요.';
 
   return (
     <>

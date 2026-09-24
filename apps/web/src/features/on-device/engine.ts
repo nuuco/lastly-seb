@@ -9,9 +9,8 @@ import type {
 export type { EngineProgress };
 
 const MODEL = {
-  /** gemma3-1b-it-int4-web.task 에 박힌 KV 캐시 크기. */
   maxTokens: 1280,
-  label: 'Gemma 3 1B int4',
+  label: 'Gemma 3 270M q8',
 };
 
 export const MODEL_LABEL = MODEL.label;
@@ -20,10 +19,12 @@ const MEDIAPIPE_GENAI =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/genai_bundle.mjs';
 const WASM_ROOT = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/wasm';
 const DEFAULT_MODEL_URL =
-  'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task';
-const DEFAULT_MODEL_BYTES = 700_383_232;
-const MODEL_OPFS_FILE = 'gemma3-1b-it-int4-web.task';
-const MODEL_META_FILE = 'gemma3-1b-it-int4-web.meta.json';
+  'https://huggingface.co/nuuco/gemma-3-270m-it-q8-web/resolve/main/gemma3-270m-it-q8-web.task';
+const DEFAULT_MODEL_BYTES = 276_168_704;
+const MODEL_OPFS_FILE = 'gemma3-270m-it-q8-web.task';
+const MODEL_META_FILE = 'gemma3-270m-it-q8-web.meta.json';
+/** 이전에 받던 1B 파일. 지울 때 함께 지운다. */
+const LEGACY_OPFS_FILES = ['gemma3-1b-it-int4-web.task', 'gemma3-1b-it-int4-web.meta.json'];
 const COMPILE_TIMEOUT_MS = 240_000;
 const COMPILE_ESTIMATE_MS = 90_000;
 const INIT_STALL_MS = 60_000;
@@ -241,7 +242,7 @@ async function generateRaw(
 
 function getWorker(): Worker {
   if (worker) return worker;
-  const w = new Worker('/on-device-worker.js?v=13', { type: 'module' });
+  const w = new Worker('/on-device-worker.js?v=14', { type: 'module' });
   worker = w;
   w.onmessage = (event: MessageEvent<WorkerOut>) => {
     if (worker !== w) return;
@@ -374,7 +375,9 @@ function teardownRuntime() {
 async function removeStoredModel() {
   try {
     const root = await navigator.storage.getDirectory();
-    await Promise.allSettled([root.removeEntry(MODEL_OPFS_FILE), root.removeEntry(MODEL_META_FILE)]);
+    await Promise.allSettled(
+      [MODEL_OPFS_FILE, MODEL_META_FILE, ...LEGACY_OPFS_FILES].map((name) => root.removeEntry(name)),
+    );
   } catch {
     // ignore
   }

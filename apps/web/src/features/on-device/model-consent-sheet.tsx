@@ -11,7 +11,7 @@ import {
 } from '@/features/on-device/engine';
 
 /**
- * 약 670MB를 받기 전에 한 번 묻는다. 기록은 막지 않는다.
+ * 약 260MB를 받기 전에 한 번 묻는다. 기록은 막지 않는다.
  * 배경·닫기는 이번만 치운다. 나중에를 눌러야 다시 안 뜬다.
  */
 export function ModelConsentSheet({
@@ -70,7 +70,7 @@ export function ModelConsentSheet({
           <h2 className="mt-2 text-[22px] font-bold leading-[1.4] tracking-[-.03em] text-ink">
             AI 모델을 받을까요?
             <br />
-            약 670MB예요
+            약 260MB예요
           </h2>
           <p className="mt-4 text-[14.5px] leading-[1.7] text-ink-2">
             Wi-Fi에서 받기를 권해요. 안 받아도 규칙으로 동작해요.{' '}

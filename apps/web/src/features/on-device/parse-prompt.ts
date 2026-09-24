@@ -3,7 +3,7 @@ import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
 /**
  * MediaPipe generateResponse 는 채팅 템플릿을 안 붙인다.
  * Google 웹 샘플과 같이 Gemma 3 턴을 직접 열고, 모델 턴을 `{` 로 시작해
- * 1B가 문장으로 새지 않게 한다.
+ * 모델이 문장으로 새지 않게 한다.
  */
 const INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
 
