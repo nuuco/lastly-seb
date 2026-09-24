@@ -217,7 +217,7 @@ function SmallMicButton({ onClick, disabled }: { onClick: () => void; disabled?:
   );
 }
 
-function MicButton({
+export function MicButton({
   listening,
   onClick,
   disabled,

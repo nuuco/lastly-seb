@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { MicButton } from '@/features/capture/components/capture-bar';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { parseWithRulesOnly } from '@/features/on-device/apply-rules';
 import { setModelConsent } from '@/features/on-device/consent';
@@ -489,7 +490,7 @@ function DirectInput({
 
   return (
     <Section title="② 직접 입력 (음성 · 텍스트)">
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -497,9 +498,7 @@ function DirectInput({
           className="h-11 min-w-0 flex-1 rounded-md border border-line bg-card px-3"
         />
         {speech.supported ? (
-          <Button onClick={speech.listening ? speech.stop : speech.start}>
-            {speech.listening ? '■ 멈춤' : '🎤 말하기'}
-          </Button>
+          <MicButton listening={speech.listening} onClick={speech.listening ? speech.stop : speech.start} />
         ) : null}
         <Button onClick={() => void run()} disabled={busy || !text.trim()}>
           {busy ? '해석 중' : '해석'}
