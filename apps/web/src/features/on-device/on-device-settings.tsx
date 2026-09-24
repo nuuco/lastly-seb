@@ -10,7 +10,7 @@ import {
   cancelEngineLoad,
   clearModelCache,
   ensureEngine,
-  hasWebGpu,
+  isEngineSupported,
   isEngineBusy,
   isEngineCancelled,
   isEngineReady,
@@ -40,7 +40,7 @@ export function OnDeviceSettings() {
     setVoice(isVoiceGuidanceOn());
     const current = getModelConsent();
     setConsent(current);
-    setGpu(hasWebGpu());
+    setGpu(isEngineSupported());
     setReady(isEngineReady());
     const unsub = subscribeEngineProgress((next) => {
       setProgress(next);
@@ -55,7 +55,7 @@ export function OnDeviceSettings() {
         setReady(false);
       }
     });
-    if (current === 'granted' && hasWebGpu() && !isEngineReady()) {
+    if (current === 'granted' && isEngineSupported() && !isEngineReady()) {
       setBusy(true);
       void ensureEngine()
         .then(() => setReady(true))

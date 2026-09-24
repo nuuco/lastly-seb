@@ -27,7 +27,7 @@ import {
   engineProgressHint,
   engineProgressLabel,
   ensureEngine,
-  hasWebGpu,
+  isEngineSupported,
   isEngineCancelled,
   subscribeEngineProgress,
   type EngineProgress,
@@ -259,7 +259,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
       if (getModelConsent() !== 'declined') setConsentOpen(true);
       return;
     }
-    if (!hasWebGpu()) return;
+    if (!isEngineSupported()) return;
     if (getModelConsent() === null) setConsentOpen(true);
     if (hasModelConsent()) void ensureEngine().catch((err) => {
       if (isEngineCancelled(err)) return;
