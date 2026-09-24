@@ -86,24 +86,48 @@ export function parseModelJson(raw: string): OnDeviceParseResult {
 }
 
 export function extractJsonObject(raw: string): string {
+  return readJsonObject(raw).json;
+}
+
+/**
+ * 모델 출력에서 JSON 객체 하나를 꺼낸다.
+ * 그대로 읽히지 않으면 키 따옴표가 빠진 경우(`status: "완료"`, `cue":"청소"`)만 고쳐 다시 읽는다.
+ * 프롬프트가 '{' 로 끝나서 모델이 첫 키의 여는 따옴표를 빼먹는 일이 잦다.
+ * repaired 는 고쳐서 읽었는지. 실험실이 형식 오류 수로 센다.
+ */
+export function readJsonObject(raw: string): { json: string; repaired: boolean } {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const text = (fenced?.[1] ?? raw).trim();
   const candidates = [text, `{${text}`, `{"intent":${text}`];
 
   for (const candidate of candidates) {
-    const start = candidate.indexOf('{');
-    const end = candidate.lastIndexOf('}');
-    if (start < 0 || end <= start) continue;
-    const slice = candidate.slice(start, end + 1);
-    try {
-      const value = JSON.parse(slice);
-      if (value && typeof value === 'object' && !Array.isArray(value)) return slice;
-    } catch {
-      continue;
-    }
+    const json = parseObject(candidate);
+    if (json) return { json, repaired: false };
+  }
+  for (const candidate of candidates.slice(0, 2)) {
+    const json = parseObject(candidate, quoteBareKeys);
+    if (json) return { json, repaired: true };
   }
 
   throw new Error(`모델이 JSON이 아니라 문장을 냈습니다: ${text.slice(0, 160)}`);
+}
+
+function parseObject(candidate: string, fix?: (slice: string) => string): string | null {
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  const slice = fix ? fix(candidate.slice(start, end + 1)) : candidate.slice(start, end + 1);
+  try {
+    const value = JSON.parse(slice);
+    return value && typeof value === 'object' && !Array.isArray(value) ? slice : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `{status: …`, `, cue": …` 처럼 따옴표가 없거나 한쪽만 있는 영문 키를 `"key":` 로. */
+function quoteBareKeys(slice: string): string {
+  return slice.replace(/([{,]\s*)"?([A-Za-z_][A-Za-z0-9_]*)"?\s*:/g, '$1"$2":');
 }
 
 function clamp01(value: number): number {
