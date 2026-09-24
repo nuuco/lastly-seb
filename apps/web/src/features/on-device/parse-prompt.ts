@@ -29,7 +29,8 @@ function weekdayLabel(isoDate: string): string {
   return '일월화수목금토'[day] ?? '';
 }
 
-export function buildParsePrompt(
+/** 모델에 줄 지시문. 채팅 템플릿은 런타임마다 다르게 붙인다. */
+export function buildParseInstruction(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
@@ -39,14 +40,22 @@ export function buildParsePrompt(
       ? '(없음)'
       : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
 
-  const user = [
+  return [
     INSTRUCTIONS,
     `기준일 ${referenceDate} (${weekdayLabel(referenceDate)}요일)`,
     '기존 항목:',
     items,
     `문장: ${text}`,
   ].join('\n');
+}
 
+/** Gemma 3 턴을 직접 열고 모델 턴을 `{` 로 시작한다. */
+export function buildParsePrompt(
+  text: string,
+  referenceDate: string,
+  knownItems: OnDeviceKnownItem[],
+): string {
+  const user = buildParseInstruction(text, referenceDate, knownItems);
   return `<start_of_turn>user\n${user}<end_of_turn>\n<start_of_turn>model\n{`;
 }
 
