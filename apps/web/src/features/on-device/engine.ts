@@ -1,4 +1,5 @@
 import { overlayWithRules } from './apply-rules';
+import { activeModel, listModels, type ModelSpec } from './models';
 import { buildParsePrompt, parseModelJson } from './parse-prompt';
 import type {
   EngineProgress,
@@ -8,22 +9,11 @@ import type {
 
 export type { EngineProgress };
 
-const MODEL = {
-  /** gemma3-1b-it-int4-web.task 에 박힌 KV 캐시 크기. */
-  maxTokens: 1280,
-  label: 'Gemma 3 1B int4',
-};
-
-export const MODEL_LABEL = MODEL.label;
+export const MODEL_LABEL = activeModel().label;
 
 const MEDIAPIPE_GENAI =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/genai_bundle.mjs';
 const WASM_ROOT = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29/wasm';
-const DEFAULT_MODEL_URL =
-  'https://huggingface.co/nuuco/gemma-3-1b-it-int4-web/resolve/main/gemma3-1b-it-int4-web.task';
-const DEFAULT_MODEL_BYTES = 700_383_232;
-const MODEL_OPFS_FILE = 'gemma3-1b-it-int4-web.task';
-const MODEL_META_FILE = 'gemma3-1b-it-int4-web.meta.json';
 const COMPILE_TIMEOUT_MS = 240_000;
 const COMPILE_ESTIMATE_MS = 90_000;
 const INIT_STALL_MS = 60_000;
@@ -73,9 +63,9 @@ export function engineErrorMessage(err: unknown): string {
   return raw || '모델을 준비하지 못했어요.';
 }
 
-/** 브라우저가 GET 할 주소. 비우면 Hugging Face 공개 파일을 쓴다. */
+/** 브라우저가 GET 할 주소. */
 export function modelAssetUrl(): string {
-  return process.env.NEXT_PUBLIC_ONDEVICE_MODEL_URL || DEFAULT_MODEL_URL;
+  return activeModel().url;
 }
 
 type GpuDevice = { destroy?: () => void };
@@ -106,7 +96,8 @@ type Gpu = {
   requestAdapter(options?: { powerPreference?: string }): Promise<GpuAdapter | null>;
 };
 
-type WorkerIn = { id: number; type: 'init'; modelUrl: string };
+type WorkerModel = Pick<ModelSpec, 'url' | 'bytes' | 'opfsFile' | 'metaFile'>;
+type WorkerIn = { id: number; type: 'init'; model: WorkerModel };
 type WorkerOut =
   | { id: number; type: 'progress'; stage: 'download'; loaded: number; total: number }
   | { id: number; type: 'ready' }
@@ -161,10 +152,14 @@ async function startEngine(): Promise<void> {
 
     const w = getWorker();
     armInitStall();
-    await request(w, { type: 'init', modelUrl: modelAssetUrl() });
+    const spec = activeModel();
+    await request(w, {
+      type: 'init',
+      model: { url: spec.url, bytes: spec.bytes, opfsFile: spec.opfsFile, metaFile: spec.metaFile },
+    });
     if (!isCurrent(id)) throw cancelledError();
     startCompileWatch();
-    const next = await createLlm(device);
+    const next = await createLlm(device, spec);
     if (!isCurrent(id)) {
       closeLlm(next);
       throw cancelledError();
@@ -202,14 +197,14 @@ export async function cancelEngineLoad(): Promise<void> {
   bumpGeneration();
   rejectAll(cancelledError());
   teardownRuntime();
-  await removeStoredModel();
+  await removeStoredModel(activeModel());
   emit({ status: 'idle', loaded: 0, total: 0, message: '' });
 }
 
 /** 동의를 지울 때 받아 둔 모델 파일도 함께 지운다. */
 export async function clearModelCache(): Promise<void> {
   unloadEngine();
-  await removeStoredModel();
+  await Promise.allSettled(listModels().map(removeStoredModel));
 }
 
 export async function parseOnDevice(
@@ -241,7 +236,7 @@ async function generateRaw(
 
 function getWorker(): Worker {
   if (worker) return worker;
-  const w = new Worker('/on-device-worker.js?v=13', { type: 'module' });
+  const w = new Worker('/on-device-worker.js?v=14', { type: 'module' });
   worker = w;
   w.onmessage = (event: MessageEvent<WorkerOut>) => {
     if (worker !== w) return;
@@ -251,7 +246,7 @@ function getWorker(): Worker {
       emit({
         status: 'downloading',
         loaded: msg.loaded,
-        total: msg.total > 0 ? msg.total : DEFAULT_MODEL_BYTES,
+        total: msg.total > 0 ? msg.total : activeModel().bytes,
         message: 'AI 받는 중',
       });
       return;
@@ -270,7 +265,7 @@ function getWorker(): Worker {
   return w;
 }
 
-function request(w: Worker, payload: { type: 'init'; modelUrl: string }) {
+function request(w: Worker, payload: { type: 'init'; model: WorkerModel }) {
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
@@ -371,10 +366,10 @@ function teardownRuntime() {
   initPromise = null;
 }
 
-async function removeStoredModel() {
+async function removeStoredModel(spec: ModelSpec) {
   try {
     const root = await navigator.storage.getDirectory();
-    await Promise.allSettled([root.removeEntry(MODEL_OPFS_FILE), root.removeEntry(MODEL_META_FILE)]);
+    await Promise.allSettled([root.removeEntry(spec.opfsFile), root.removeEntry(spec.metaFile)]);
   } catch {
     // ignore
   }
@@ -414,15 +409,15 @@ async function createWebGpuDevice(): Promise<GpuDevice> {
   }
 }
 
-async function createLlm(device: GpuDevice): Promise<LlmHandle> {
+async function createLlm(device: GpuDevice, spec: ModelSpec): Promise<LlmHandle> {
   const genai = await loadFileset();
-  const file = await openOpfsFile();
+  const file = await openOpfsFile(spec);
   const options = (forceF32 = false) => ({
     baseOptions: {
       modelAssetBuffer: file.stream().getReader(),
       gpuOptions: { device },
     },
-    maxTokens: MODEL.maxTokens,
+    maxTokens: spec.maxTokens,
     topK: 40,
     temperature: 0.8,
     randomSeed: 101,
@@ -441,9 +436,9 @@ async function createLlm(device: GpuDevice): Promise<LlmHandle> {
   }
 }
 
-async function openOpfsFile(): Promise<File> {
+async function openOpfsFile(spec: ModelSpec): Promise<File> {
   const root = await navigator.storage.getDirectory();
-  const handle = await root.getFileHandle(MODEL_OPFS_FILE);
+  const handle = await root.getFileHandle(spec.opfsFile);
   return handle.getFile();
 }
 
