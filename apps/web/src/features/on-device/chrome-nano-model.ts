@@ -81,11 +81,15 @@ export function createChromeNanoModel(
     if (loading) return loading;
     loading = (async () => {
       const lm = api();
-      if (!lm || (await chromeNanoAvailability()) === 'unavailable') {
+      const availability = await chromeNanoAvailability();
+      if (!lm || availability === 'unavailable') {
         throw new Error(NANO_UNAVAILABLE);
       }
       abort = new AbortController();
-      onProgress({ status: 'downloading', loaded: 0, total: 100, message: 'AI 받는 중' });
+      // 이미 받아 둔 기기에서는 받기 단계를 알리지 않는다. 받기 시간을 잘못 잰다.
+      if (availability !== 'available') {
+        onProgress({ status: 'downloading', loaded: 0, total: 100, message: 'AI 받는 중' });
+      }
       session = await lm.create({
         signal: abort.signal,
         monitor(m) {
