@@ -63,6 +63,11 @@ export function modeSteps(engine: EngineId, mode: RunMode): string[] {
   ];
 }
 
+/** 표 1 정확도와 같은 기준: Intent · Status · Activity(정확) · Date 가 모두 맞음. */
+export function isCorrect(m: CaseMarks): boolean {
+  return m.intent && m.status && m.activity !== 'miss' && m.activity !== 'partial' && m.date !== false;
+}
+
 /** 앱 경로는 "저장 안 함" 이 미완료·미래·애매 중 무엇인지 모른다. */
 export type GotStatus = GoldenStatus | '저장 안 함' | null;
 
@@ -261,6 +266,8 @@ export interface Table2Row {
   fcCount: number;
   /** 네 칸이 모두 맞은 비율. 표 1 정확도. */
   all: number;
+  /** 네 칸이 모두 맞은 문장 수. */
+  correctCount: number;
   avgMs: number;
   maxMs: number;
   /** 모델까지 간 문장만의 평균. 규칙으로 끝난 문장은 1ms 대라 평균을 흐린다. */
@@ -302,12 +309,8 @@ export function summarize(
     falseCompletion: rate(fcCount, fcPairs.length),
     fcBase: fcPairs.length,
     fcCount,
-    all: rate(
-      marks.filter(
-        (m) => m.intent && m.status && m.activity !== 'miss' && m.activity !== 'partial' && m.date !== false,
-      ).length,
-      marks.length,
-    ),
+    all: rate(marks.filter(isCorrect).length, marks.length),
+    correctCount: marks.filter(isCorrect).length,
     avgMs: Math.round(pairs.reduce((sum, { got }) => sum + got.ms, 0) / pairs.length),
     maxMs: Math.max(...pairs.map(({ got }) => got.ms)),
     modelAvgMs: (() => {

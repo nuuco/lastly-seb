@@ -37,6 +37,7 @@ import { engineVerdicts, jsHeapMB, readDeviceInfo, type DeviceInfo, type Verdict
 import {
   ENGINE_LABELS,
   isOnDevice,
+  isCorrect,
   markCase,
   MODE_LABELS,
   modeSteps,
@@ -675,6 +676,8 @@ function GoldenRunner({
   const tagLabel = runTag ? (mode === 'app' ? ` · 규칙 #${runTag}` : ` · 지시문 #${runTag}`) : '';
   const key = runKey(engine, mode, goldenSet.version, runTag);
   const run = lab.runs[key];
+  const runSummary = run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
+  const [liveCorrect, setLiveCorrect] = useState(0);
 
   const start = async () => {
     setError(null);
@@ -700,6 +703,8 @@ function GoldenRunner({
     stopRef.current = false;
     setRunning(true);
     setDone(0);
+    setLiveCorrect(0);
+    let correct = 0;
     const outcomes: Record<number, CaseOutcome> = {};
     const save = () =>
       update((prev) => ({
@@ -723,7 +728,10 @@ function GoldenRunner({
       if (stopRef.current) break;
       const got = await runCase(engine, mode, gold.text, referenceDate, knownItems, context);
       const { detail: _detail, ...outcome } = got;
-      outcomes[gold.n] = { ...outcome, n: gold.n };
+      const saved = { ...outcome, n: gold.n };
+      outcomes[gold.n] = saved;
+      if (isCorrect(markCase(gold, saved, referenceDate))) correct += 1;
+      setLiveCorrect(correct);
       setDone(index + 1);
       if ((index + 1) % 5 === 0) save();
     }
@@ -784,6 +792,18 @@ function GoldenRunner({
           className="rounded border border-line bg-card px-2 py-1"
         />
       </div>
+      {runSummary && !running ? (
+        <p className="mt-3 text-[14px] font-bold">
+          {goldenSet.cases.length}문장 중 정답 {runSummary.correctCount} · 오답{' '}
+          {runSummary.total - runSummary.correctCount}
+          <span className="font-normal text-ink-2">
+            {' '}
+            · False Completion {runSummary.fcCount}/{runSummary.fcBase}
+            {runSummary.errors ? ` · 오류 ${runSummary.errors}` : ''}
+            {runSummary.total < goldenSet.cases.length ? ` · ${runSummary.total}문장까지만 실행` : ''}
+          </span>
+        </p>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {running ? (
           <Button onClick={() => (stopRef.current = true)}>멈추기</Button>
@@ -801,7 +821,7 @@ function GoldenRunner({
       </div>
       {running ? (
         <p className="mt-2 text-[13px] text-ink-2">
-          {done} / {goldenSet.cases.length}
+          {done} / {goldenSet.cases.length} · 지금까지 정답 {liveCorrect}
         </p>
       ) : null}
       {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
@@ -868,9 +888,12 @@ function ResultTable({ goldenSet, run }: { goldenSet: GoldenSet; run: RunRecord 
             if (!got) return null;
             const m = markCase(gold, got, run.referenceDate);
             const want = resolveDaysAgo(gold.date, run.referenceDate);
-            const bad = m.falseCompletion || !m.intent || !m.status || m.activity === 'miss' || m.date === false;
+            // 위 정답 개수와 같은 기준. 이름만 부분 일치면 노랑으로 구분한다.
+            const ok = isCorrect(m);
+            const partialOnly = !ok && isCorrect({ ...m, activity: 'exact' }) && m.activity === 'partial';
+            const tone = ok ? '' : partialOnly ? 'bg-[#fff8e1]' : 'bg-[#fff1ef]';
             return (
-              <tr key={gold.n} className={`border-t border-line align-top ${bad ? 'bg-[#fff1ef]' : ''}`}>
+              <tr key={gold.n} className={`border-t border-line align-top ${tone}`}>
                 <td className="p-1">{gold.n}</td>
                 <td className="p-1">{gold.text}</td>
                 <td className="p-1 text-ink-2">
@@ -880,7 +903,7 @@ function ResultTable({ goldenSet, run }: { goldenSet: GoldenSet; run: RunRecord 
                   {got.status ?? '—'} · {got.activity ?? '—'} · {got.daysAgo ?? '—'}
                   {got.error ? <span className="text-danger"> · 오류</span> : null}
                 </td>
-                <td className="p-1 text-center">{m.falseCompletion ? 'FC' : bad ? '✗' : '✓'}</td>
+                <td className="p-1 text-center">{m.falseCompletion ? 'FC' : ok ? '✓' : partialOnly ? '△' : '✗'}</td>
               </tr>
             );
           })}
@@ -1132,7 +1155,7 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
                     </span>
                   </td>
                   <td className="p-1 text-ink-3">
-                    {summary.total}
+                    정답 {summary.correctCount} / {summary.total}
                     {run.mode === 'app' && run.engine !== 'rule' ? ` · 모델 ${summary.usedModel}` : ''}
                     {summary.toServer ? ` · 서버행 ${summary.toServer}` : ''}
                     {summary.errors ? ` · 오류 ${summary.errors}` : ''}
