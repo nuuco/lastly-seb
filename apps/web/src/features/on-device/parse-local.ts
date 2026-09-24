@@ -29,14 +29,14 @@ export interface LocalInterpretation {
   deferred: boolean;
   /** 서버로 보낼 칸. */
   slots: ClientParseSlots | undefined;
-  /** 모델까지 돌았는지. 규칙으로 끝났거나 모델이 준비 전이면 false. */
+  /** 모델까지 돌았는지. 규칙으로 끝났거나 모델이 준비 전이면 false. 측정·로그용. */
   usedModel: boolean;
   modelError: string | null;
 }
 
 /**
  * 캡처가 서버로 보내기 전까지 기기에서 하는 일 전부.
- * 캡처 화면과 온디바이스 실험실이 같은 함수를 부른다.
+ * 규칙 → (규칙이 못 끝냈으면) 모델 → 저장하지 않을 말 거르기 → 서버로 보낼 칸.
  */
 export async function interpretLocally(
   text: string,

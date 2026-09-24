@@ -23,4 +23,3 @@ export function engineErrorMessage(err: unknown): string {
   }
   return raw || '모델을 준비하지 못했어요.';
 }
-

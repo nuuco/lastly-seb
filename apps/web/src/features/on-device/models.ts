@@ -78,7 +78,7 @@ function isModelId(value: string | undefined): value is ModelId {
 /** 앱 기본 모델. NEXT_PUBLIC_ONDEVICE_MODEL 로 바꾼다. */
 export function defaultModelId(): ModelId {
   const env = process.env.NEXT_PUBLIC_ONDEVICE_MODEL;
-  return isModelId(env) ? env : 'gemma3-1b';
+  return isModelId(env) ? env : FALLBACK_MODEL;
 }
 
 export function getModel(id: ModelId): ModelSpec {

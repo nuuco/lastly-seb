@@ -88,11 +88,7 @@ export function subscribeEngineProgress(handler: (progress: EngineProgress) => v
   };
 }
 
-export function getActiveModelId(): ModelId {
-  return activeId;
-}
-
-/** 실험실에서 모델을 바꿀 때. 올라가 있던 모델은 내린다. 받아 둔 파일은 남긴다. */
+/** 쓸 모델을 바꾼다. 올라가 있던 모델은 내리고, 받아 둔 파일은 남긴다. */
 export function setActiveModel(id: ModelId): void {
   if (id === activeId) return;
   current().unload();
@@ -147,16 +143,6 @@ export async function parseOnDevice(
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
 ): Promise<OnDeviceParseResult> {
-  const llm = await parseOnDeviceModelOnly(text, referenceDate, knownItems);
-  return overlayWithRules(text, referenceDate, knownItems, llm);
-}
-
-/** 규칙 없이 모델 값만. 실험실에서 모델 실력을 따로 볼 때. */
-export async function parseOnDeviceModelOnly(
-  text: string,
-  referenceDate: string,
-  knownItems: OnDeviceKnownItem[],
-): Promise<OnDeviceParseResult> {
   const raw = await current().generate({ text, referenceDate, knownItems });
-  return parseModelJson(raw);
+  return overlayWithRules(text, referenceDate, knownItems, parseModelJson(raw));
 }

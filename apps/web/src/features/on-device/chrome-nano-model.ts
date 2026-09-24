@@ -16,7 +16,10 @@ export const NANO_UNAVAILABLE = '이 기기에서는 Chrome 내장 AI를 쓸 수
 type Availability = 'unavailable' | 'downloadable' | 'downloading' | 'available';
 
 type NanoSession = {
-  prompt(input: string, options?: { responseConstraint?: object; signal?: AbortSignal }): Promise<string>;
+  prompt(
+    input: string,
+    options?: { responseConstraint?: object; signal?: AbortSignal },
+  ): Promise<string>;
   clone(options?: { signal?: AbortSignal }): Promise<NanoSession>;
   destroy(): void;
 };
@@ -86,7 +89,7 @@ export function createChromeNanoModel(
         throw new Error(NANO_UNAVAILABLE);
       }
       abort = new AbortController();
-      // 이미 받아 둔 기기에서는 받기 단계를 알리지 않는다. 받기 시간을 잘못 잰다.
+      // 이미 받아 둔 기기에서는 받기 단계를 알리지 않는다. 받는 중 표시가 잠깐 떴다 사라지지 않게.
       if (availability !== 'available') {
         onProgress({ status: 'downloading', loaded: 0, total: 100, message: 'AI 받는 중' });
       }

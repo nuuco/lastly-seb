@@ -22,15 +22,12 @@ const COMPILE_ESTIMATE_MS = 90_000;
 const INIT_STALL_MS = 60_000;
 /** maxTokens 는 입력+출력 합계다. JSON 한 개를 낼 자리를 남긴다. */
 const OUTPUT_RESERVE_TOKENS = 160;
-export const INPUT_TOO_LONG = '문장과 기존 항목이 모델이 한 번에 받을 수 있는 길이를 넘었어요.';
+const INPUT_TOO_LONG = '문장과 기존 항목이 모델이 한 번에 받을 수 있는 길이를 넘었어요.';
 
 type GpuDevice = { destroy?: () => void };
 
 type LlmHandle = {
-  generateResponse(
-    prompt: string,
-    cb?: (partial: string, done: boolean) => void,
-  ): Promise<string>;
+  generateResponse(prompt: string, cb?: (partial: string, done: boolean) => void): Promise<string>;
   cancelProcessing(): void;
   /** 0.10.x 에 있다. 없는 버전이면 길이 검사를 건너뛴다. */
   sizeInTokens?: (text: string) => number | undefined;
@@ -363,14 +360,9 @@ async function openOpfsFile(spec: ModelSpec): Promise<File> {
 }
 
 async function loadFileset() {
-  const mod = (await import(
-    /* webpackIgnore: true */ MEDIAPIPE_GENAI
-  )) as {
+  const mod = (await import(/* webpackIgnore: true */ MEDIAPIPE_GENAI)) as {
     FilesetResolver: {
-      forGenAiTasks: (
-        root: string,
-        locateFile?: boolean,
-      ) => Promise<{ wasmLoaderPath?: string }>;
+      forGenAiTasks: (root: string, locateFile?: boolean) => Promise<{ wasmLoaderPath?: string }>;
     };
     LlmInference: {
       createFromOptions: (fileset: unknown, options: unknown) => Promise<LlmHandle>;
@@ -380,9 +372,10 @@ async function loadFileset() {
   const fileset = await mod.FilesetResolver.forGenAiTasks(WASM_ROOT, true);
   const g = globalThis as unknown as { ModuleFactory?: unknown };
   if (typeof g.ModuleFactory !== 'function' && fileset.wasmLoaderPath) {
-    const loader = (await import(
-      /* webpackIgnore: true */ fileset.wasmLoaderPath
-    )) as { ModuleFactory?: unknown; default?: unknown };
+    const loader = (await import(/* webpackIgnore: true */ fileset.wasmLoaderPath)) as {
+      ModuleFactory?: unknown;
+      default?: unknown;
+    };
     if (typeof loader.ModuleFactory === 'function') g.ModuleFactory = loader.ModuleFactory;
     else if (typeof loader.default === 'function') g.ModuleFactory = loader.default;
     delete fileset.wasmLoaderPath;
