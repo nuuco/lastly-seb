@@ -69,6 +69,7 @@ import {
   type RunRecord,
 } from './lab-store';
 import { buildExperimentInstruction, EXPERIMENT_INSTRUCTIONS } from './prompt-experiment';
+import { labReportMd } from './report';
 import { isOriginalPrompt, loadPromptBody, promptTag, savePromptBody } from './prompt-lab';
 import {
   applyRuleEdit,
@@ -407,6 +408,23 @@ export function LabScreen() {
         <div className="flex flex-wrap gap-2">
           <Button onClick={exportJson}>결과 JSON 내려받기</Button>
           <Button
+            onClick={() =>
+              download(
+                `lastly-lab-${todayIso()}.md`,
+                labReportMd({
+                  lab,
+                  device,
+                  goldenSet,
+                  cloud,
+                  commit: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? null,
+                }),
+                'text/markdown',
+              )
+            }
+          >
+            요약 MD 내려받기 (①·④·⑤)
+          </Button>
+          <Button
             onClick={() => {
               if (confirm('쌓아 둔 결과를 모두 지울까요?')) update(() => EMPTY_STATE);
             }}
@@ -414,6 +432,10 @@ export function LabScreen() {
             결과 초기화
           </Button>
         </div>
+        <p className="mt-2 text-[12px] text-ink-3">
+          둘 다 이 브라우저에 쌓인 결과 전부(모든 엔진 · 방식 · 규칙/지시문 수정본)를 담아요. JSON 은 문장별 결과까지,
+          MD 는 ① 기기 · ④ 표 1 · ⑤ 표 2 요약만이에요.
+        </p>
       </Section>
 
       <RulesSection rules={rules} onChange={changeRules} tag={tag} />
