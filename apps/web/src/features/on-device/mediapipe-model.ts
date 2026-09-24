@@ -123,7 +123,9 @@ async function generateRaw(spec: ModelSpec, input: ParseInput): Promise<string> 
   let acc = '';
   const textOut = await llm.generateResponse(prompt, (partial, done) => {
     acc += partial;
-    if (!done && (hasClosedJson(acc) || isDegenerate(acc))) {
+    // 프롬프트가 '{' 로 끝나서(wrapGemmaTurn) 출력은 대개 '{' 없이 시작한다. 붙여서 닫힘을 본다.
+    const json = acc.trimStart().startsWith('{') ? acc : `{${acc}`;
+    if (!done && (hasClosedJson(json) || isDegenerate(acc))) {
       llm?.cancelProcessing();
     }
   });
