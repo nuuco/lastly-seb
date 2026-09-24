@@ -121,6 +121,7 @@ export function LabScreen() {
   const [cloud, setCloud] = useState<CloudSettings>(EMPTY_CLOUD);
   const [rules, setRules] = useState<RuleEdit>(EMPTY_EDIT);
   const [promptBody, setPromptBody] = useState(EXPERIMENT_INSTRUCTIONS);
+  const [promptDirty, setPromptDirty] = useState(false);
 
   useEffect(() => {
     const interrupted = takeInterruptedPrepare();
@@ -399,9 +400,10 @@ export function LabScreen() {
         context={context}
         tag={tag}
         pTag={pTag}
+        promptDirty={promptDirty}
       />
 
-      <Table1 lab={lab} goldenSet={goldenSet} update={update} cloud={cloud} />
+      <Table1 lab={lab} goldenSet={goldenSet} update={update} cloud={cloud} tag={tag} pTag={pTag} />
       <Table2 lab={lab} goldenSet={goldenSet} />
 
       <Section title="⑥ 내보내기">
@@ -416,6 +418,8 @@ export function LabScreen() {
                   device,
                   goldenSet,
                   cloud,
+                  ruleTag: tag,
+                  promptTag: pTag,
                   commit: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? null,
                 }),
                 'text/markdown',
@@ -439,7 +443,7 @@ export function LabScreen() {
       </Section>
 
       <RulesSection rules={rules} onChange={changeRules} tag={tag} />
-      <PromptSection body={promptBody} onChange={changePrompt} tag={pTag} />
+      <PromptSection body={promptBody} onChange={changePrompt} tag={pTag} onDirtyChange={setPromptDirty} />
     </main>
   );
 }
@@ -672,6 +676,7 @@ function GoldenRunner({
   context,
   tag,
   pTag,
+  promptDirty,
 }: {
   engine: EngineId;
   goldenSet: GoldenSet;
@@ -685,6 +690,7 @@ function GoldenRunner({
   context: RunContext;
   tag: string;
   pTag: string;
+  promptDirty: boolean;
 }) {
   const [mode, setMode] = useState<RunMode>('app');
   const [running, setRunning] = useState(false);
@@ -824,6 +830,21 @@ function GoldenRunner({
             {runSummary.errors ? ` · 오류 ${runSummary.errors}` : ''}
             {runSummary.total < goldenSet.cases.length ? ` · ${runSummary.total}문장까지만 실행` : ''}
           </span>
+          <span className="block text-[12px] font-normal text-ink-3">
+            {mode === 'app'
+              ? `규칙: ${tag ? `수정본 #${tag}` : '원본'} 기준 결과`
+              : `실험 지시문: ${pTag ? `수정본 #${pTag}` : '원본'} 기준 결과`}
+          </span>
+        </p>
+      ) : null}
+      {mode === 'app' && (pTag || promptDirty) ? (
+        <p className="mt-2 text-[12px] text-ink-3">
+          앱 경로는 앱 지시문을 써서 ⑧ 실험 지시문 수정과 무관해요. 수정본을 재려면 &quot;실험 지시문&quot;을 고르세요.
+        </p>
+      ) : null}
+      {mode === 'experiment' && promptDirty ? (
+        <p className="mt-2 text-[12px] text-danger">
+          ⑧에서 고친 내용을 아직 &quot;적용&quot;하지 않았어요. 지금 실행하면 {pTag ? `수정본 #${pTag}` : '원본'}으로 돌아요.
         </p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
@@ -942,28 +963,35 @@ function Table1({
   goldenSet,
   update,
   cloud,
+  tag,
+  pTag,
 }: {
   lab: LabState;
   goldenSet: GoldenSet;
   update: (fn: (prev: LabState) => LabState) => void;
   cloud: CloudSettings;
+  tag: string;
+  pTag: string;
 }) {
-  const summary = (engine: EngineId, mode: RunMode): Table2Row | null => {
-    const run = lab.runs[runKey(engine, mode, goldenSet.version)];
+  const summary = (engine: EngineId, mode: RunMode, runTag = ''): Table2Row | null => {
+    const run = lab.runs[runKey(engine, mode, goldenSet.version, runTag)];
     return run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
   };
 
+  /** 원본 결과 + 지금 적용 중인 수정본 결과(있으면). 수정본은 표 2 에 자세히. */
   const accuracy = (engine: EngineId) => {
-    const app = summary(engine, 'app');
-    const experiment = summary(engine, 'experiment');
-    if (!app && !experiment) return <Todo>③ 실행</Todo>;
-    return (
-      <>
-        {app ? `앱 경로 ${pct(app.all)}` : ''}
-        {app && experiment ? ' · ' : ''}
-        {experiment ? `실험 지시문 ${pct(experiment.all)}` : ''}
-      </>
-    );
+    const parts = MODES.flatMap((mode) => {
+      const variant = mode === 'app' ? tag : pTag;
+      const original = summary(engine, mode);
+      const edited = variant ? summary(engine, mode, variant) : null;
+      const label = MODE_LABELS[mode];
+      return [
+        ...(original ? [`${label} ${pct(original.all)}`] : []),
+        ...(edited ? [`${label} 수정 #${variant} ${pct(edited.all)}`] : []),
+      ];
+    });
+    if (parts.length === 0) return <Todo>③ 실행</Todo>;
+    return parts.join(' · ');
   };
 
   const bench = (engine: EngineId) => lab.bench[engine];
@@ -1105,7 +1133,7 @@ function Table1({
         </table>
       </div>
       <p className="mt-2 text-[12px] text-ink-3">
-        정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율 (원래 규칙 기준). 메모리는 JS 힙만이라 모델의
+        정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율. &quot;수정 #번호&quot; 는 지금 적용 중인 규칙(앱 경로) · 실험 지시문 수정본 결과. 메모리는 JS 힙만이라 모델의
         GPU 메모리는 빠져 있어요 — 탭이 강제로 닫히면 &quot;탭 종료&quot;에 체크하세요.
         {cloudSummary ? ' Cloud 앱 경로는 서버의 DB 매칭 단계가 빠진 근사치예요.' : ''}
       </p>
@@ -1364,14 +1392,17 @@ function PromptSection({
   body,
   onChange,
   tag,
+  onDirtyChange,
 }: {
   body: string;
   onChange: (next: string) => void;
   tag: string;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState(body);
   useEffect(() => setDraft(body), [body]);
   const dirty = draft !== body;
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const onTxt = async (file: File) => {
     const text = await file.text();

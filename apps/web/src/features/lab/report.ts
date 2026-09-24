@@ -22,12 +22,15 @@ interface ReportInput {
   device: DeviceInfo | null;
   goldenSet: GoldenSet;
   cloud: CloudSettings;
+  /** 지금 적용 중인 규칙·실험 지시문 수정본 표시. 원본이면 빈 문자열. */
+  ruleTag: string;
+  promptTag: string;
   commit: string | null;
 }
 
-export function labReportMd({ lab, device, goldenSet, cloud, commit }: ReportInput): string {
-  const summary = (engine: EngineId, mode: RunMode) => {
-    const run = lab.runs[runKey(engine, mode, goldenSet.version)];
+export function labReportMd({ lab, device, goldenSet, cloud, ruleTag, promptTag, commit }: ReportInput): string {
+  const summary = (engine: EngineId, mode: RunMode, runTag = '') => {
+    const run = lab.runs[runKey(engine, mode, goldenSet.version, runTag)];
     return run ? summarize(goldenSet.cases, run.outcomes, run.referenceDate) : null;
   };
   const runs = Object.values(lab.runs).filter((run) => run.setVersion === goldenSet.version);
@@ -82,8 +85,15 @@ export function labReportMd({ lab, device, goldenSet, cloud, commit }: ReportInp
   // ④ 표 1
   const accuracy = (engine: EngineId) => {
     const parts = MODES.flatMap((mode) => {
+      const variant = mode === 'app' ? ruleTag : promptTag;
       const s = summary(engine, mode);
-      return s ? [`${MODE_LABELS[mode]} ${pct(s.all)} (${s.correctCount}/${s.total})`] : [];
+      const edited = variant ? summary(engine, mode, variant) : null;
+      return [
+        ...(s ? [`${MODE_LABELS[mode]} ${pct(s.all)} (${s.correctCount}/${s.total})`] : []),
+        ...(edited
+          ? [`${MODE_LABELS[mode]} 수정 #${variant} ${pct(edited.all)} (${edited.correctCount}/${edited.total})`]
+          : []),
+      ];
     });
     return parts.length ? parts.join(' · ') : null;
   };
@@ -165,7 +175,7 @@ export function labReportMd({ lab, device, goldenSet, cloud, commit }: ReportInp
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...ENGINES.map((engine) => `| ${ENGINE_LABELS[engine]} | ${t1[engine].map(cell).join(' | ')} |`),
     '',
-    '- 정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율 (원래 규칙 · 원래 지시문 기준). 괄호는 정답 수 / 실행 문장 수',
+    '- 정확도 = Intent · Status · Activity · Date 가 모두 맞은 비율. 괄호는 정답 수 / 실행 문장 수. "수정 #번호" 는 내보낼 때 적용 중이던 규칙(앱 경로) · 실험 지시문 수정본 결과',
     '- 빈 칸은 그 방식에 해당하지 않는 항목, "미측정" 은 아직 재지 않은 항목',
     '- 메모리는 JS 힙만 (모델이 쓰는 GPU 메모리는 웹에서 잴 수 없음)',
     '- Cloud 앱 경로는 "서버에 Gemini 해석을 둔다면" 가정. 지금 앱 서버에는 없는 경로',
