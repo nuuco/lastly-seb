@@ -146,8 +146,9 @@ export function createChromeNanoModel(
       const turn = await session.clone();
       try {
         return await turn.prompt(
-          buildParseInstruction(input.text, input.referenceDate, input.knownItems),
-          { responseConstraint: RESPONSE_SCHEMA },
+          input.instruction ??
+            buildParseInstruction(input.text, input.referenceDate, input.knownItems),
+          { responseConstraint: input.responseSchema ?? RESPONSE_SCHEMA },
         );
       } finally {
         turn.destroy();

@@ -55,7 +55,10 @@ export function buildParsePrompt(
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
 ): string {
-  const user = buildParseInstruction(text, referenceDate, knownItems);
+  return wrapGemmaTurn(buildParseInstruction(text, referenceDate, knownItems));
+}
+
+export function wrapGemmaTurn(user: string): string {
   return `<start_of_turn>user\n${user}<end_of_turn>\n<start_of_turn>model\n{`;
 }
 
@@ -82,7 +85,7 @@ export function parseModelJson(raw: string): OnDeviceParseResult {
   };
 }
 
-function extractJsonObject(raw: string): string {
+export function extractJsonObject(raw: string): string {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const text = (fenced?.[1] ?? raw).trim();
   const candidates = [text, `{${text}`, `{"intent":${text}`];

@@ -7,7 +7,7 @@ import {
 } from './engine-errors';
 import type { LocalModel, ParseInput } from './local-model';
 import type { MediaPipeSpec as ModelSpec } from './models';
-import { buildParsePrompt } from './parse-prompt';
+import { buildParsePrompt, wrapGemmaTurn } from './parse-prompt';
 import type { EngineProgress } from './types';
 
 /**
@@ -119,7 +119,9 @@ async function startEngine(spec: ModelSpec): Promise<void> {
 async function generateRaw(spec: ModelSpec, input: ParseInput): Promise<string> {
   await ensureLoaded(spec);
   if (!llm) throw new Error('모델이 아직 없습니다.');
-  const prompt = buildParsePrompt(input.text, input.referenceDate, input.knownItems);
+  const prompt = input.instruction
+    ? wrapGemmaTurn(input.instruction)
+    : buildParsePrompt(input.text, input.referenceDate, input.knownItems);
   let acc = '';
   const textOut = await llm.generateResponse(prompt, (partial, done) => {
     acc += partial;

@@ -1,6 +1,6 @@
 import { overlayWithRules } from './apply-rules';
 import { createChromeNanoModel, NANO_UNAVAILABLE } from './chrome-nano-model';
-import type { LocalModel } from './local-model';
+import type { LocalModel, ParseInput } from './local-model';
 import { createMediaPipeModel, hasWebGpu } from './mediapipe-model';
 import {
   defaultModelId,
@@ -149,6 +149,19 @@ export async function parseOnDevice(
 ): Promise<OnDeviceParseResult> {
   const llm = await parseOnDeviceModelOnly(text, referenceDate, knownItems);
   return overlayWithRules(text, referenceDate, knownItems, llm);
+}
+
+/** 모델이 낸 글자 그대로. 실험실에서 지시문을 바꿔 볼 때. */
+export function generateOnDevice(input: ParseInput): Promise<string> {
+  return current().generate(input);
+}
+
+/** 받아 둔 파일을 지운다. 실험실에서 다운로드 시간을 다시 잴 때. */
+export async function clearModelFiles(id: ModelId): Promise<void> {
+  const model = modelFor(id);
+  model.unload();
+  await model.removeFiles();
+  emit({ status: 'idle', loaded: 0, total: 0, message: '' });
 }
 
 /** 규칙 없이 모델 값만. 실험실에서 모델 실력을 따로 볼 때. */

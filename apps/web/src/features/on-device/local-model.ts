@@ -5,6 +5,10 @@ export interface ParseInput {
   text: string;
   referenceDate: string;
   knownItems: OnDeviceKnownItem[];
+  /** 지시문을 통째로 바꿀 때. 실험실에서만 쓴다. 비우면 parse-prompt.ts 의 지시문. */
+  instruction?: string;
+  /** Chrome 내장 AI 에 줄 JSON 스키마. instruction 을 바꿀 때 함께 바꾼다. */
+  responseSchema?: object;
 }
 
 /**
