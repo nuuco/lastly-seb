@@ -1,4 +1,4 @@
-import { readName } from '@lastly/parser';
+import { isGroundedName, readName } from '@lastly/parser';
 
 /**
  * 이름 정규화 평가셋.
@@ -62,5 +62,24 @@ const CASES: Array<[string, string]> = [
 describe('이름 정규화', () => {
   it.each(CASES)('%s → %s', (text, want) => {
     expect(readName(text)).toBe(want);
+  });
+});
+
+describe('isGroundedName — AI 이름이 문장에 근거하는지', () => {
+  it.each([
+    ['욕조 배수구 청소', '욕조 배수구 머리카락 뺌'],
+    ['식세기 필터 청소', '식세기 필터 싹 헹굼'],
+    ['쓰레기', '쓰레기'],
+    ['차', '차 닦음'],
+  ])('%s 는 "%s" 에 근거한다', (name, text) => {
+    expect(isGroundedName(name, text)).toBe(true);
+  });
+
+  it.each([
+    ['이불 빨래', '제습기 물통'],
+    ['이불 빨래', '베개 커버 벗겨서 돌림'],
+    ['물 주기', '화분 분갈이'],
+  ])('%s 는 "%s" 에 없는 이름이다', (name, text) => {
+    expect(isGroundedName(name, text)).toBe(false);
   });
 });

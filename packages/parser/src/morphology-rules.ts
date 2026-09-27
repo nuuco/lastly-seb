@@ -36,6 +36,8 @@ const REPORTED_SPEECH = /(?:다며|라며|던데)(?=\s|[.!?~…]|$)/;
 const ENDS_WITH_DAE = /([가-힣])?([가-힣])대(?=\s|[.!?~…]|$)/g;
 /** 받침 ㅆ. 한글 음절 = 0xAC00 + (초성*21 + 중성)*28 + 종성, ㅆ 종성은 20. */
 const JONG_SSANG_SIOT = 20;
+/** 동사에 붙어 현재·예정 전해 들은 말을 만드는 음절. "청소한대", "먹는대". */
+const PRESENT_BEFORE_DAE = '한는된간온준';
 
 /**
  * 전해 들은 말. "했대", "빨았대", "청소한대", "먹는대", "한다며".
@@ -51,7 +53,7 @@ function hasReportedSpeech(text: string): boolean {
   for (const [, before, last] of text.matchAll(ENDS_WITH_DAE)) {
     const code = last!.charCodeAt(0) - 0xac00;
     if (code % 28 === JONG_SSANG_SIOT) return true;
-    if (before && /[한는된간온준]/.test(last!)) return true;
+    if (before && PRESENT_BEFORE_DAE.includes(last!)) return true;
   }
   return false;
 }
@@ -97,6 +99,7 @@ export function readMorphologySignals(text: string): MorphologySignals {
     /(?:하고|해|하)\s*싶/.test(normalized) ||
     /예정|계획/.test(normalized);
 
+  const reported = hasReportedSpeech(normalized);
   const uncertain =
     /아마|어쩌면/.test(normalized) ||
     /수\s*도\s*(?:있|없)/.test(normalized) ||
@@ -104,7 +107,7 @@ export function readMorphologySignals(text: string): MorphologySignals {
     /듯(?:해|하|했|싶)/.test(normalized) ||
     /(?:는지|은지|ㄴ지)\s*(?:모르|기억)/.test(normalized) ||
     /(?:았|었|였|했)(?:나|던가)(?=\s|[.!?~…]|$)/.test(normalized) ||
-    hasReportedSpeech(normalized) ||
+    reported ||
     /기억|모르/.test(normalized) ||
     /(?:다고|라고)\s*(?:들|했|하)/.test(normalized) ||
     /줄\s*알/.test(normalized) ||
@@ -113,7 +116,7 @@ export function readMorphologySignals(text: string): MorphologySignals {
   const thirdPerson = PERSONAL_TOPIC.test(selfRemoved) || THIRD_PERSON_SUBJECT.test(selfRemoved);
   const nonAssertion =
     /(?:다고|라고)\s*(?:들|했|하)/.test(normalized) ||
-    hasReportedSpeech(normalized) ||
+    reported ||
     /(?:는데|지만)(?=\s|[,.!?~…]|$)/.test(normalized) ||
     /(?:으면|면)(?=\s|[,.!?~…]|$)/.test(normalized);
 

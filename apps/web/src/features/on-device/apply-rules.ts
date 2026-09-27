@@ -1,4 +1,4 @@
-import { readUtterance, squashName } from '@lastly/parser';
+import { isGroundedName, readUtterance } from '@lastly/parser';
 
 import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
 
@@ -25,7 +25,10 @@ export function overlayWithRules(
   llm: OnDeviceParseResult,
 ): OnDeviceParseResult {
   const facts = readUtterance(text, new Date(`${referenceDate}T00:00:00`));
-  const itemName = facts.sawAction ? facts.name : groundedName(llm.itemName, text);
+  // 모델 이름은 문장에 근거할 때만 쓴다. 버리면 parse-local 이 문장에서 뽑은 이름으로 대신한다.
+  const modelName = llm.itemName?.trim() || null;
+  const grounded = modelName && isGroundedName(modelName, text) ? modelName : null;
+  const itemName = facts.sawAction ? facts.name : grounded;
 
   return {
     ...llm,
@@ -38,21 +41,6 @@ export function overlayWithRules(
     // 서버 route() 와 같은 기준으로, 막는 것은 안 함·예정·불확실만이다.
     willSave: facts.willSave || facts.saveKind === 'none',
   };
-}
-
-/**
- * 모델이 낸 이름이 문장에 근거하는지. 두 글자 이상 낱말 하나라도 문장에 있어야 한다.
- * 270M 은 못 알아들은 말에 예시·목록의 이름("이불 빨래")을 지어 냈다.
- * 근거 없는 이름은 버린다. 그러면 칸을 보내지 않고 서버가 다시 해석한다.
- */
-function groundedName(name: string | null, text: string): string | null {
-  const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (words.length === 0) return null;
-  const said = squashName(text);
-  const grounded = words.some(
-    (word) => (word.length >= 2 || words.length === 1) && said.includes(squashName(word)),
-  );
-  return grounded ? name!.trim() : null;
 }
 
 export function parseWithRulesOnly(
