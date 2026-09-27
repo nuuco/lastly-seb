@@ -36,6 +36,7 @@ import { LOCAL_AI_UNSUPPORTED } from '@/features/on-device/engine-errors';
 import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
+import { stopSpeaking } from '@/features/on-device/voice-guidance';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { profileApi } from '@/lib/api/profile';
@@ -312,6 +313,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const retryWithVoice = () => {
     capture.cancel();
+    // 시트가 읽던 안내를 먼저 끊는다. 말하는 중에는 마이크를 못 잡는 브라우저가 있다(iOS Safari).
+    stopSpeaking();
     if (downloadingModel) inputRef.current?.focus();
     else if (speech.supported) speech.start();
     else inputRef.current?.focus();
