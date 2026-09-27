@@ -15,6 +15,7 @@ import type {
 import { format, subDays } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
+import type { AiParseResponse } from '../../infra/ai/ai.types';
 import { CadenceService } from '../cadence/cadence.service';
 import { PriorsRepository } from '../cadence/priors.repository';
 import { toCadenceRule, toItem } from '../items/items.mapper';
@@ -49,7 +50,8 @@ const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
 
 /**
  * 한 문장을 항목·날짜·주기로 바꾼다.
- * 칸은 브라우저(규칙·기기 모델)가 채우고, 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
+ * 칸은 브라우저(규칙·기기 모델)가 채운다. 칸 없이 오면 규칙 → Gemini 로 해석한다.
+ * 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
  */
 @Injectable()
 export class CaptureService {
@@ -132,12 +134,84 @@ export class CaptureService {
     if (ruled) return ruled;
 
     /**
-     * 규칙이 이름을 뽑았으면 주기만 채운다. 문장 해석용 Gemini 는 쓰지 않는다.
-     * 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
+     * 규칙이 이름을 뽑았으면 주기만 채운다. 아는 행동을 찾아낸 경우에만 이름으로 믿는다.
+     * 브라우저의 rulesFinished 와 같은 기준이다.
      */
-    return facts.sawAction && facts.name
-      ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
+    if (facts.sawAction && facts.name) {
+      return this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
+    }
+
+    /**
+     * 칸 없이 왔다 = 기기 모델이 돌지 않았다(못 쓰는 기기, 받기 전, 모델 오류).
+     * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다. 응답이 없으면 직접 고르게 한다.
+     */
+    const parsed = await this.ai.parseUtterance({
+      text: input.text,
+      reference_date: referenceDate,
+      known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
+    });
+    return parsed
+      ? this.fromAi(userId, input, referenceDate, known, today, parsed)
       : this.withoutAi(userId, input, referenceDate, known);
+  }
+
+  private async fromAi(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    parsed: AiParseResponse,
+  ): Promise<InterpretResult> {
+    const candidates = this.toCandidates(parsed.candidates, known, today);
+
+    // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목인지 확인한다.
+    const claimed =
+      parsed.matched_item_id && known.some((i) => i.id === parsed.matched_item_id)
+        ? parsed.matched_item_id
+        : null;
+
+    /**
+     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
+     * 어느 항목을 묻는지 알아야 답할 수 있으므로, 못 짚었으면 평소대로 되묻는다.
+     */
+    if (parsed.intent === 'query') {
+      const target = claimed ?? candidates[0]?.itemId ?? null;
+      if (target) return this.answer(userId, input, referenceDate, target, today);
+    }
+
+    const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
+    const matchedItemId =
+      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
+
+    return {
+      transcript: input.text,
+      outcome,
+      normalizedName: parsed.normalized_name,
+      doneOn: parsed.done_on,
+      matchedItemId,
+      candidates: outcome === 'ambiguous' ? candidates : [],
+      cadence: await this.resolveCadence(
+        userId,
+        outcome,
+        matchedItemId,
+        parsed.normalized_name,
+        parsed.done_on,
+        parsed.stated_cadence_days ?? null,
+      ),
+      confidence: parsed.confidence,
+      degraded: false,
+      answer: null,
+      draftToken: this.draft.sign({
+        userId,
+        rawInput: input.text,
+        normalizedName: parsed.normalized_name,
+        doneOn: parsed.done_on,
+        matchedItemId,
+        mode: input.mode,
+        issuedAt: Date.now(),
+      }),
+    };
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
