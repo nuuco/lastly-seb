@@ -23,3 +23,16 @@ export function engineErrorMessage(err: unknown): string {
   }
   return raw || '모델을 준비하지 못했어요.';
 }
+
+/** 기기가 모델을 못 올린 경우(GPU·컴파일·메모리). 네트워크 실패와 달리 다시 해도 안 된다. */
+export const LOCAL_AI_UNSUPPORTED = '이 기기에서는 AI 모델을 쓸 수 없어요. 기록은 그대로 할 수 있어요.';
+
+export function deviceFailure(err: unknown): Error {
+  const error = err instanceof Error ? err : new Error(String(err ?? ''));
+  (error as Error & { deviceFailure?: boolean }).deviceFailure = true;
+  return error;
+}
+
+export function isDeviceFailure(err: unknown): boolean {
+  return err instanceof Error && (err as Error & { deviceFailure?: boolean }).deviceFailure === true;
+}

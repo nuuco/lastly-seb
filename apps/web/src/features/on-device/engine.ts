@@ -1,15 +1,10 @@
 import { overlayWithRules } from './apply-rules';
-import { createChromeNanoModel, NANO_UNAVAILABLE } from './chrome-nano-model';
+import { getLocalAiSupport, reportLocalAiFailure } from './capability';
+import { createChromeNanoModel } from './chrome-nano-model';
+import { isDeviceFailure, isEngineCancelled, LOCAL_AI_UNSUPPORTED } from './engine-errors';
 import type { LocalModel } from './local-model';
 import { createMediaPipeModel, hasWebGpu } from './mediapipe-model';
-import {
-  defaultModelId,
-  FALLBACK_MODEL,
-  getModel,
-  listModels,
-  type ModelId,
-  type ModelSpec,
-} from './models';
+import { defaultModelId, FALLBACK_MODEL, getModel, listModels, type ModelId, type ModelSpec } from './models';
 import { parseModelJson } from './parse-prompt';
 import type {
   EngineProgress,
@@ -50,9 +45,8 @@ export function engineProgressHint(progress: EngineProgress): string | null {
 
 const progressHandlers = new Set<(progress: EngineProgress) => void>();
 const instances = new Map<ModelId, LocalModel>();
-let activeId: ModelId = defaultModelId();
-/** API 는 있는데 사양이 모자라 못 쓴다고 확인된 모델. */
-const unavailable = new Set<ModelId>();
+/** setActiveModel 로 고른 모델. 없으면 기기 판정(capability.ts)을 따른다. */
+let override: ModelId | null = null;
 
 function emit(progress: EngineProgress) {
   for (const handler of progressHandlers) handler(progress);
@@ -70,15 +64,11 @@ function modelFor(id: ModelId): LocalModel {
   return model;
 }
 
-/**
- * 고른 모델을 이 브라우저에서 못 쓰면 대체 모델로 간다.
- * Nano 는 Android Chrome 에 API 가 없어 여기서 Gemma 로 바뀐다.
- */
-function current(): LocalModel {
-  const chosen = modelFor(activeId);
-  if (activeId === FALLBACK_MODEL) return chosen;
-  if (chosen.isSupported() && !unavailable.has(activeId)) return chosen;
-  return modelFor(FALLBACK_MODEL);
+/** 지금 쓸 모델. 기기 판정이 none 이거나 아직이면 null. */
+function current(): LocalModel | null {
+  if (override) return modelFor(override);
+  const id = getLocalAiSupport()?.modelId;
+  return id ? modelFor(id) : null;
 }
 
 export function subscribeEngineProgress(handler: (progress: EngineProgress) => void): () => void {
@@ -88,46 +78,64 @@ export function subscribeEngineProgress(handler: (progress: EngineProgress) => v
   };
 }
 
-/** 쓸 모델을 바꾼다. 올라가 있던 모델은 내리고, 받아 둔 파일은 남긴다. */
+/** 쓸 모델을 고정한다(실험용). 올라가 있던 모델은 내리고, 받아 둔 파일은 남긴다. */
 export function setActiveModel(id: ModelId): void {
-  if (id === activeId) return;
-  current().unload();
-  activeId = id;
+  if (id === current()?.spec.id) return;
+  current()?.unload();
+  override = id;
   emit({ status: 'idle', loaded: 0, total: 0, message: '' });
 }
 
+/** 지금 모델. 쓸 수 없는 기기면 기본 Gemma 정보(화면 문구용). */
 export function activeModelSpec(): ModelSpec {
-  return current().spec;
+  const spec = getModel(defaultModelId());
+  return current()?.spec ?? (spec.runtime === 'mediapipe' ? spec : getModel(FALLBACK_MODEL));
 }
 
-/** 지금 모델을 이 브라우저에서 돌릴 수 있는지. */
+/** 이 기기에서 로컬 AI 를 쓸 수 있는지. 판정 전이면 지난 실행의 저장값. */
 export function isEngineSupported(): boolean {
-  return current().isSupported();
+  return current() !== null;
+}
+
+/** 받을 파일이 있어 동의를 받아야 하는지. Nano 는 Chrome 이 관리해 묻지 않는다. */
+export function engineNeedsConsent(): boolean {
+  return current()?.spec.runtime !== 'chrome-builtin';
 }
 
 export async function ensureEngine(): Promise<void> {
   const model = current();
+  if (!model) throw new Error(LOCAL_AI_UNSUPPORTED);
   try {
     await model.prepare();
   } catch (err) {
-    if (!(err instanceof Error) || err.message !== NANO_UNAVAILABLE) throw err;
-    unavailable.add(model.spec.id);
-    await current().prepare();
+    if (isEngineCancelled(err)) throw err;
+    if (model.spec.runtime === 'mediapipe' && !isDeviceFailure(err)) throw err;
+    // 기기가 못 올렸다. 받은 파일을 지우고 다시 판정한다. Nano 였으면 Gemma 로 갈 수 있다.
+    const reason = err instanceof Error ? err.message : String(err);
+    model.unload();
+    await model.removeFiles();
+    const next = await reportLocalAiFailure(model.spec.id, reason);
+    if (next.kind === 'none') {
+      emit({ status: 'error', loaded: 0, total: 0, message: LOCAL_AI_UNSUPPORTED });
+      throw new Error(LOCAL_AI_UNSUPPORTED);
+    }
+    emit({ status: 'idle', loaded: 0, total: 0, message: '' });
+    throw err;
   }
 }
 
 export function isEngineReady(): boolean {
-  return current().isReady();
+  return current()?.isReady() ?? false;
 }
 
 /** 설정에서 이 기기 이해를 끌 때. 워커만 내린다. */
 export function unloadEngine(): void {
-  current().unload();
+  current()?.unload();
 }
 
 /** 받기를 멈춘다. 덜 받은 파일은 지운다. */
-export function cancelEngineLoad(): Promise<void> {
-  return current().cancel();
+export async function cancelEngineLoad(): Promise<void> {
+  await current()?.cancel();
 }
 
 /** 동의를 지울 때 받아 둔 모델 파일도 함께 지운다. */
@@ -143,6 +151,8 @@ export async function parseOnDevice(
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
 ): Promise<OnDeviceParseResult> {
-  const raw = await current().generate({ text, referenceDate, knownItems });
+  const model = current();
+  if (!model) throw new Error(LOCAL_AI_UNSUPPORTED);
+  const raw = await model.generate({ text, referenceDate, knownItems });
   return overlayWithRules(text, referenceDate, knownItems, parseModelJson(raw));
 }

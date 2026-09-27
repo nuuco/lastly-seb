@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { Toggle } from '@/components/ui/toggle';
+import { watchLocalAi, type LocalAiKind } from '@/features/on-device/capability';
 import {
   activeModelSpec,
   engineErrorMessage,
@@ -11,10 +12,10 @@ import {
   cancelEngineLoad,
   clearModelCache,
   ensureEngine,
-  isEngineSupported,
   isEngineBusy,
   isEngineCancelled,
   isEngineReady,
+  engineNeedsConsent,
   subscribeEngineProgress,
   type EngineProgress,
 } from '@/features/on-device/engine';
@@ -26,6 +27,7 @@ import {
   setModelConsent,
   setVoiceGuidance,
 } from '@/features/on-device/consent';
+import { LOCAL_AI_UNSUPPORTED } from '@/features/on-device/engine-errors';
 import type { ModelSpec } from '@/features/on-device/models';
 
 /** 설정 13에 없는 행 — 음성 안내와 AI 모델. */
@@ -33,7 +35,8 @@ export function OnDeviceSettings() {
   const [voice, setVoice] = useState(true);
   const [consent, setConsent] = useState<'granted' | 'declined' | null>(null);
   const [ready, setReady] = useState(false);
-  const [gpu, setGpu] = useState(false);
+  /** 판정 전(null)·불가(none)면 AI 모델 줄을 그리지 않는다. */
+  const [kind, setKind] = useState<LocalAiKind | null>(null);
   const [progress, setProgress] = useState<EngineProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +46,6 @@ export function OnDeviceSettings() {
     setVoice(isVoiceGuidanceOn());
     const current = getModelConsent();
     setConsent(current);
-    setGpu(isEngineSupported());
-    setSpec(activeModelSpec());
     setReady(isEngineReady());
     const unsub = subscribeEngineProgress((next) => {
       setProgress(next);
@@ -59,7 +60,12 @@ export function OnDeviceSettings() {
         setReady(false);
       }
     });
-    if (current === 'granted' && isEngineSupported() && !isEngineReady()) {
+    const unwatch = watchLocalAi((support) => {
+      setKind(support.kind);
+      setSpec(activeModelSpec());
+      setReady(isEngineReady());
+      if (support.kind === 'none') return;
+      if (isEngineReady() || (engineNeedsConsent() && current !== 'granted')) return;
       setBusy(true);
       void ensureEngine()
         .then(() => setReady(true))
@@ -68,8 +74,11 @@ export function OnDeviceSettings() {
           setError(engineErrorMessage(err));
         })
         .finally(() => setBusy(false));
-    }
-    return unsub;
+    });
+    return () => {
+      unsub();
+      unwatch();
+    };
   }, []);
 
   const download = async () => {
@@ -96,8 +105,11 @@ export function OnDeviceSettings() {
     setProgress(null);
   };
 
-  const modelHint = !gpu
-    ? '이 브라우저에서는 쓸 수 없어요.'
+  const showModel = kind === 'gemma' || kind === 'nano';
+  const modelHint = kind === 'nano'
+    ? ready
+      ? 'Chrome에 내장된 AI로 알아들어요.'
+      : '준비하고 있어요.'
     : ready
       ? '받아 둔 모델로 알아들어요.'
       : isEngineBusy(progress)
@@ -110,7 +122,9 @@ export function OnDeviceSettings() {
     <>
       <p className="mt-6 px-1 text-12.5 tracking-[.06em] text-ink-3">이해</p>
       <div className="mt-2.5 rounded-card border border-line bg-card px-[18px] py-1 shadow-card">
-        <div className="flex items-center justify-between border-b border-line py-4">
+        <div
+          className={`flex items-center justify-between py-4${showModel || error === LOCAL_AI_UNSUPPORTED ? ' border-b border-line' : ''}`}
+        >
           <div>
             <p className="text-15.5 font-semibold text-ink">음성 안내</p>
             <p className="mt-[3px] text-12.5 text-ink-3">조회 답과 기록 확인을 읽어 줘요</p>
@@ -124,72 +138,76 @@ export function OnDeviceSettings() {
             label="음성 안내"
           />
         </div>
-        <div className="flex items-center justify-between py-4">
-          <div className="min-w-0 pr-3">
-            <p className="text-15.5 font-semibold text-ink">AI 모델</p>
-            <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
-            {isEngineBusy(progress) ? <EngineProgressBar progress={progress!} /> : null}
-            <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
-              {spec?.label ?? 'Gemma'} 모델.{' '}
-              <Link href="/legal/terms" className="font-semibold text-accent-ink">
-                약관
-              </Link>
-            </p>
-          </div>
-          {!gpu ? (
-            <span className="shrink-0 rounded-[9px] bg-surface-alt px-[11px] py-1.5 text-13 font-bold text-ink-3">
-              불가
-            </span>
-          ) : busy || isEngineBusy(progress) ? (
-            progress?.status === 'downloading' ? (
+        {showModel ? (
+          <div className="flex items-center justify-between py-4">
+            <div className="min-w-0 pr-3">
+              <p className="text-15.5 font-semibold text-ink">AI 모델</p>
+              <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
+              {isEngineBusy(progress) ? <EngineProgressBar progress={progress!} /> : null}
+              {kind === 'nano' ? (
+                <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">{spec?.label}.</p>
+              ) : (
+                <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
+                  {spec?.label ?? 'Gemma'} 모델.{' '}
+                  <Link href="/legal/terms" className="font-semibold text-accent-ink">
+                    약관
+                  </Link>
+                </p>
+              )}
+            </div>
+            {kind === 'nano' ? null : busy || isEngineBusy(progress) ? (
+              progress?.status === 'downloading' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void cancelEngineLoad();
+                    clearModelConsent();
+                    setConsent(null);
+                    setBusy(false);
+                    setProgress(null);
+                  }}
+                  className="shrink-0 text-13.5 font-semibold text-danger"
+                >
+                  취소
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="shrink-0 text-13.5 font-semibold text-accent-ink opacity-50"
+                >
+                  준비 중
+                </button>
+              )
+            ) : error ? (
               <button
                 type="button"
-                onClick={() => {
-                  void cancelEngineLoad();
-                  clearModelConsent();
-                  setConsent(null);
-                  setBusy(false);
-                  setProgress(null);
-                }}
+                onClick={() => void download()}
+                className="shrink-0 text-13.5 font-semibold text-accent-ink"
+              >
+                다시 받기
+              </button>
+            ) : ready || consent === 'granted' ? (
+              <button
+                type="button"
+                onClick={remove}
                 className="shrink-0 text-13.5 font-semibold text-danger"
               >
-                취소
+                삭제
               </button>
             ) : (
               <button
                 type="button"
-                disabled
-                className="shrink-0 text-13.5 font-semibold text-accent-ink opacity-50"
+                onClick={() => void download()}
+                className="shrink-0 text-13.5 font-semibold text-accent-ink"
               >
-                준비 중
+                받기
               </button>
-            )
-          ) : error ? (
-            <button
-              type="button"
-              onClick={() => void download()}
-              className="shrink-0 text-13.5 font-semibold text-accent-ink"
-            >
-              다시 받기
-            </button>
-          ) : ready || consent === 'granted' ? (
-            <button
-              type="button"
-              onClick={remove}
-              className="shrink-0 text-13.5 font-semibold text-danger"
-            >
-              삭제
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void download()}
-              className="shrink-0 text-13.5 font-semibold text-accent-ink"
-            >
-              받기
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        ) : error === LOCAL_AI_UNSUPPORTED ? (
+          <p className="py-4 text-12.5 text-ink-3">{error}</p>
+        ) : null}
       </div>
     </>
   );
