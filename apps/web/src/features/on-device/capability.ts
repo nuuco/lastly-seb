@@ -24,6 +24,8 @@ export type { LocalAiKind, LocalAiSupport } from './device-record';
  */
 let checked: LocalAiSupport | null = null;
 let checking: Promise<LocalAiSupport> | null = null;
+/** 검사 회차. 실패 보고로 다시 검사하면 앞 회차 결과는 버린다. */
+let round = 0;
 const listeners = new Set<(support: LocalAiSupport) => void>();
 
 /** 이번 실행에서 검사한 결과. 아직이면 지난 실행의 저장값. 둘 다 없으면 null. */
@@ -47,6 +49,7 @@ export function watchLocalAi(listener: (support: LocalAiSupport) => void): () =>
 export function checkLocalAi(): Promise<LocalAiSupport> {
   if (checked) return Promise.resolve(checked);
   if (checking) return checking;
+  const id = ++round;
   const pending: Promise<LocalAiSupport> = detect()
     .catch((err: unknown): LocalAiSupport => ({
       kind: 'none',
@@ -54,6 +57,8 @@ export function checkLocalAi(): Promise<LocalAiSupport> {
       reason: `검사 실패: ${err instanceof Error ? err.message : String(err)}`,
     }))
     .then((support) => {
+      // 도중에 실패 보고로 새 검사가 시작됐으면 그 결과를 따른다.
+      if (id !== round) return checkLocalAi();
       settle(support);
       return support;
     })
@@ -68,6 +73,8 @@ export function checkLocalAi(): Promise<LocalAiSupport> {
 export function reportLocalAiFailure(id: ModelId, reason: string): Promise<LocalAiSupport> {
   recordFailure(id, reason);
   checked = null;
+  checking = null;
+  round += 1;
   return checkLocalAi();
 }
 

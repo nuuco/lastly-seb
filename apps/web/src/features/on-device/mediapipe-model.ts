@@ -356,13 +356,18 @@ async function compileWithCrashMark(
 ): Promise<LlmHandle> {
   markCompiling(spec.id);
   window.addEventListener('pagehide', clearCompiling);
+  const compiling = compile();
   try {
     return await Promise.race([
-      compile(),
+      compiling,
       new Promise<never>((_, reject) => {
         failCompile = reject;
       }),
     ]);
+  } catch (err) {
+    // 시한을 넘겨 포기한 뒤에 올라오면 GPU 메모리를 쥔 채 남는다. 올라오는 대로 닫는다.
+    void compiling.then(closeLlm, () => undefined);
+    throw err;
   } finally {
     failCompile = null;
     window.removeEventListener('pagehide', clearCompiling);
