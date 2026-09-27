@@ -10,6 +10,8 @@
  * 처음 보는 대상이어도 사전에 없을 이유가 없다.
  */
 
+import { readMorphologySignals, withoutIntentionAuxiliary } from './morphology-rules';
+
 export type Intent = 'record' | 'query';
 
 export type SaveKind =
@@ -30,6 +32,8 @@ export interface SaveDecision {
 export interface UtteranceFacts {
   intent: Intent;
   willSave: boolean;
+  /** 저장 차단 사유와 규칙 폴백(none)을 구분하기 위한 분류. */
+  saveKind: SaveKind;
   /** 기준일로부터 며칠 전인지. 시간 표현이 없으면 0. */
   daysAgo: number;
   /** 문장에서 직접 말한 주기(일). 말하지 않았으면 null. */
@@ -58,6 +62,7 @@ const SINO_NATIVE: Record<string, number> = {
 const DAY_WORDS: Record<string, number> = {
   하루: 1, 이틀: 2, 사흘: 3, 나흘: 4, 닷새: 5,
   엿새: 6, 이레: 7, 여드레: 8, 아흐레: 9, 열흘: 10, 보름: 15,
+  일주일: 7,
 };
 
 const UNIT_DAYS: Record<string, number> = {
@@ -81,6 +86,54 @@ function clampCadence(days: number): number | null {
   return days >= MIN_CADENCE_DAYS && days <= MAX_CADENCE_DAYS ? days : null;
 }
 
+type ResolvedDate = {
+  daysAgo: number;
+  saw: boolean;
+  future: boolean;
+  invalid?: boolean;
+};
+
+const DAY_MS = 86_400_000;
+
+function dateOnly(year: number, month: number, day: number): Date | null {
+  const value = new Date(Date.UTC(year, month - 1, day));
+  if (
+    value.getUTCFullYear() !== year ||
+    value.getUTCMonth() !== month - 1 ||
+    value.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return value;
+}
+
+function dateDifferenceInDays(reference: Date, target: Date): number {
+  const referenceUtc = Date.UTC(reference.getFullYear(), reference.getMonth(), reference.getDate());
+  return Math.round((referenceUtc - target.getTime()) / DAY_MS);
+}
+
+function readAbsoluteDate(text: string, reference: Date): Date | null {
+  const fullDate = text.match(
+    /(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일|\b(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\b/,
+  );
+  if (fullDate) {
+    const year = Number(fullDate[1] ?? fullDate[4]);
+    const month = Number(fullDate[2] ?? fullDate[5]);
+    const day = Number(fullDate[3] ?? fullDate[6]);
+    return dateOnly(year, month, day);
+  }
+
+  const monthDay = text.match(/\b(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+  if (!monthDay) return null;
+  return dateOnly(reference.getFullYear(), Number(monthDay[1]), Number(monthDay[2]));
+}
+
+function hasAbsoluteDateSyntax(text: string): boolean {
+  return /\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일|\b\d{4}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{1,2}\b|\b\d{1,2}\s*월\s*\d{1,2}\s*일/.test(
+    text,
+  );
+}
+
 /* ─────────────────────────── 주기 ─────────────────────────── */
 
 /**
@@ -94,9 +147,27 @@ export function readCadenceDays(text: string): number | null {
     if (re.test(text)) return clampCadence(days);
   }
 
+  // "주 1회", "일 2회"처럼 단위를 먼저 말하는 표기도 지원한다.
+  const unitFirstMatch = text.match(/(?:^|\s)(일|주일|주|개월|달|년|해)\s*(\d+|[가-힣])\s*회/);
+  if (unitFirstMatch) {
+    const unit = UNIT_DAYS[unitFirstMatch[1]!];
+    const n = toNumber(unitFirstMatch[2]!);
+    if (n && unit) return clampCadence(n * unit);
+  }
+
+  // "2주 1회", "한 달에 1회"처럼 회를 쓰는 표기도 번과 같은 뜻이다.
+  const countPerMatch = text.match(
+    /([\d]+|[가-힣])\s*(주일|개월|주|달|일|년|해)\s*(?:에\s*)?(?:한|1)\s*회/,
+  );
+  if (countPerMatch) {
+    const n = toNumber(countPerMatch[1]!);
+    const unit = UNIT_DAYS[countPerMatch[2]!];
+    if (n && unit) return clampCadence(n * unit);
+  }
+
   // "한달에 한번", "일주일에 한번", "3일에 한번씩"
   const perMatch = text.match(
-    /([\d]+|[가-힣])\s*(주일|개월|주|달|일|년|해)\s*에\s*(?:한|1)\s*번/,
+    /([\d]+|[가-힣])\s*(주일|개월|주|달|일|년|해)\s*에\s*(?:한|1)\s*(?:번|회)/,
   );
   if (perMatch) {
     const n = toNumber(perMatch[1]!);
@@ -125,31 +196,46 @@ export function readCadenceDays(text: string): number | null {
 /* ─────────────────────────── 날짜 ─────────────────────────── */
 
 /**
- * 며칠 전인지. 기준일의 요일을 알아야 "지난주 일요일" 을 셀 수 있다.
- *
- * 미래를 가리키는 말("내일")은 다루지 않는다. 이미 한 일을 남기는 앱이라
- * 그런 문장은 들어올 자리가 없고, 들어와도 0(오늘)으로 두는 편이 안전하다.
+ * 날짜를 판정한다. 미래 날짜는 daysAgo=0으로 고정하지만 future를 별도로 남긴다.
+ * 그래야 UI/API가 미래 완료를 오늘 기록으로 저장하지 않을 수 있다.
  */
-export function readDaysAgo(text: string, reference: Date): { daysAgo: number; saw: boolean } {
+function resolveDate(text: string, reference: Date): ResolvedDate {
   // 주기 표현을 먼저 지운다. "3일에 한번" 의 "3일" 을 날짜로 읽으면 안 된다.
   const t = stripCadence(text);
-
-  const nDaysAgo = t.match(/(\d+)\s*일\s*전/);
-  if (nDaysAgo) return { daysAgo: Number(nDaysAgo[1]), saw: true };
-
-  const nWeeksAgo = t.match(/(\d+)\s*(?:주일|주)\s*전/);
-  if (nWeeksAgo) return { daysAgo: Number(nWeeksAgo[1]) * 7, saw: true };
-
-  const nMonthsAgo = t.match(/(\d+)\s*(?:개월|달)\s*전/);
-  if (nMonthsAgo) return { daysAgo: Number(nMonthsAgo[1]) * 30, saw: true };
-
-  for (const [word, days] of Object.entries(DAY_WORDS)) {
-    if (new RegExp(`${word}\\s*전`).test(t)) return { daysAgo: days, saw: true };
+  const absolute = readAbsoluteDate(t, reference);
+  if (hasAbsoluteDateSyntax(t) && !absolute) {
+    return { daysAgo: 0, saw: true, future: false, invalid: true };
+  }
+  if (absolute) {
+    const difference = dateDifferenceInDays(reference, absolute);
+    return {
+      daysAgo: Math.max(difference, 0),
+      saw: true,
+      future: difference < 0,
+    };
   }
 
-  if (/그끄저께|그그제/.test(t)) return { daysAgo: 3, saw: true };
-  if (/그저께|그제/.test(t)) return { daysAgo: 2, saw: true };
-  if (/어제|어저께/.test(t)) return { daysAgo: 1, saw: true };
+  const nDaysAgo = t.match(/(\d+)\s*일\s*전/);
+  if (nDaysAgo) return { daysAgo: Number(nDaysAgo[1]), saw: true, future: false };
+
+  const nWeeksAgo = t.match(/(\d+)\s*(?:주일|주)\s*전/);
+  if (nWeeksAgo) return { daysAgo: Number(nWeeksAgo[1]) * 7, saw: true, future: false };
+
+  const nMonthsAgo = t.match(/(\d+)\s*(?:개월|달)\s*전/);
+  if (nMonthsAgo) return { daysAgo: Number(nMonthsAgo[1]) * 30, saw: true, future: false };
+
+  for (const [word, days] of Object.entries(DAY_WORDS)) {
+    if (new RegExp(`${word}\\s*전`).test(t)) {
+      return { daysAgo: days, saw: true, future: false };
+    }
+  }
+
+  if (/그끄저께|그그제/.test(t)) return { daysAgo: 3, saw: true, future: false };
+  if (/그저께|그제/.test(t)) return { daysAgo: 2, saw: true, future: false };
+  if (/어제|어저께/.test(t)) return { daysAgo: 1, saw: true, future: false };
+  if (/내일|모레|다음\s*(?:주|달|개월|년|해)/.test(t)) {
+    return { daysAgo: 0, saw: true, future: true };
+  }
 
   /**
    * "지난주 일요일" — 기준일에서 거슬러 올라가 가장 가까운 그 요일을 찾고,
@@ -161,7 +247,7 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
     const diff = (reference.getDay() + 6) % 7; // 월=0 으로 맞춘다
     let back = (diff - target + 7) % 7;
     if (back < 7) back += 7;
-    return { daysAgo: back, saw: true };
+    return { daysAgo: back, saw: true, future: false };
   }
 
   // 요일만 말한 경우 — "일요일에 했어". 이번 주 안에서 거슬러 올라간다.
@@ -170,15 +256,40 @@ export function readDaysAgo(text: string, reference: Date): { daysAgo: number; s
     const target = WEEKDAYS.indexOf(weekdayOnly[1]!);
     const diff = (reference.getDay() + 6) % 7;
     const back = (diff - target + 7) % 7;
-    return { daysAgo: back, saw: true };
+    return { daysAgo: back, saw: true, future: false };
   }
 
-  if (/(?:지난|저번|작)\s*주/.test(t)) return { daysAgo: 7, saw: true };
-  if (/(?:지난|저번)\s*달|지난\s*개월/.test(t)) return { daysAgo: 30, saw: true };
-  if (/작년|지난\s*해/.test(t)) return { daysAgo: 365, saw: true };
-  if (/오늘|방금|아까|막/.test(t)) return { daysAgo: 0, saw: true };
+  if (/(?:지난|저번|작)\s*주/.test(t)) return { daysAgo: 7, saw: true, future: false };
+  if (/(?:지난|저번)\s*달|지난\s*개월/.test(t)) return { daysAgo: 30, saw: true, future: false };
+  if (/작년|지난\s*해/.test(t)) return { daysAgo: 365, saw: true, future: false };
+  if (/오늘|방금|아까|막/.test(t)) return { daysAgo: 0, saw: true, future: false };
 
-  return { daysAgo: 0, saw: false };
+  return { daysAgo: 0, saw: false, future: false };
+}
+
+/**
+ * 며칠 전인지. 기준일의 요일을 알아야 "지난주 일요일" 을 셀 수 있다.
+ * 미래 표현은 오늘로 고정해 미래 performed_date가 만들어지지 않게 한다.
+ */
+export function readDaysAgo(text: string, reference: Date): { daysAgo: number; saw: boolean } {
+  const resolved = resolveDate(text, reference);
+  return { daysAgo: resolved.daysAgo, saw: resolved.saw };
+}
+
+function hasFutureDate(text: string, reference: Date): boolean {
+  return resolveDate(text, reference).future;
+}
+
+/** 완료 사실 뒤의 "내일부터/다음주부터 매주"는 수행일이 아니라 반복 일정의 시작점이다. */
+function hasFutureScheduleStart(text: string): boolean {
+  return (
+    readCadenceDays(text) !== null &&
+    /(?:내일|모레|다음\s*(?:주|달|개월|년|해))\s*부터/.test(text)
+  );
+}
+
+function hasInvalidDate(text: string, reference: Date): boolean {
+  return resolveDate(text, reference).invalid === true;
 }
 
 /* ─────────────────────────── 의도 ─────────────────────────── */
@@ -230,7 +341,11 @@ function anyMatch(text: string, patterns: RegExp[]): boolean {
 }
 
 function hasCompletedMarker(text: string): boolean {
-  return anyMatch(text, COMPLETED);
+  const morphology = readMorphologySignals(text);
+  return (
+    !morphology.nonActionPredicate &&
+    (anyMatch(withoutIntentionAuxiliary(text), COMPLETED) || morphology.completed)
+  );
 }
 
 /** "빨았어, 일주일마다 알려줘" 는 조회가 아니라 기록+알림이다. */
@@ -249,20 +364,29 @@ function readIntentFixed(text: string): Intent {
  */
 function classifyKind(text: string): Exclude<SaveKind, 'query'> {
   const t = text.replace(/\s+/g, ' ');
-  if (anyMatch(t, INCOMPLETE)) return 'incomplete';
-  if (anyMatch(t, UNCERTAIN)) return 'uncertain';
-  const completed = anyMatch(t, COMPLETED);
-  if (anyMatch(t, PLANNED) && !completed) return 'planned';
+  const morphology = readMorphologySignals(t);
+  const completed = hasCompletedMarker(t);
+  if (anyMatch(t, INCOMPLETE) || morphology.negative || morphology.nearMiss) return 'incomplete';
+  if (anyMatch(t, UNCERTAIN) || morphology.uncertain || morphology.thirdPerson || morphology.nonAssertion) {
+    return 'uncertain';
+  }
+  if (morphology.nonActionPredicate && !morphology.negative) return 'none';
+  if ((anyMatch(t, PLANNED) || morphology.intended) && !completed) return 'planned';
   if (completed) return 'completed';
   return 'none';
 }
 
-export function classifySave(text: string): SaveDecision {
+export function classifySave(text: string, reference = new Date()): SaveDecision {
   const intent = readIntentFixed(text);
   if (intent === 'query') return { intent, willSave: false, kind: 'query' };
   const kind = classifyKind(text);
-  const blocked = kind === 'incomplete' || kind === 'planned' || kind === 'uncertain';
-  return { intent, willSave: !blocked, kind };
+  if (kind === 'completed' && hasInvalidDate(text, reference)) {
+    return { intent, willSave: false, kind: 'uncertain' };
+  }
+  if (kind === 'completed' && hasFutureDate(text, reference) && !hasFutureScheduleStart(text)) {
+    return { intent, willSave: false, kind: 'planned' };
+  }
+  return { intent, willSave: kind === 'completed', kind };
 }
 
 /* ─────────────────────────── 이름 ─────────────────────────── */
@@ -297,6 +421,7 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
   // 좁은 것부터 본다. "빨래 널었어" 의 "빨래" 가 동사로 먹히면 안 된다.
   [/널(?:었|어|을|기)[가-힣]*/, '널기'],
   [/깎(?:았|아|을|기)[가-힣]*/, '깎기'],
+  [/읽(?:었|어|을|기)[가-힣]*/, '읽기'],
   // "이불 갰어" 는 개어 두는 일이므로 정리로 묶는다. 사전의 "이불 정리" 와 만난다.
   [/갰[가-힣]*|개(?:어|었)[가-힣]*/, '정리'],
   // "워셔액 넣었어", "세제 채웠어" — 다 떨어져 다시 채우는 일이다.
@@ -307,8 +432,8 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
   [/돌(?:렸|리)[가-힣]*/, '돌리기'],
   [/세척\s*(?:했|해|할|하)[가-힣]*/, '세척'],
 
-  [/세탁\s*(?:했|해|할|하)[가-힣]*|빨래\s*(?:했|해|할|하)[가-힣]*|빨(?:았|아)[가-힣]*/, '빨래'],
-  [/교체\s*(?:했|해|할|하)[가-힣]*|갈(?:았|아|을|기)[가-힣]*|바꾸[가-힣]*|바꿨[가-힣]*/, '교체'],
+  [/세탁\s*(?:했|해|할|하)[가-힣]*|빨래\s*(?:했|해|할|하)[가-힣]*|빨\s*(?:거야|거예요|거에요|게|래)|빨(?:았|아)[가-힣]*/, '빨래'],
+  [/교체\s*(?:했|해|할|하)[가-힣]*|갈\s*(?:거야|거예요|거에요|게|래)|갈(?:았|아|을|기)[가-힣]*|바꾸[가-힣]*|바꿨[가-힣]*/, '교체'],
   [/청소\s*(?:했|해|할|하)[가-힣]*|닦(?:았|아|을|기)[가-힣]*|치웠[가-힣]*|치우[가-힣]*/, '청소'],
   [/물\s*(?:줬|주|줄|주기)[가-힣]*/, '물 주기'],
   [/정리\s*(?:했|해|할|하)[가-힣]*|정돈\s*(?:했|해|할|하)[가-힣]*/, '정리'],
@@ -329,7 +454,7 @@ const DONE_MARKERS = /(?:끝냈|끝내|마쳤|마무리했|해치웠|완료했)[
 
 /** 이름에 들어가면 안 되는 시간 표현. */
 const TIME_EXPR =
-  /(아침|점심|저녁|밤|새벽|오전|오후|오늘|어제|어저께|그저께|그제|그끄저께|그그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
+  /(\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일|\b\d{4}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{1,2}\b|\b\d{1,2}\s*월\s*\d{1,2}\s*일|아침|점심|저녁|밤|새벽|오전|오후|오늘|내일|모레|주말(?:에)?|어제|어저께|그저께|그제|그끄저께|그그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:다음|이번)\s*주(?:부터)?|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
 
 /**
  * 말버릇으로 붙는 1인칭 주어. 항목 이름에 들어갈 자리가 아니다.
@@ -343,13 +468,19 @@ const QUERY_EXPR = /(언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|�
 function stripCadence(text: string): string {
   let s = text;
   for (const word of Object.keys(DAY_WORDS)) {
-    s = s.replace(new RegExp(`${word}\\s*(?:에\\s*(?:한|1)\\s*번(?:씩)?|마다)`, 'g'), ' ');
+    s = s.replace(new RegExp(`${word}\\s*(?:에\\s*(?:한|1)\\s*(?:번|회)(?:씩)?|마다)`, 'g'), ' ');
   }
   s = s.replace(
-    /([\d]+|[가-힣])\s*(?:주일|개월|주|달|일|년|해)\s*에\s*(?:한|1)\s*번(?:씩)?/g,
+    /([\d]+|[가-힣])\s*(?:주일|개월|주|달|일|년|해)\s*에\s*(?:한|1)\s*(?:번|회)(?:씩)?/g,
+    ' ',
+  );
+  // "2주 1회"처럼 "에"를 생략한 주기도 이름에서 제거한다.
+  s = s.replace(
+    /([\d]+|[가-힣])\s*(?:주일|개월|주|달|일|년|해)\s*(?:에\s*)?(?:한|1)\s*(?:번|회)(?:씩)?/g,
     ' ',
   );
   s = s.replace(/([\d]+|[가-힣])\s*(?:주일|개월|주|달|일|년|해)\s*마다/g, ' ');
+  s = s.replace(/(?:^|\s)(?:일|주일|주|개월|달|년|해)\s*(?:\d+|[가-힣])\s*회/g, ' ');
   s = s.replace(/(매일|날마다|매주|격주|매달|매월|매년|해마다)/g, ' ');
   return s;
 }
@@ -381,6 +512,24 @@ export function readName(text: string): string | null {
 export function readNameWithAction(text: string): { name: string | null; sawAction: boolean } {
   let s = stripCadence(text);
 
+  // 미래형·연결형을 지우기 전에 행동을 먼저 잡아야 "빨 거야"처럼
+  // 어미가 떨어진 동사도 항목명에 남길 수 있다.
+  let action: string | null = null;
+  for (const [pattern, noun] of ACTION_NOUNS) {
+    const m = s.match(pattern);
+    if (m) {
+      const actionStart = m.index ?? 0;
+      const beforeAction = s
+        .slice(0, actionStart)
+        // 행동 앞 목적어의 붙임표기만 제거한다. "곰팡이"의 마지막 "이"처럼
+        // 단어 자체의 일부인 글자까지 조사로 오인하지 않도록 을/를만 다룬다.
+        .replace(/([가-힣]+)(?:을|를)(?=\s*$)/, '$1');
+      action = noun;
+      s = `${beforeAction} ${s.slice(actionStart + m[0].length)}`;
+      break;
+    }
+  }
+
   /**
    * 앞으로의 다짐 — "빨거야", "할 거야", "하려고". 이름이 아니다.
    *
@@ -393,6 +542,7 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
   s = s.replace(/([가-힣]+)?\s*(?:거|게)\s*야/g, (_m, word?: string) =>
     word && endsWithFutureEnding(word) ? ' ' : word ? ` ${word} ` : ' ',
   );
+  s = s.replace(/(?:싶(?:었어|었어요|었|어|어요|다|음)|(?:예정|계획|생각)이었(?:어|어요|다|음)?)/g, ' ');
 
   s = s.replace(DONE_MARKERS, ' ');
   s = s.replace(FIRST_PERSON, ' ');
@@ -404,17 +554,6 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
    */
   s = s.replace(/(?:^|\s)[a-z]{2,}(?=\s|$)/g, ' ');
   s = s.replace(/[?？!！.,·]/g, ' ');
-
-  // 행동을 명사로 바꾼다. 문장에서는 지우고 끝에 붙인다.
-  let action: string | null = null;
-  for (const [pattern, noun] of ACTION_NOUNS) {
-    const m = s.match(pattern);
-    if (m) {
-      action = noun;
-      s = s.replace(pattern, ' ');
-      break;
-    }
-  }
 
   // 남은 조사와 서술어를 턴다.
   s = s.replace(/\s+/g, ' ').trim();
@@ -444,11 +583,12 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
 export function readUtterance(text: string, reference: Date): UtteranceFacts {
   const { daysAgo, saw } = readDaysAgo(text, reference);
   const { name, sawAction } = readNameWithAction(text);
-  const save = classifySave(text);
+  const save = classifySave(text, reference);
 
   return {
     intent: save.intent,
     willSave: save.willSave,
+    saveKind: save.kind,
     daysAgo,
     statedCadenceDays: readCadenceDays(text),
     name,

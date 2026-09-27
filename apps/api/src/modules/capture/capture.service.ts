@@ -129,7 +129,7 @@ export class CaptureService {
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
-    if (!facts.willSave && facts.intent !== 'query') {
+    if (!facts.willSave && facts.intent !== 'query' && facts.saveKind !== 'none') {
       return { result: await this.declinedRecord(userId, input, referenceDate), via: 'rules' };
     }
 
