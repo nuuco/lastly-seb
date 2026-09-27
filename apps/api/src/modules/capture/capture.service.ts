@@ -34,6 +34,11 @@ export const MATCH_THRESHOLD = 0.82;
 export const CANDIDATE_FLOOR = 0.45;
 /** AI가 항목명조차 못 뽑았다고 볼 기준. */
 export const RECOGNITION_FLOOR = 0.35;
+/**
+ * AI 없이 규칙이 문장에서 뽑은 이름의 확신도. 확인 시트는 열되(RECOGNITION_FLOOR 위)
+ * 사용자가 이름을 고칠 여지가 있는 값. 브라우저 parse-local 의 대체 이름과 같다.
+ */
+export const RULE_NAME_CONFIDENCE = 0.5;
 
 /** AI가 응답하지 않을 때 쓰는 폴백 주기. */
 export const FALLBACK_CADENCE: CadenceRule = {
@@ -154,12 +159,29 @@ export class CaptureService {
 
     /**
      * 칸 없이 왔다 = 기기 모델이 돌지 않았다(못 쓰는 기기, 받기 전, 모델 오류).
-     * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다. 응답이 없으면 직접 고르게 한다.
+     * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다.
      */
     const parsed = await this.askGemini(input, referenceDate, known);
-    return parsed && !isEmptyParse(parsed)
-      ? { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' }
-      : { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
+    if (parsed && !isEmptyParse(parsed)) {
+      return { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' };
+    }
+
+    /**
+     * Gemini 가 못 알아들었거나 응답이 없으면 규칙이 문장에서 뽑은 이름으로 확인 시트를 연다.
+     * "고양이 모래 부었어" 처럼 어색해도 시트에서 고치면 된다. 이름이 없는 말만 직접 고르게 한다.
+     */
+    if (facts.intent === 'record' && facts.name) {
+      const slots: ClientParseSlots = {
+        intent: 'record',
+        itemName: facts.name,
+        daysAgo: facts.daysAgo,
+        statedCadenceDays: facts.statedCadenceDays,
+        confidence: RULE_NAME_CONFIDENCE,
+      };
+      const result = await this.fromClientSlots(userId, input, slots, referenceDate, known, today);
+      return { result, via: 'rules' };
+    }
+    return { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
   }
 
   private async fromAi(

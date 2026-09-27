@@ -22,6 +22,12 @@ function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
 
 export const DEFERRED_MESSAGE = '아직 안 한 일은 기록하지 않아요';
 
+/**
+ * 모델이 이름을 못 냈을 때 규칙이 문장에서 뽑은 이름의 확신도.
+ * 서버 capture.service RULE_NAME_CONFIDENCE 와 같다. 확인 시트는 열고 이름은 고치게 한다.
+ */
+const RULE_NAME_CONFIDENCE = 0.5;
+
 export interface LocalInterpretation {
   /** null 이면 기기에서 못 채웠다. 서버가 규칙·되묻기로 이어간다. */
   parsed: OnDeviceParseResult | null;
@@ -84,9 +90,14 @@ async function parseCaptureLocally(
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);
-        // 모델도 이름을 못 뽑았거나 근거 없는 이름이라 버렸으면 칸을 보내지 않는다.
-        // 빈 이름 칸이 가면 서버가 Gemini 를 건너뛰고 바로 되묻는다.
-        return { parsed: parsed.itemName ? parsed : null, usedModel: true, modelError: null };
+        if (parsed.itemName) return { parsed, usedModel: true, modelError: null };
+        // 모델이 이름을 못 냈거나 근거 없는 이름이라 버렸으면 문장에서 뽑은 이름을 쓴다.
+        // "고양이 모래 부었어" 처럼 어색해도 확인 시트에서 고친다. Gemini 는 부르지 않는다.
+        return {
+          parsed: { ...parsed, itemName: readName(text), confidence: RULE_NAME_CONFIDENCE },
+          usedModel: true,
+          modelError: null,
+        };
       } catch (err) {
         // 모델이 깨져도 기록은 규칙·서버로 이어간다.
         modelError = err instanceof Error ? err.message : String(err);

@@ -229,7 +229,7 @@ describe('CaptureService.interpret', () => {
 });
 
 describe('CaptureService.interpret — AI 장애 시', () => {
-  it('AI가 응답하지 않아도 실패하지 않고 직접 고르게 한다', async () => {
+  it('AI가 응답하지 않으면 문장에서 뽑은 이름으로 후보와 함께 되묻는다', async () => {
     const { service, items } = buildService({ parse: null });
     items.matchByMeaning.mockResolvedValue([
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
@@ -245,11 +245,11 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       TODAY,
     );
 
+    expect(result.via).toBe('rules');
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(1);
-    expect(result.confidence).toBe(0);
-    // 화면이 "또렷하게 말해주세요" 대신 다른 말을 하도록 원인을 알려준다.
-    expect(result.degraded).toBe(true);
+    expect(result.normalizedName).toBe('제습기 물통');
+    expect(result.confidence).toBe(0.5);
     // 토큰은 여전히 발급돼야 커밋으로 이어갈 수 있다.
     expect(result.draftToken).toBe('signed-token');
   });
@@ -278,7 +278,7 @@ describe('CaptureService.interpret — AI 장애 시', () => {
     expect(result.matchedItemId).toBe('item-1');
   });
 
-  it('AI 키가 없으면 해석 없이 폴백으로 간다', async () => {
+  it('AI 키가 없으면 문장에서 뽑은 이름으로 새 항목 확인 시트를 연다', async () => {
     // AiClient 가 키 없음을 null 로 알린다. 호출부는 장애와 똑같이 다룬다.
     const { service, items } = buildService({ parse: null });
     items.matchByMeaning.mockResolvedValue([]);
@@ -289,8 +289,17 @@ describe('CaptureService.interpret — AI 장애 시', () => {
       TODAY,
     );
 
-    expect(result.degraded).toBe(true);
-    expect(result.outcome).toBe('unrecognized');
+    expect(result.outcome).toBe('new_item');
+    expect(result.normalizedName).toBe('제습기 물통');
+  });
+
+  it('문장 이름으로 갈 때도 규칙이 읽은 날짜를 쓴다', async () => {
+    const { service } = buildService({ parse: null });
+
+    const result = await service.interpret('user-1', { text: '어제 제습기 물통', mode: 'text' }, TODAY);
+
+    expect(result.normalizedName).toBe('제습기 물통');
+    expect(result.doneOn).toBe('2026-09-05');
   });
 });
 
@@ -650,7 +659,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.via).toBe('client');
   });
 
-  it('Gemini 가 실패해 빈 결과를 주면 대체 경로로 후보를 보여준다', async () => {
+  it('Gemini 가 실패해 빈 결과를 주면 문장 이름으로 후보를 보여준다', async () => {
     // AI 서비스는 한도 초과·오류 때 이름 없이 확신도 0 인 결과를 정상 응답으로 준다.
     const { service, items } = buildService({
       parse: parsed({
@@ -667,18 +676,19 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
 
     const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
-    expect(result.via).toBe('none');
-    expect(result.degraded).toBe(true);
+    expect(result.via).toBe('rules');
+    expect(result.normalizedName).toBe('제습기 물통');
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates).toHaveLength(1);
   });
 
-  it('Gemini 도 응답하지 않으면 경로를 none 으로 남긴다', async () => {
+  it('이름을 뽑을 수 없는 조회에 Gemini 도 응답하지 않으면 경로를 none 으로 남긴다', async () => {
     const { service } = buildService({ parse: null });
 
-    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
 
     expect(result.via).toBe('none');
+    expect(result.degraded).toBe(true);
   });
 });
 
