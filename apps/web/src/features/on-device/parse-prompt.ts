@@ -1,62 +1,45 @@
-import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
+import type { OnDeviceParseResult } from './types';
 
 /**
  * MediaPipe generateResponse 는 채팅 템플릿을 안 붙인다.
  * Google 웹 샘플과 같이 Gemma 3 턴을 직접 열고, 모델 턴을 `{` 로 시작해
- * 1B가 문장으로 새지 않게 한다.
+ * 문장으로 새지 않게 한다.
+ *
+ * 모델이 채우는 칸은 사실상 item_name 하나다. 의도·날짜·저장 여부는 규칙이 덮는다.
+ * - say 에 문장을 옮겨 적게 해 이름을 문장 안에서 고르게 한다. 파서는 say 를 읽지 않는다.
+ * - 기존 항목 목록은 넣지 않는다. 270M 이 목록의 이름을 베껴 답했다.
+ *   항목 연결은 matchKnown·서버가 이름으로 다시 한다.
+ * - 예시 id 는 넣지 않는다. 실제 항목 id 로 오인한다.
  */
-const INSTRUCTIONS = `문장 하나를 JSON 한 개로 완성해. 설명 금지.
+const INSTRUCTIONS = `문장에서 한 일을 찾아 JSON 으로 답해.
+say 에는 문장을 그대로 옮겨 적어.
+item_name 에는 say 에 있는 물건 + 한 일을 명사로 적어.
+한 일이 안 보이면 say 에 있는 물건 이름만 적어.
+say 에 없는 물건은 쓰지 마. 물건도 없으면 item_name 은 null.
 
-days_ago 규칙 (기준일 기준, 정수만):
-- 오늘 / 시간 없음 → 0
-- 어제 → 1
-- 그저께 → 2
-- query(언제·얼마나·?) → 무조건 0
+문장: 욕조 배수구 머리카락 뺌
+{"say":"욕조 배수구 머리카락 뺌","item_name":"욕조 배수구 청소","intent":"record","days_ago":0}
 
-item_name은 행동까지 명사구. 빨았어→빨래, 갈았어→교체, 닦았어→청소.
+문장: 어제 화분 분갈이
+{"say":"어제 화분 분갈이","item_name":"화분 분갈이","intent":"record","days_ago":1}
 
-예1 오늘 이불 빨았어
-{"intent":"record","item_name":"이불 빨래","days_ago":0,"matched_item_id":"item-1","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}
+문장: 고양이 화장실 모래
+{"say":"고양이 화장실 모래","item_name":"고양이 화장실 모래","intent":"record","days_ago":0}
 
-예2 어제 정수기 필터 갈았어
-{"intent":"record","item_name":"정수기 필터 교체","days_ago":1,"matched_item_id":"item-2","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}
+문장: 식세기 필터 싹 헹굼
+{"say":"식세기 필터 싹 헹굼","item_name":"식세기 필터 청소","intent":"record","days_ago":0}
 
-예3 이불 언제 빨았지?
-{"intent":"query","item_name":"이불 빨래","days_ago":0,"matched_item_id":"item-1","candidate_ids":[],"confidence":0.9,"stated_cadence_days":null}`;
-
-function weekdayLabel(isoDate: string): string {
-  const day = new Date(`${isoDate}T00:00:00`).getDay();
-  return '일월화수목금토'[day] ?? '';
-}
+문장: 음 그거 있잖아 그거
+{"say":"음 그거 있잖아 그거","item_name":null,"intent":"record","days_ago":0}`;
 
 /** 모델에 줄 지시문. 채팅 템플릿은 런타임마다 다르게 붙인다. */
-export function buildParseInstruction(
-  text: string,
-  referenceDate: string,
-  knownItems: OnDeviceKnownItem[],
-): string {
-  const items =
-    knownItems.length === 0
-      ? '(없음)'
-      : knownItems.map((item) => `id=${item.id} | ${item.name}`).join('\n');
-
-  return [
-    INSTRUCTIONS,
-    `기준일 ${referenceDate} (${weekdayLabel(referenceDate)}요일)`,
-    '기존 항목:',
-    items,
-    `문장: ${text}`,
-  ].join('\n');
+export function buildParseInstruction(text: string): string {
+  return `${INSTRUCTIONS}\n\n문장: ${text}`;
 }
 
 /** Gemma 3 턴을 직접 열고 모델 턴을 `{` 로 시작한다. */
-export function buildParsePrompt(
-  text: string,
-  referenceDate: string,
-  knownItems: OnDeviceKnownItem[],
-): string {
-  const user = buildParseInstruction(text, referenceDate, knownItems);
-  return `<start_of_turn>user\n${user}<end_of_turn>\n<start_of_turn>model\n{`;
+export function buildParsePrompt(text: string): string {
+  return `<start_of_turn>user\n${buildParseInstruction(text)}<end_of_turn>\n<start_of_turn>model\n{`;
 }
 
 export function parseModelJson(raw: string): OnDeviceParseResult {

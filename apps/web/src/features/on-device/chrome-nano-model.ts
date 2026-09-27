@@ -40,15 +40,12 @@ type LanguageModelApi = {
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
+    say: { type: 'string' },
     intent: { type: 'string', enum: ['record', 'query'] },
     item_name: { type: ['string', 'null'] },
     days_ago: { type: 'integer', minimum: 0 },
-    matched_item_id: { type: ['string', 'null'] },
-    candidate_ids: { type: 'array', items: { type: 'string' } },
-    confidence: { type: 'number', minimum: 0, maximum: 1 },
-    stated_cadence_days: { type: ['integer', 'null'] },
   },
-  required: ['intent', 'item_name', 'days_ago', 'matched_item_id', 'confidence'],
+  required: ['say', 'item_name', 'intent', 'days_ago'],
 };
 
 function api(): LanguageModelApi | null {
@@ -135,7 +132,7 @@ export function createChromeNanoModel(
       const turn = await session.clone();
       try {
         return await turn.prompt(
-          buildParseInstruction(input.text, input.referenceDate, input.knownItems),
+          buildParseInstruction(input.text),
           { responseConstraint: RESPONSE_SCHEMA },
         );
       } finally {

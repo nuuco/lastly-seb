@@ -134,7 +134,7 @@ async function startEngine(spec: ModelSpec): Promise<void> {
 async function generateRaw(spec: ModelSpec, input: ParseInput): Promise<string> {
   await ensureLoaded(spec);
   if (!llm) throw new Error('모델이 아직 없습니다.');
-  const prompt = buildParsePrompt(input.text, input.referenceDate, input.knownItems);
+  const prompt = buildParsePrompt(input.text);
   // 한도를 넘는 입력을 보내면 MediaPipe 가 "처리 중" 상태에 갇혀 이후 호출이 모두 실패한다. 보내기 전에 막는다.
   const limit = spec.maxTokens - OUTPUT_RESERVE_TOKENS;
   let size: number | undefined;
@@ -381,7 +381,8 @@ async function createLlm(genai: Genai, device: GpuDevice, spec: ModelSpec): Prom
     },
     maxTokens: spec.maxTokens,
     topK: 40,
-    temperature: 0.8,
+    // 같은 문장에 같은 이름을 내게 한다. 0.8 에서 270M 이 예시·목록의 이름으로 새었다.
+    temperature: 0.1,
     randomSeed: 101,
     numResponses: 1,
     ...(forceF32 ? { forceF32: true } : {}),
