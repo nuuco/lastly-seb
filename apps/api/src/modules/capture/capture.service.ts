@@ -91,33 +91,15 @@ export class CaptureService {
     const typed = squash(input.text);
     const exact = known.find((i) => squash(i.name) === typed);
     if (exact) {
-      const result: InterpretResult = {
-        transcript: input.text,
+      const result = this.draftResult(userId, input, {
         outcome: 'matched_existing',
         normalizedName: exact.name,
         doneOn: referenceDate,
         matchedItemId: exact.id,
         candidates: [],
-        cadence: await this.resolveCadence(
-          userId,
-          'matched_existing',
-          exact.id,
-          exact.name,
-          referenceDate,
-        ),
+        cadence: await this.resolveCadence(userId, 'matched_existing', exact.id, exact.name, referenceDate),
         confidence: 1,
-        degraded: false,
-        answer: null,
-        draftToken: this.draft.sign({
-          userId,
-          rawInput: input.text,
-          normalizedName: exact.name,
-          doneOn: referenceDate,
-          matchedItemId: exact.id,
-          mode: input.mode,
-          issuedAt: Date.now(),
-        }),
-      };
+      });
       return { result, via: 'rules' };
     }
 
