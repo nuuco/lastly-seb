@@ -463,6 +463,55 @@ describe('CaptureService.interpret — 규칙이 이름만 뽑은 새 항목', (
   });
 });
 
+describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
+  it('규칙이 이름을 못 뽑으면 Gemini 로 해석한다', async () => {
+    const { service, ai } = buildService({});
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(ai.parseUtterance).toHaveBeenCalledTimes(1);
+    expect(result.outcome).toBe('matched_existing');
+    expect(result.matchedItemId).toBe('item-1');
+    expect(result.degraded).toBe(false);
+  });
+
+  it('Gemini 가 조회로 읽으면 답만 돌려준다', async () => {
+    const { service } = buildService({ parse: parsed({ intent: 'query' }) });
+
+    const result = await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.itemId).toBe('item-1');
+  });
+
+  it('Gemini 가 지어낸 항목 id 는 믿지 않는다', async () => {
+    const { service } = buildService({
+      parse: parsed({ matched_item_id: 'ghost', candidates: [], normalized_name: '베란다 청소' }),
+    });
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.matchedItemId).toBeNull();
+    expect(result.outcome).toBe('new_item');
+  });
+
+  it('칸이 오면 Gemini 를 부르지 않는다', async () => {
+    const { service, ai } = buildService({});
+
+    await service.interpret(
+      'user-1',
+      {
+        text: '음 그거 있잖아',
+        mode: 'text',
+        slots: { intent: 'record', itemName: '이불 빨래', daysAgo: 0, statedCadenceDays: null, confidence: 0.9 },
+      },
+      TODAY,
+    );
+
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+  });
+});
+
 describe('CaptureService.interpret — 기준일 기본값', () => {
   /**
    * today 를 넘기지 않으면 한국 날짜로 잡히는지 본다.
