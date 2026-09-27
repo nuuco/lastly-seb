@@ -4,7 +4,13 @@ import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contrac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
-import { DEFERRED_MESSAGE, interpretLocally } from '@/features/on-device/parse-local';
+import { getLocalAiSupport } from '@/features/on-device/capability';
+import { activeModelSpec } from '@/features/on-device/engine';
+import {
+  DEFERRED_MESSAGE,
+  interpretLocally,
+  type LocalInterpretation,
+} from '@/features/on-device/parse-local';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { speak } from '@/features/on-device/voice-guidance';
 import { captureApi } from '@/lib/api/capture';
@@ -70,18 +76,22 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       asrConfidence?: number;
       knownItems?: OnDeviceKnownItem[];
     }) => {
+      const started = performance.now();
       const local = await interpretLocally(input.text, todayIso(), input.knownItems ?? []);
 
       if (local.deferred) {
+        logInterpretPath('기기 규칙 (저장 안 함)', local, started);
         return { deferred: DEFERRED_MESSAGE };
       }
 
-      return captureApi.interpret({
+      const result = await captureApi.interpret({
         text: input.text,
         mode: input.mode,
         asrConfidence: input.asrConfidence,
         slots: local.slots,
       });
+      logInterpretPath(result.via ?? '알 수 없음', local, started, result.outcome);
+      return result;
     },
     onMutate: (input) => {
       abandoned.current = false;
@@ -331,4 +341,24 @@ function stepForOutcome(result: InterpretResult): CaptureStep {
     case 'unrecognized':
       return 'retry';
   }
+}
+
+/**
+ * 개발자도구 콘솔에서 해석 경로를 본다. 화면에는 보이지 않는다. 문장 원문은 찍지 않는다.
+ * via: rules(서버 규칙) · client(브라우저 칸) · gemini · none(되묻기)
+ */
+function logInterpretPath(
+  via: string,
+  local: LocalInterpretation,
+  started: number,
+  outcome?: string,
+) {
+  console.info('[lastly] 해석', {
+    via,
+    기기: local.usedModel ? activeModelSpec().id : local.slots ? '규칙' : '안 씀',
+    기기오류: local.modelError,
+    로컬AI: getLocalAiSupport()?.kind ?? '판정 전',
+    outcome,
+    ms: Math.round(performance.now() - started),
+  });
 }

@@ -470,6 +470,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
 
     expect(ai.parseUtterance).toHaveBeenCalledTimes(1);
+    expect(result.via).toBe('gemini');
     expect(result.outcome).toBe('matched_existing');
     expect(result.matchedItemId).toBe('item-1');
     expect(result.degraded).toBe(false);
@@ -498,7 +499,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
   it('칸이 오면 Gemini 를 부르지 않는다', async () => {
     const { service, ai } = buildService({});
 
-    await service.interpret(
+    const result = await service.interpret(
       'user-1',
       {
         text: '음 그거 있잖아',
@@ -509,6 +510,15 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     );
 
     expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(result.via).toBe('client');
+  });
+
+  it('Gemini 도 응답하지 않으면 경로를 none 으로 남긴다', async () => {
+    const { service } = buildService({ parse: null });
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.via).toBe('none');
   });
 });
 

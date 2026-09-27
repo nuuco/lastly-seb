@@ -10,6 +10,7 @@ import type {
   CadencePreviewResult,
   InterpretRequest,
   InterpretResult,
+  InterpretVia,
   ItemCandidate,
 } from '@lastly/contracts';
 import { format, subDays } from 'date-fns';
@@ -68,6 +69,16 @@ export class CaptureService {
   ) {}
 
   async interpret(userId: string, input: InterpretRequest, today = appToday()): Promise<InterpretResult> {
+    const { result, via } = await this.route(userId, input, today);
+    this.logger.log(`해석 경로 ${via} · ${result.outcome}`);
+    return { ...result, via };
+  }
+
+  private async route(
+    userId: string,
+    input: InterpretRequest,
+    today: Date,
+  ): Promise<{ result: InterpretResult; via: InterpretVia }> {
     const referenceDate = input.referenceDate ?? format(today, 'yyyy-MM-dd');
     const known = await this.items.listActive(userId);
 
@@ -80,7 +91,7 @@ export class CaptureService {
     const typed = squash(input.text);
     const exact = known.find((i) => squash(i.name) === typed);
     if (exact) {
-      return {
+      const result: InterpretResult = {
         transcript: input.text,
         outcome: 'matched_existing',
         normalizedName: exact.name,
@@ -107,6 +118,7 @@ export class CaptureService {
           issuedAt: Date.now(),
         }),
       };
+      return { result, via: 'rules' };
     }
 
     /**
@@ -115,7 +127,8 @@ export class CaptureService {
      * 서버 규칙이 쓰레기 조각으로 덮지 않게 규칙보다 앞에 둔다.
      */
     if (input.slots) {
-      return this.fromClientSlots(userId, input, input.slots, referenceDate, known, today);
+      const result = await this.fromClientSlots(userId, input, input.slots, referenceDate, known, today);
+      return { result, via: 'client' };
     }
 
     /**
@@ -127,18 +140,19 @@ export class CaptureService {
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
     if (!facts.willSave && facts.intent !== 'query') {
-      return this.declinedRecord(userId, input, referenceDate);
+      return { result: await this.declinedRecord(userId, input, referenceDate), via: 'rules' };
     }
 
     const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
-    if (ruled) return ruled;
+    if (ruled) return { result: ruled, via: 'rules' };
 
     /**
      * 규칙이 이름을 뽑았으면 주기만 채운다. 아는 행동을 찾아낸 경우에만 이름으로 믿는다.
      * 브라우저의 rulesFinished 와 같은 기준이다.
      */
     if (facts.sawAction && facts.name) {
-      return this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
+      const result = await this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
+      return { result, via: 'rules' };
     }
 
     /**
@@ -151,8 +165,8 @@ export class CaptureService {
       known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
     });
     return parsed
-      ? this.fromAi(userId, input, referenceDate, known, today, parsed)
-      : this.withoutAi(userId, input, referenceDate, known);
+      ? { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' }
+      : { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
   }
 
   private async fromAi(
