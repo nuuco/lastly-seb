@@ -44,6 +44,14 @@ export const FALLBACK_CADENCE: CadenceRule = {
 };
 
 /**
+ * AI 서비스는 LLM 이 실패해도(한도 초과·오류) 빈 결과를 정상 응답으로 돌려준다.
+ * 이름·매칭·후보가 모두 없고 확신도가 0 이면 대답을 못 받은 것으로 본다.
+ * 그래야 "또렷하게 말해주세요" 대신 대체 경로(의미 검색 후보)로 간다.
+ */
+const isEmptyParse = (p: AiParseResponse) =>
+  !p.normalized_name && !p.matched_item_id && p.candidates.length === 0 && p.confidence === 0;
+
+/**
  * 이름을 견주기 위해 공백을 지우고 소문자로 눕힌다.
  * "화분 물 주기" 와 "화분물주기" 는 사람에겐 같은 말이다.
  */
@@ -146,7 +154,7 @@ export class CaptureService {
       reference_date: referenceDate,
       known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
     });
-    return parsed
+    return parsed && !isEmptyParse(parsed)
       ? { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' }
       : { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
   }

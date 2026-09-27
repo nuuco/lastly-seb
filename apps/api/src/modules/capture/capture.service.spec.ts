@@ -605,6 +605,29 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.via).toBe('client');
   });
 
+  it('Gemini 가 실패해 빈 결과를 주면 대체 경로로 후보를 보여준다', async () => {
+    // AI 서비스는 한도 초과·오류 때 이름 없이 확신도 0 인 결과를 정상 응답으로 준다.
+    const { service, items } = buildService({
+      parse: parsed({
+        normalized_name: null,
+        matched_item_id: null,
+        candidates: [],
+        confidence: 0,
+        reason: '429 quota exceeded',
+      }),
+    });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
+    ]);
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.via).toBe('none');
+    expect(result.degraded).toBe(true);
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.candidates).toHaveLength(1);
+  });
+
   it('Gemini 도 응답하지 않으면 경로를 none 으로 남긴다', async () => {
     const { service } = buildService({ parse: null });
 
