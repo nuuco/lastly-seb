@@ -1,4 +1,4 @@
-import { readUtterance } from '@lastly/parser';
+import { isGroundedName, readUtterance } from '@lastly/parser';
 
 import { generateOnDevice } from '@/features/on-device/engine';
 import { interpretLocally } from '@/features/on-device/parse-local';
@@ -301,13 +301,6 @@ export interface Table2Row {
   modelNull: number;
 }
 
-/** 이름 낱말(두 글자 이상) 하나라도 문장에 있는지. 앱 apply-rules 의 근거 확인과 같은 기준. */
-function isGrounded(name: string, text: string): boolean {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const said = squash(text).toLowerCase();
-  return words.some((word) => (word.length >= 2 || words.length === 1) && said.includes(word.toLowerCase()));
-}
-
 /** 모델이 낸 item_name. 규칙이 덮기 전 raw 에서 읽는다. 모델을 안 탔거나 형식이 깨졌으면 undefined. */
 function rawItemName(got: CaseOutcome): string | null | undefined {
   if (!got.usedModel || !got.raw) return undefined;
@@ -375,7 +368,7 @@ export function summarize(
     repaired: pairs.filter(({ got }) => wasRepaired(got.raw)).length,
     ungrounded: pairs.filter(({ got }) => {
       const name = rawItemName(got);
-      return typeof name === 'string' && !isGrounded(name, got.text);
+      return typeof name === 'string' && !isGroundedName(name, got.text);
     }).length,
     modelNull: pairs.filter(({ got }) => rawItemName(got) === null).length,
   };
