@@ -198,8 +198,7 @@ export class CaptureService {
     const matchedItemId =
       outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
 
-    return {
-      transcript: input.text,
+    return this.draftResult(userId, input, {
       outcome,
       normalizedName: parsed.normalized_name,
       doneOn: parsed.done_on,
@@ -214,18 +213,7 @@ export class CaptureService {
         parsed.stated_cadence_days ?? null,
       ),
       confidence: parsed.confidence,
-      degraded: false,
-      answer: null,
-      draftToken: this.draft.sign({
-        userId,
-        rawInput: input.text,
-        normalizedName: parsed.normalized_name,
-        doneOn: parsed.done_on,
-        matchedItemId,
-        mode: input.mode,
-        issuedAt: Date.now(),
-      }),
-    };
+    });
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
@@ -446,7 +434,7 @@ export class CaptureService {
         return this.answer(userId, input, referenceDate, top.itemId, today);
       }
       if (candidates.length > 0) {
-        return this.slotResult(userId, input, {
+        return this.draftResult(userId, input, {
           outcome: 'ambiguous',
           normalizedName: name,
           doneOn: referenceDate,
@@ -456,7 +444,7 @@ export class CaptureService {
           confidence: slots.confidence,
         });
       }
-      return this.slotResult(userId, input, {
+      return this.draftResult(userId, input, {
         outcome: 'unrecognized',
         normalizedName: name,
         doneOn: referenceDate,
@@ -480,7 +468,7 @@ export class CaptureService {
     const matchedItemId =
       outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
 
-    return this.slotResult(userId, input, {
+    return this.draftResult(userId, input, {
       outcome,
       normalizedName: matchedItemId
         ? (known.find((i) => i.id === matchedItemId)?.name ?? name)
@@ -500,7 +488,7 @@ export class CaptureService {
     });
   }
 
-  private slotResult(
+  private draftResult(
     userId: string,
     input: InterpretRequest,
     part: {
