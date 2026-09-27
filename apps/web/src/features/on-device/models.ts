@@ -68,8 +68,8 @@ const MODELS: Record<ModelId, ModelSpec> = {
   },
 };
 
-/** Nano 를 못 쓰는 기기에서 대신 쓸 모델. */
-export const FALLBACK_MODEL: ModelId = 'gemma3-1b';
+/** 앱 기본 모델이자 Nano 를 못 쓰는 기기에서 대신 쓸 모델. */
+export const FALLBACK_MODEL: ModelId = 'gemma3-270m';
 
 function isModelId(value: string | undefined): value is ModelId {
   return value !== undefined && value in MODELS;

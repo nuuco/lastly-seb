@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { Toggle } from '@/components/ui/toggle';
 import {
+  activeModelSpec,
   engineErrorMessage,
   engineProgressLabel,
   cancelEngineLoad,
@@ -25,6 +26,7 @@ import {
   setModelConsent,
   setVoiceGuidance,
 } from '@/features/on-device/consent';
+import type { ModelSpec } from '@/features/on-device/models';
 
 /** 설정 13에 없는 행 — 음성 안내와 AI 모델. */
 export function OnDeviceSettings() {
@@ -35,12 +37,14 @@ export function OnDeviceSettings() {
   const [progress, setProgress] = useState<EngineProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [spec, setSpec] = useState<ModelSpec | null>(null);
 
   useEffect(() => {
     setVoice(isVoiceGuidanceOn());
     const current = getModelConsent();
     setConsent(current);
     setGpu(isEngineSupported());
+    setSpec(activeModelSpec());
     setReady(isEngineReady());
     const unsub = subscribeEngineProgress((next) => {
       setProgress(next);
@@ -100,7 +104,7 @@ export function OnDeviceSettings() {
         ? engineProgressLabel(progress!)
         : consent === 'granted'
           ? '모델을 준비하고 있어요.'
-          : '약 670MB. Wi-Fi에서 받기를 권해요.';
+          : `${spec?.sizeLabel ?? ''}. Wi-Fi에서 받기를 권해요.`;
 
   return (
     <>
@@ -126,7 +130,7 @@ export function OnDeviceSettings() {
             <p className="mt-[3px] text-12.5 text-ink-3">{error ?? modelHint}</p>
             {isEngineBusy(progress) ? <EngineProgressBar progress={progress!} /> : null}
             <p className="mt-1.5 text-12 leading-[1.6] text-ink-3">
-              Gemma 모델.{' '}
+              {spec?.label ?? 'Gemma'} 모델.{' '}
               <Link href="/legal/terms" className="font-semibold text-accent-ink">
                 약관
               </Link>
