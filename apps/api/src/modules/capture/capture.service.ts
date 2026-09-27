@@ -48,6 +48,10 @@ export const FALLBACK_CADENCE: CadenceRule = {
  * 이름·매칭·후보가 모두 없고 확신도가 0 이면 대답을 못 받은 것으로 본다.
  * 그래야 "또렷하게 말해주세요" 대신 대체 경로(의미 검색 후보)로 간다.
  */
+/** 목록에서 id 로 항목을 찾는다. 모델이 지어낸 id·빈 값이면 undefined. */
+const knownRow = (known: ItemRow[], id: string | null | undefined) =>
+  id ? known.find((i) => i.id === id) : undefined;
+
 const isEmptyParse = (p: AiParseResponse) =>
   !p.normalized_name && !p.matched_item_id && p.candidates.length === 0 && p.confidence === 0;
 
@@ -159,13 +163,12 @@ export class CaptureService {
     parsed: AiParseResponse,
   ): Promise<InterpretResult> {
     // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목만 남긴다.
-    const isKnown = (id: string | null) => Boolean(id && known.some((i) => i.id === id));
     const candidates = this.toCandidates(
-      parsed.candidates.filter((c) => isKnown(c.item_id)),
+      parsed.candidates.filter((c) => knownRow(known, c.item_id)),
       known,
       today,
     );
-    const claimed = isKnown(parsed.matched_item_id) ? parsed.matched_item_id : null;
+    const claimed = knownRow(known, parsed.matched_item_id)?.id ?? null;
 
     // 묻는 말이면 기록하지 않는다. 칸 경로와 같은 기준으로 답하거나 되묻는다.
     if (parsed.intent === 'query') {
@@ -457,7 +460,7 @@ export class CaptureService {
     return this.draftResult(userId, input, {
       outcome,
       normalizedName: matchedItemId
-        ? (known.find((i) => i.id === matchedItemId)?.name ?? part.name)
+        ? (knownRow(known, matchedItemId)?.name ?? part.name)
         : part.name,
       doneOn: part.doneOn,
       matchedItemId,
@@ -533,9 +536,9 @@ export class CaptureService {
     }
 
     // 모델이 없는 id를 지어냈을 수 있으므로 목록에 있는 항목만 받는다.
-    const row = (id: string | null) => (id ? known.find((i) => i.id === id) : undefined);
     const picked =
-      row(parsed.matched_item_id) ?? row(parsed.candidates.find((c) => row(c.item_id))?.item_id ?? null);
+      knownRow(known, parsed.matched_item_id) ??
+      knownRow(known, parsed.candidates.find((c) => knownRow(known, c.item_id))?.item_id);
     this.logger.log(`조회 보강 Gemini · 추천 ${picked ? '있음' : '없음'}`);
     if (!picked) return candidates;
 
@@ -686,7 +689,7 @@ export class CaptureService {
     const top = rows[0];
     if (!top || top.similarity < MATCH_THRESHOLD) return null;
 
-    return known.find((i) => i.id === top.item_id) ?? null;
+    return knownRow(known, top.item_id) ?? null;
   }
 
   private async answer(
