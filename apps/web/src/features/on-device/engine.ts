@@ -44,8 +44,6 @@ export function engineProgressHint(progress: EngineProgress): string | null {
 
 const progressHandlers = new Set<(progress: EngineProgress) => void>();
 const instances = new Map<ModelId, LocalModel>();
-/** setActiveModel 로 고른 모델. 없으면 기기 판정(capability.ts)을 따른다. */
-let override: ModelId | null = null;
 
 function emit(progress: EngineProgress) {
   for (const handler of progressHandlers) handler(progress);
@@ -65,7 +63,6 @@ function modelFor(id: ModelId): LocalModel {
 
 /** 지금 쓸 모델. 기기 판정이 none 이거나 아직이면 null. */
 function current(): LocalModel | null {
-  if (override) return modelFor(override);
   const id = getLocalAiSupport()?.modelId;
   return id ? modelFor(id) : null;
 }
@@ -75,14 +72,6 @@ export function subscribeEngineProgress(handler: (progress: EngineProgress) => v
   return () => {
     progressHandlers.delete(handler);
   };
-}
-
-/** 쓸 모델을 고정한다(실험용). 올라가 있던 모델은 내리고, 받아 둔 파일은 남긴다. */
-export function setActiveModel(id: ModelId): void {
-  if (id === current()?.spec.id) return;
-  current()?.unload();
-  override = id;
-  emit({ status: 'idle', loaded: 0, total: 0, message: '' });
 }
 
 /** 지금 모델. 쓸 수 없는 기기면 기본 Gemma 정보(화면 문구용). */
@@ -102,7 +91,7 @@ export function engineNeedsConsent(): boolean {
 
 export async function ensureEngine(): Promise<void> {
   // 지난 실행의 저장값만 보고 받기를 시작하지 않는다. 이번 실행의 검사를 기다린다.
-  if (!override) await checkLocalAi();
+  await checkLocalAi();
   const model = current();
   if (!model) throw new Error(LOCAL_AI_UNSUPPORTED);
   try {
