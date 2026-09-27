@@ -938,6 +938,8 @@ function GoldenRunner({
             · False Completion {runSummary.fcCount}/{runSummary.fcBase}
             {runSummary.errors ? ` · 오류 ${runSummary.errors}` : ''}
             {runSummary.repaired ? ` · 형식 복구 ${runSummary.repaired}` : ''}
+            {runSummary.ungrounded ? ` · 문장에 없는 이름 ${runSummary.ungrounded}` : ''}
+            {runSummary.dropped ? ` · 모델 이름 버림 ${runSummary.dropped}` : ''}
             {runSummary.total < goldenSet.cases.length ? ` · ${runSummary.total}문장까지만 실행` : ''}
           </span>
           <span className="block text-[12px] font-normal text-ink-3">
@@ -1328,6 +1330,8 @@ function Table2({ lab, goldenSet }: { lab: LabState; goldenSet: GoldenSet }) {
                     {summary.toServer ? ` · 서버행 ${summary.toServer}` : ''}
                     {summary.errors ? ` · 오류 ${summary.errors}` : ''}
                     {summary.repaired ? ` · 형식 복구 ${summary.repaired}` : ''}
+                    {summary.ungrounded ? ` · 문장에 없는 이름 ${summary.ungrounded}` : ''}
+                    {summary.dropped ? ` · 모델 이름 버림 ${summary.dropped}` : ''}
                   </td>
                 </tr>
               ))}

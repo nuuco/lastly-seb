@@ -238,6 +238,8 @@ export function labReportMd({
           run.mode === 'app' && run.engine !== 'rule' ? `모델 ${s!.usedModel}` : '',
           s!.errors ? `오류 ${s!.errors}` : '',
           s!.repaired ? `형식 복구 ${s!.repaired}` : '',
+          s!.ungrounded ? `문장에 없는 이름 ${s!.ungrounded}` : '',
+          s!.dropped ? `모델 이름 버림 ${s!.dropped}` : '',
         ]
           .filter(Boolean)
           .join(' · ');

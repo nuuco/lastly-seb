@@ -25,6 +25,8 @@ dev 서버이거나 `NEXT_PUBLIC_ENABLE_LAB=true` 일 때만 열린다.
 ## 파일
 
 - `golden/` 골든셋 (JSON · CSV)
+  - `golden/unknown-v1.csv`: 규칙이 못 끝내 모델까지 가는 문장. 기존 항목(v1, "이불 빨래" 포함)을 베끼는지 본다.
+    ③에서 CSV 로 불러 돌린다. 요약의 "문장에 없는 이름"(실험 지시문)·"모델 이름 버림"(앱 경로)을 본다
 - `evaluate.ts` 실행·채점
 - `prompt-experiment.ts` 실험 지시문
 - `rules-lab.ts` 규칙 고쳐 보기

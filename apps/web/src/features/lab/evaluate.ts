@@ -284,6 +284,35 @@ export interface Table2Row {
   errors: number;
   /** 키 따옴표가 빠져 파서가 고쳐 읽은 문장 수. 형식 준수도. */
   repaired: number;
+  /**
+   * 모델이 문장에 없는 이름을 낸 문장 수. 270M 의 "이불 빨래" 유출을 센다.
+   * 앱 경로는 근거 없는 이름을 버려 raw 가 남지 않는다. 그 수는 dropped 로 센다.
+   */
+  ungrounded: number;
+  /** 앱 경로에서 모델까지 갔지만 이름을 못 얻어(null·근거 없음) 서버로 넘긴 문장 수. */
+  dropped: number;
+}
+
+/** 이름 낱말(두 글자 이상) 하나라도 문장에 있는지. 앱 apply-rules 의 근거 확인과 같은 기준. */
+function isGrounded(name: string, text: string): boolean {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const said = squash(text).toLowerCase();
+  return words.some((word) => (word.length >= 2 || words.length === 1) && said.includes(word.toLowerCase()));
+}
+
+/** 모델이 낸 이름. 앱 경로는 규칙이 덮기 전 raw 에서 읽는다. */
+function modelName(got: CaseOutcome): string | null {
+  if (!got.usedModel) return null;
+  if (got.raw) {
+    try {
+      const value = (JSON.parse(readJsonObject(got.raw).json) as { item_name?: unknown }).item_name;
+      if (typeof value === 'string') return value;
+      if (value === null) return null;
+    } catch {
+      // 형식이 깨졌으면 채점된 이름으로 본다.
+    }
+  }
+  return got.activity;
 }
 
 function wasRepaired(raw: string | null): boolean {
@@ -339,5 +368,10 @@ export function summarize(
     toServer: pairs.filter(({ got }) => got.toServer).length,
     errors: pairs.filter(({ got }) => got.error).length,
     repaired: pairs.filter(({ got }) => wasRepaired(got.raw)).length,
+    ungrounded: pairs.filter(({ got }) => {
+      const name = modelName(got);
+      return name !== null && name.trim() !== '' && !isGrounded(name, got.text);
+    }).length,
+    dropped: pairs.filter(({ got }) => got.usedModel && got.toServer && !got.error).length,
   };
 }
