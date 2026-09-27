@@ -69,14 +69,14 @@ const MODELS: Record<ModelId, ModelSpec> = {
 };
 
 /** 앱 기본 모델이자 Nano 를 못 쓰는 기기에서 대신 쓸 모델. */
-export const FALLBACK_MODEL: ModelId = 'gemma3-270m';
+const FALLBACK_MODEL: ModelId = 'gemma3-270m';
 
 function isModelId(value: string | undefined): value is ModelId {
   return value !== undefined && value in MODELS;
 }
 
 /** 앱 기본 모델. NEXT_PUBLIC_ONDEVICE_MODEL 로 바꾼다. */
-export function defaultModelId(): ModelId {
+function defaultModelId(): ModelId {
   const env = process.env.NEXT_PUBLIC_ONDEVICE_MODEL;
   return isModelId(env) ? env : FALLBACK_MODEL;
 }
