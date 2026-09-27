@@ -54,6 +54,9 @@ export const interpretOutcomeSchema = z.enum([
 ]);
 export type InterpretOutcome = z.infer<typeof interpretOutcomeSchema>;
 
+export const interpretViaSchema = z.enum(['rules', 'client', 'gemini', 'none']);
+export type InterpretVia = z.infer<typeof interpretViaSchema>;
+
 export const interpretResultSchema = z.object({
   /** 사용자에게 되읽어주는 원문 — "이렇게 들었어요". */
   transcript: z.string(),
@@ -95,6 +98,12 @@ export const interpretResultSchema = z.object({
   degraded: z.boolean().default(false),
   /** 재해석 없이 그대로 커밋할 수 있는 서명된 토큰. */
   draftToken: z.string(),
+  /**
+   * 서버가 무엇으로 해석했는지. 화면에는 쓰지 않고 콘솔·로그로 확인한다.
+   * rules: 이름 일치·규칙 / client: 브라우저가 보낸 칸(규칙 또는 기기 모델)
+   * gemini: 서버 Gemini / none: 해석 실패(되묻기)
+   */
+  via: interpretViaSchema.optional(),
 });
 export type InterpretResult = z.infer<typeof interpretResultSchema>;
 
