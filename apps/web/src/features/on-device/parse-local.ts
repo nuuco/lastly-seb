@@ -1,5 +1,5 @@
 import type { ClientParseSlots } from '@lastly/contracts';
-import { readName, squashName } from '@lastly/parser';
+import { readName, RULE_NAME_CONFIDENCE, squashName } from '@lastly/parser';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import {
@@ -21,12 +21,6 @@ function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
 }
 
 export const DEFERRED_MESSAGE = '아직 안 한 일은 기록하지 않아요';
-
-/**
- * 모델이 이름을 못 냈을 때 규칙이 문장에서 뽑은 이름의 확신도.
- * 서버 capture.service RULE_NAME_CONFIDENCE 와 같다. 확인 시트는 열고 이름은 고치게 한다.
- */
-const RULE_NAME_CONFIDENCE = 0.5;
 
 export interface LocalInterpretation {
   /** null 이면 기기에서 못 채웠다. 서버가 규칙·되묻기로 이어간다. */
@@ -84,8 +78,10 @@ async function parseCaptureLocally(
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
   let modelError: string | null = null;
 
-  // 군말만 있는 말("아 그거 했다 음")은 모델도 이름을 못 뽑는다. 서버가 바로 되묻는다.
-  if (allowModel && !rulesFinished(rules) && readName(text) !== null && canUseEngine()) {
+  // 규칙이 문장에서 뽑은 이름. 행동을 못 알아봐 믿지는 않지만 모델이 실패하면 대신 쓴다.
+  // 이마저 없는 군말뿐인 말("아 그거 했다 음")은 모델도 못 뽑는다. 서버가 바로 되묻는다.
+  const ruleName = readName(text);
+  if (allowModel && !rulesFinished(rules) && ruleName !== null && canUseEngine()) {
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);
@@ -93,7 +89,7 @@ async function parseCaptureLocally(
         // 모델이 이름을 못 냈거나 근거 없는 이름이라 버렸으면 문장에서 뽑은 이름을 쓴다.
         // "고양이 모래 부었어" 처럼 어색해도 확인 시트에서 고친다. Gemini 는 부르지 않는다.
         return {
-          parsed: { ...parsed, itemName: readName(text), confidence: RULE_NAME_CONFIDENCE },
+          parsed: { ...parsed, itemName: ruleName, confidence: RULE_NAME_CONFIDENCE },
           usedModel: true,
           modelError: null,
         };

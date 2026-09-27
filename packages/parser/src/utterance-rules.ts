@@ -575,7 +575,7 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
    */
   s = s.replace(/(?:^|\s)[a-z]{2,}(?=\s|$)/g, ' ');
   s = s.replace(/[?？!！.,·…~]/g, ' ');
-  s = s.replace(FILLER, ' ').replace(FILLER, ' ');
+  s = s.replace(FILLER, ' ');
   s = s.replace(MANNER, ' ').replace(CONNECTIVE, ' ');
 
   // 남은 조사와 서술어를 턴다.

@@ -25,7 +25,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
-import { readUtterance, squashName, type UtteranceFacts } from '@lastly/parser';
+import { readUtterance, RULE_NAME_CONFIDENCE, squashName, type UtteranceFacts } from '@lastly/parser';
 import { appToday } from '../../common/clock';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
@@ -34,11 +34,6 @@ export const MATCH_THRESHOLD = 0.82;
 export const CANDIDATE_FLOOR = 0.45;
 /** AI가 항목명조차 못 뽑았다고 볼 기준. */
 export const RECOGNITION_FLOOR = 0.35;
-/**
- * AI 없이 규칙이 문장에서 뽑은 이름의 확신도. 확인 시트는 열되(RECOGNITION_FLOOR 위)
- * 사용자가 이름을 고칠 여지가 있는 값. 브라우저 parse-local 의 대체 이름과 같다.
- */
-export const RULE_NAME_CONFIDENCE = 0.5;
 
 /** AI가 응답하지 않을 때 쓰는 폴백 주기. */
 export const FALLBACK_CADENCE: CadenceRule = {
