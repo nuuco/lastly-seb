@@ -110,6 +110,33 @@ export function Chevron({ className }: { className?: string }) {
   );
 }
 
+/** 시트 맨 위 줄 — 왼쪽 제목, 오른쪽 취소. 되묻기·기록 확인 시트가 같은 모양을 쓴다. */
+export function SheetHeader({
+  title,
+  onCancel,
+  disabled,
+  className,
+}: {
+  title: string;
+  onCancel: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex items-center justify-between', className)}>
+      <span className="text-16 font-semibold text-ink">{title}</span>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={disabled}
+        className="text-14 text-ink-3 disabled:opacity-60"
+      >
+        취소
+      </button>
+    </div>
+  );
+}
+
 /** 시트 안의 항목 행 — 라벨과 값, 누를 수 있으면 화살표가 붙는다. */
 export function SheetRow({
   label,
