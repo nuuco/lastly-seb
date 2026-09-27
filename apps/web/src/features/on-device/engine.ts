@@ -3,8 +3,8 @@ import { getLocalAiSupport, reportLocalAiFailure } from './capability';
 import { createChromeNanoModel } from './chrome-nano-model';
 import { isDeviceFailure, isEngineCancelled, LOCAL_AI_UNSUPPORTED } from './engine-errors';
 import type { LocalModel } from './local-model';
-import { createMediaPipeModel, hasWebGpu } from './mediapipe-model';
-import { defaultModelId, FALLBACK_MODEL, getModel, listModels, type ModelId, type ModelSpec } from './models';
+import { createMediaPipeModel } from './mediapipe-model';
+import { defaultGemmaSpec, getModel, listModels, type ModelId, type ModelSpec } from './models';
 import { parseModelJson } from './parse-prompt';
 import type {
   EngineProgress,
@@ -14,7 +14,6 @@ import type {
 
 export type { EngineProgress };
 export { engineErrorMessage, isEngineCancelled } from './engine-errors';
-export { hasWebGpu };
 
 export function isEngineBusy(progress: EngineProgress | null): boolean {
   return progress?.status === 'downloading' || progress?.status === 'compiling';
@@ -88,8 +87,7 @@ export function setActiveModel(id: ModelId): void {
 
 /** 지금 모델. 쓸 수 없는 기기면 기본 Gemma 정보(화면 문구용). */
 export function activeModelSpec(): ModelSpec {
-  const spec = getModel(defaultModelId());
-  return current()?.spec ?? (spec.runtime === 'mediapipe' ? spec : getModel(FALLBACK_MODEL));
+  return current()?.spec ?? defaultGemmaSpec();
 }
 
 /** 이 기기에서 로컬 AI 를 쓸 수 있는지. 판정 전이면 지난 실행의 저장값. */

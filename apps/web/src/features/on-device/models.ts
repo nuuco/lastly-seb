@@ -81,6 +81,12 @@ export function defaultModelId(): ModelId {
   return isModelId(env) ? env : FALLBACK_MODEL;
 }
 
+/** 받아서 쓰는 기본 Gemma 모델. 기본이 Nano 로 설정돼 있으면 대체 모델. */
+export function defaultGemmaSpec(): MediaPipeSpec {
+  const spec = MODELS[defaultModelId()];
+  return spec.runtime === 'mediapipe' ? spec : (MODELS[FALLBACK_MODEL] as MediaPipeSpec);
+}
+
 export function getModel(id: ModelId): ModelSpec {
   return MODELS[id];
 }

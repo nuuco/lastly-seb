@@ -399,6 +399,15 @@ async function openOpfsFile(spec: ModelSpec): Promise<File> {
   return handle.getFile();
 }
 
+/** 다 받아 둔 파일이 OPFS 에 있는지. */
+export async function hasStoredModel(spec: ModelSpec): Promise<boolean> {
+  try {
+    return (await openOpfsFile(spec)).size >= spec.bytes;
+  } catch {
+    return false;
+  }
+}
+
 async function loadFileset() {
   const mod = (await import(/* webpackIgnore: true */ MEDIAPIPE_GENAI)) as {
     FilesetResolver: {
@@ -465,21 +474,12 @@ export async function probeWebGpu(): Promise<{ ok: boolean; reason: string }> {
   }
 }
 
-export function hasWebGpu(): boolean {
-  return (
-    typeof navigator !== 'undefined' &&
-    'gpu' in navigator &&
-    (typeof window === 'undefined' || window.isSecureContext)
-  );
-}
-
 export function createMediaPipeModel(
   spec: ModelSpec,
   onProgress: (progress: EngineProgress) => void,
 ): LocalModel {
   return {
     spec,
-    isSupported: hasWebGpu,
     isReady: () => ready && loadedSpec?.id === spec.id,
     prepare: () => {
       emit = onProgress;

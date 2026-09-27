@@ -13,8 +13,6 @@ export interface ParseInput {
  */
 export interface LocalModel {
   spec: ModelSpec;
-  /** 이 브라우저에서 돌릴 수 있는지. */
-  isSupported(): boolean;
   isReady(): boolean;
   /** 받기·올리기. 진행률은 만들 때 넘긴 콜백으로 알린다. */
   prepare(): Promise<void>;
