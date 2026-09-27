@@ -53,10 +53,6 @@ function api(): LanguageModelApi | null {
   return (self as unknown as { LanguageModel?: LanguageModelApi }).LanguageModel ?? null;
 }
 
-export function hasChromeNano(): boolean {
-  return api() !== null;
-}
-
 /** API 가 있어도 기기 사양·저장공간이 모자라면 unavailable 이다. */
 export async function chromeNanoAvailability(): Promise<Availability> {
   const lm = api();
@@ -136,7 +132,6 @@ export function createChromeNanoModel(
 
   return {
     spec,
-    isSupported: hasChromeNano,
     isReady: () => session !== null,
     prepare,
     async generate(input) {

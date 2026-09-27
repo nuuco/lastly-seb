@@ -7,8 +7,8 @@ import {
   writeCachedSupport,
   type LocalAiSupport,
 } from './device-record';
-import { probeWebGpu, removeStoredModel } from './mediapipe-model';
-import { defaultModelId, FALLBACK_MODEL, getModel, type MediaPipeSpec, type ModelId } from './models';
+import { hasStoredModel, probeWebGpu, removeStoredModel } from './mediapipe-model';
+import { defaultGemmaSpec, getModel, type MediaPipeSpec, type ModelId } from './models';
 
 export type { LocalAiKind, LocalAiSupport } from './device-record';
 
@@ -26,22 +26,9 @@ let checked: LocalAiSupport | null = null;
 let checking: Promise<LocalAiSupport> | null = null;
 const listeners = new Set<(support: LocalAiSupport) => void>();
 
-/** 기본 Gemma 모델. 기본이 Nano 로 설정돼 있으면 대체 모델. */
-function gemmaSpec(): MediaPipeSpec {
-  const spec = getModel(defaultModelId());
-  return spec.runtime === 'mediapipe' ? spec : (getModel(FALLBACK_MODEL) as MediaPipeSpec);
-}
-
 /** 이번 실행에서 검사한 결과. 아직이면 지난 실행의 저장값. 둘 다 없으면 null. */
 export function getLocalAiSupport(): LocalAiSupport | null {
   return checked ?? readCachedSupport();
-}
-
-export function subscribeLocalAi(listener: (support: LocalAiSupport) => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
 }
 
 /**
@@ -49,16 +36,18 @@ export function subscribeLocalAi(listener: (support: LocalAiSupport) => void): (
  * 이후 실패로 판정이 바뀌어도 다시 부른다.
  */
 export function watchLocalAi(listener: (support: LocalAiSupport) => void): () => void {
-  const unsubscribe = subscribeLocalAi(listener);
+  listeners.add(listener);
   if (checked) listener(checked);
   else void checkLocalAi();
-  return unsubscribe;
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function checkLocalAi(): Promise<LocalAiSupport> {
   if (checked) return Promise.resolve(checked);
   if (checking) return checking;
-  checking = detect()
+  const pending: Promise<LocalAiSupport> = detect()
     .catch((err: unknown): LocalAiSupport => ({
       kind: 'none',
       modelId: null,
@@ -69,9 +58,10 @@ export function checkLocalAi(): Promise<LocalAiSupport> {
       return support;
     })
     .finally(() => {
-      checking = null;
+      if (checking === pending) checking = null;
     });
-  return checking;
+  checking = pending;
+  return pending;
 }
 
 /** 준비하다 기기 때문에 실패했을 때. 기록하고 다시 판정한다(Nano 실패면 Gemma 로 갈 수 있다). */
@@ -102,7 +92,7 @@ async function detect(): Promise<LocalAiSupport> {
     return { kind: 'nano', modelId: 'chrome-nano', reason: 'Chrome 내장 Nano 설치됨' };
   }
 
-  const spec = gemmaSpec();
+  const spec = defaultGemmaSpec();
   const failed = failedReason(spec.id);
   if (failed) return { kind: 'none', modelId: null, reason: `${spec.label} 준비 실패 기록: ${failed}` };
 
@@ -117,13 +107,7 @@ async function detect(): Promise<LocalAiSupport> {
 
 /** 이미 받아 둔 파일이 있으면 공간은 보지 않는다. */
 async function hasRoomFor(spec: MediaPipeSpec): Promise<{ ok: boolean; reason: string }> {
-  try {
-    const root = await navigator.storage.getDirectory();
-    const file = await (await root.getFileHandle(spec.opfsFile)).getFile();
-    if (file.size >= spec.bytes) return { ok: true, reason: '' };
-  } catch {
-    // 아직 안 받음
-  }
+  if (await hasStoredModel(spec)) return { ok: true, reason: '' };
   try {
     const estimate = await navigator.storage?.estimate?.();
     if (estimate?.quota === undefined) return { ok: true, reason: '' };

@@ -1,3 +1,4 @@
+import { readItem as read, writeItem as write } from './local-store';
 import type { ModelId } from './models';
 
 /**
@@ -21,24 +22,6 @@ export interface LocalAiSupport {
 }
 
 type FailedRecord = Partial<Record<ModelId, { userAgent: string; reason: string; at: string }>>;
-
-function read(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, value: string | null): void {
-  try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
-  } catch {
-    // 사생활 모드 등에서 실패하면 기록 없이 매번 검사한다.
-  }
-}
 
 function parse<T>(raw: string | null): T | null {
   if (!raw) return null;
