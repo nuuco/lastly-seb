@@ -15,6 +15,11 @@ DEFAULT_MODEL = "gemini-3.5-flash-lite"
 DEFAULT_THINKING_LEVEL = "low"
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
+# api 는 이 서비스를 8초 기다리고, 넘기면 컨테이너가 자는 것으로 보고 45초간 다시 부른다
+# (apps/api/src/infra/ai/ai.client.ts). 그보다 먼저 끝내야 느린 Gemini 가 재호출로 번져
+# 무료 한도를 쓰지 않고, api 가 곧바로 되묻기로 넘어간다.
+REQUEST_TIMEOUT_S = 6.0
+
 
 class GeminiProvider:
     """
@@ -61,12 +66,17 @@ class GeminiProvider:
             "generationConfig": self._generation_config(schema, max_tokens),
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{BASE_URL}/{self._model}:generateContent",
-                headers={"x-goog-api-key": self._api_key},
-                json=payload,
-            )
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+                response = await client.post(
+                    f"{BASE_URL}/{self._model}:generateContent",
+                    headers={"x-goog-api-key": self._api_key},
+                    json=payload,
+                )
+        except httpx.TimeoutException as exc:
+            raise LlmError(f"Gemini 응답 시간 초과 ({REQUEST_TIMEOUT_S:g}초)") from exc
+        except httpx.HTTPError as exc:
+            raise LlmError(f"Gemini 연결 실패: {exc}") from exc
 
         if response.status_code != 200:
             raise LlmError(f"Gemini 오류 {response.status_code}: {response.text[:200]}")
