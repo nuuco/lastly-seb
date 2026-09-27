@@ -1,11 +1,9 @@
 import type { ClientParseSlots } from '@lastly/contracts';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
-import { hasModelConsent } from './consent';
 import {
-  engineNeedsConsent,
+  canUseEngine,
   ensureEngine,
-  isEngineSupported,
   isEngineReady,
   parseOnDevice,
 } from './engine';
@@ -68,8 +66,7 @@ async function parseCaptureLocally(
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
   let modelError: string | null = null;
 
-  const allowed = isEngineSupported() && (!engineNeedsConsent() || hasModelConsent());
-  if (allowModel && !rulesFinished(rules) && allowed) {
+  if (allowModel && !rulesFinished(rules) && canUseEngine()) {
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);

@@ -1,4 +1,4 @@
-import { cancelledError } from './engine-errors';
+import { cancelledError, deviceFailure } from './engine-errors';
 import type { LocalModel } from './local-model';
 import type { ChromeBuiltinSpec } from './models';
 import { buildParseInstruction } from './parse-prompt';
@@ -11,7 +11,7 @@ import type { EngineProgress } from './types';
  * availability 가 downloadable·downloading 이면 create 가 모델을 받는다.
  * 받기는 사용자 조작(클릭) 뒤에만 시작된다.
  */
-export const NANO_UNAVAILABLE = '이 기기에서는 Chrome 내장 AI를 쓸 수 없어요.';
+const NANO_UNAVAILABLE = '이 기기에서는 Chrome 내장 AI를 쓸 수 없어요.';
 
 type Availability = 'unavailable' | 'downloadable' | 'downloading' | 'available';
 
@@ -106,19 +106,10 @@ export function createChromeNanoModel(
     })()
       .catch((err: unknown) => {
         const cancelled = abort?.signal.aborted;
-        // 못 쓰는 기기면 engine 이 대체 모델로 넘어간다. 오류를 띄우지 않는다.
-        const unsupported = err instanceof Error && err.message === NANO_UNAVAILABLE;
-        onProgress(
-          cancelled || unsupported
-            ? { status: 'idle', loaded: 0, total: 0, message: '' }
-            : {
-                status: 'error',
-                loaded: 0,
-                total: 0,
-                message: err instanceof Error ? err.message : NANO_UNAVAILABLE,
-              },
-        );
-        throw cancelled ? cancelledError() : err;
+        onProgress({ status: 'idle', loaded: 0, total: 0, message: '' });
+        if (cancelled) throw cancelledError();
+        // Nano 준비 실패는 모두 기기 탓으로 본다. engine 이 기록하고 다른 모델로 넘기거나 알린다.
+        throw deviceFailure(err);
       })
       .finally(() => {
         loading = null;

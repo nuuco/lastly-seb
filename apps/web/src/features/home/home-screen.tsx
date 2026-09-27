@@ -17,7 +17,6 @@ import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { CalendarView } from '@/features/calendar/calendar-view';
 import {
   getModelConsent,
-  hasModelConsent,
   setModelConsent,
   clearModelConsent,
 } from '@/features/on-device/consent';
@@ -25,7 +24,7 @@ import { watchLocalAi, type LocalAiSupport } from '@/features/on-device/capabili
 import {
   cancelEngineLoad,
   engineErrorMessage,
-  engineNeedsConsent,
+  canUseEngine,
   engineProgressHint,
   engineProgressLabel,
   ensureEngine,
@@ -269,16 +268,17 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   useEffect(() => {
     return watchLocalAi((support: LocalAiSupport) => {
+      // 판정이 바뀌면(Nano 실패 → Gemma 등) 앞 모델의 오류 문구를 남기지 않는다.
+      setModelError(null);
       if (support.kind === 'none') {
         setConsentOpen(false);
         return;
       }
-      if (!engineNeedsConsent()) {
-        void ensureEngine().catch(() => undefined);
+      if (canUseEngine()) {
+        void ensureEngine().catch(showModelError);
         return;
       }
       if (getModelConsent() === null) setConsentOpen(true);
-      if (hasModelConsent()) void ensureEngine().catch(showModelError);
     });
   }, []);
 
