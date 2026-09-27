@@ -239,7 +239,7 @@ export function labReportMd({
           s!.errors ? `오류 ${s!.errors}` : '',
           s!.repaired ? `형식 복구 ${s!.repaired}` : '',
           s!.ungrounded ? `문장에 없는 이름 ${s!.ungrounded}` : '',
-          s!.dropped ? `모델 이름 버림 ${s!.dropped}` : '',
+          s!.modelNull ? `모델 이름 비움 ${s!.modelNull}` : '',
         ]
           .filter(Boolean)
           .join(' · ');

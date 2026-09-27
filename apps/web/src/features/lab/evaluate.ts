@@ -1,3 +1,5 @@
+import { readUtterance } from '@lastly/parser';
+
 import { generateOnDevice } from '@/features/on-device/engine';
 import { interpretLocally } from '@/features/on-device/parse-local';
 import { readJsonObject } from '@/features/on-device/parse-prompt';
@@ -44,6 +46,7 @@ export function modeSteps(engine: EngineId, mode: RunMode): string[] {
   const tail = [
     '못 한 일 · 앞으로 할 일 · 애매한 말이면 "아직 안 한 일은 기록하지 않아요" 로 끝나고 저장하지 않아요.',
     '나머지는 서버로 보낼 칸(이름 · 날짜)이 정해져요. 서버의 항목 매칭은 재지 않아요.',
+    '기기에서 못 채운 기록은 서버처럼 문장에서 뽑은 이름을 써요. 이름이 없는 말은 되묻기라 "저장 안 함" 으로 세요.',
   ];
   if (engine === 'rule') {
     return ['규칙만으로 의도 · 이름 · 날짜 · 저장 여부를 정해요. 모델은 부르지 않아요.', ...tail];
@@ -209,16 +212,21 @@ export async function runCase(
 
   const parsed = local.parsed;
   const intent = parsed?.intent ?? 'record';
+  /**
+   * 서버 흉내(Gemini 는 Cloud 줄에서만). 기기에서 못 채운 기록은 서버가 규칙이 뽑은 이름으로
+   * 확인 시트를 연다. 이름이 없는 말은 직접 고르게 하므로 저장하지 않은 것으로 센다.
+   */
+  const server = parsed === null && intent === 'record' ? readUtterance(text, new Date(`${referenceDate}T00:00:00`)) : null;
+  const asked = server !== null && !server.name;
   const status: GotStatus =
-    intent === 'query' ? '조회' : local.deferred ? '저장 안 함' : '완료';
+    intent === 'query' ? '조회' : local.deferred || asked ? '저장 안 함' : '완료';
   return {
     ...base,
     intent,
     status,
-    activity: parsed?.itemName ?? null,
-    daysAgo: parsed ? parsed.daysAgo : null,
-    // 서버로 넘어가는 문장은 서버 규칙도 저장 쪽으로 간다. 보수적으로 저장으로 센다.
-    saved: intent === 'record' && !local.deferred,
+    activity: parsed?.itemName ?? server?.name ?? null,
+    daysAgo: parsed ? parsed.daysAgo : server?.name ? server.daysAgo : null,
+    saved: intent === 'record' && !local.deferred && !asked,
     ms: Math.round(performance.now() - started),
     usedModel: local.usedModel,
     toServer: parsed === null,
@@ -286,11 +294,11 @@ export interface Table2Row {
   repaired: number;
   /**
    * 모델이 문장에 없는 이름을 낸 문장 수. 270M 의 "이불 빨래" 유출을 센다.
-   * 앱 경로는 근거 없는 이름을 버려 raw 가 남지 않는다. 그 수는 dropped 로 센다.
+   * 앱 경로는 이 이름을 버리고 문장에서 뽑은 이름을 쓴다. raw 로 센다.
    */
   ungrounded: number;
-  /** 앱 경로에서 모델까지 갔지만 이름을 못 얻어(null·근거 없음) 서버로 넘긴 문장 수. */
-  dropped: number;
+  /** 모델이 item_name 을 비운(null) 문장 수. 앱 경로는 문장에서 뽑은 이름으로 대신한다. */
+  modelNull: number;
 }
 
 /** 이름 낱말(두 글자 이상) 하나라도 문장에 있는지. 앱 apply-rules 의 근거 확인과 같은 기준. */
@@ -300,19 +308,16 @@ function isGrounded(name: string, text: string): boolean {
   return words.some((word) => (word.length >= 2 || words.length === 1) && said.includes(word.toLowerCase()));
 }
 
-/** 모델이 낸 이름. 앱 경로는 규칙이 덮기 전 raw 에서 읽는다. */
-function modelName(got: CaseOutcome): string | null {
-  if (!got.usedModel) return null;
-  if (got.raw) {
-    try {
-      const value = (JSON.parse(readJsonObject(got.raw).json) as { item_name?: unknown }).item_name;
-      if (typeof value === 'string') return value;
-      if (value === null) return null;
-    } catch {
-      // 형식이 깨졌으면 채점된 이름으로 본다.
-    }
+/** 모델이 낸 item_name. 규칙이 덮기 전 raw 에서 읽는다. 모델을 안 탔거나 형식이 깨졌으면 undefined. */
+function rawItemName(got: CaseOutcome): string | null | undefined {
+  if (!got.usedModel || !got.raw) return undefined;
+  try {
+    const value = (JSON.parse(readJsonObject(got.raw).json) as { item_name?: unknown }).item_name;
+    if (typeof value === 'string') return value.trim() || null;
+    return value === null ? null : undefined;
+  } catch {
+    return undefined;
   }
-  return got.activity;
 }
 
 function wasRepaired(raw: string | null): boolean {
@@ -369,9 +374,9 @@ export function summarize(
     errors: pairs.filter(({ got }) => got.error).length,
     repaired: pairs.filter(({ got }) => wasRepaired(got.raw)).length,
     ungrounded: pairs.filter(({ got }) => {
-      const name = modelName(got);
-      return name !== null && name.trim() !== '' && !isGrounded(name, got.text);
+      const name = rawItemName(got);
+      return typeof name === 'string' && !isGrounded(name, got.text);
     }).length,
-    dropped: pairs.filter(({ got }) => got.usedModel && got.toServer && !got.error).length,
+    modelNull: pairs.filter(({ got }) => rawItemName(got) === null).length,
   };
 }
