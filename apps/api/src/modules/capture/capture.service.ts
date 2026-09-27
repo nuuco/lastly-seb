@@ -185,13 +185,14 @@ export class CaptureService {
         ? parsed.matched_item_id
         : null;
 
-    /**
-     * 묻는 말이면 기록하지 않고 답만 돌려준다 — 설계 07-C.
-     * 어느 항목을 묻는지 알아야 답할 수 있으므로, 못 짚었으면 평소대로 되묻는다.
-     */
+    // 묻는 말이면 기록하지 않는다. 칸 경로와 같은 기준으로 답하거나 되묻는다.
     if (parsed.intent === 'query') {
-      const target = claimed ?? candidates[0]?.itemId ?? null;
-      if (target) return this.answer(userId, input, referenceDate, target, today);
+      return this.answerQuery(userId, input, referenceDate, today, {
+        targetId: claimed,
+        name: parsed.normalized_name,
+        candidates,
+        confidence: parsed.confidence,
+      });
     }
 
     const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
@@ -419,38 +420,17 @@ export class CaptureService {
     const matched = name ? await this.findByName(userId, name, known) : null;
 
     if (slots.intent === 'query') {
-      if (matched) return this.answer(userId, input, referenceDate, matched.id, today);
-
-      const rows = await this.items
-        .matchByMeaning(userId, name ?? input.text, null, 5)
-        .catch(() => []);
-      const candidates = this.toCandidates(
-        rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
-        known,
-        today,
-      );
-      const top = candidates[0];
-      if (top && top.similarity >= MATCH_THRESHOLD) {
-        return this.answer(userId, input, referenceDate, top.itemId, today);
-      }
-      if (candidates.length > 0) {
-        return this.draftResult(userId, input, {
-          outcome: 'ambiguous',
-          normalizedName: name,
-          doneOn: referenceDate,
-          matchedItemId: null,
-          candidates,
-          cadence: null,
-          confidence: slots.confidence,
-        });
-      }
-      return this.draftResult(userId, input, {
-        outcome: 'unrecognized',
-        normalizedName: name,
-        doneOn: referenceDate,
-        matchedItemId: null,
-        candidates: [],
-        cadence: null,
+      const rows = matched
+        ? []
+        : await this.items.matchByMeaning(userId, name ?? input.text, null, 5).catch(() => []);
+      return this.answerQuery(userId, input, referenceDate, today, {
+        targetId: matched?.id ?? null,
+        name,
+        candidates: this.toCandidates(
+          rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
+          known,
+          today,
+        ),
         confidence: slots.confidence,
       });
     }
@@ -485,6 +465,33 @@ export class CaptureService {
         slots.statedCadenceDays,
       ),
       confidence: slots.confidence,
+    });
+  }
+
+  /**
+   * 묻는 말의 답 — 설계 07-C. 아무것도 기록하지 않는다.
+   * 항목을 짚었거나 후보가 확실하면 답하고, 애매하면 되묻고, 후보가 없으면 못 알아들은 것으로 본다.
+   * 칸 경로와 Gemini 경로가 같은 기준을 쓴다. 새 항목으로 저장하는 길은 없다.
+   */
+  private async answerQuery(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    today: Date,
+    part: { targetId: string | null; name: string | null; candidates: ItemCandidate[]; confidence: number },
+  ): Promise<InterpretResult> {
+    const top = part.candidates[0];
+    const target = part.targetId ?? (top && top.similarity >= MATCH_THRESHOLD ? top.itemId : null);
+    if (target) return this.answer(userId, input, referenceDate, target, today);
+
+    return this.draftResult(userId, input, {
+      outcome: part.candidates.length > 0 ? 'ambiguous' : 'unrecognized',
+      normalizedName: part.name,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates: part.candidates,
+      cadence: null,
+      confidence: part.confidence,
     });
   }
 
