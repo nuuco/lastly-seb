@@ -577,6 +577,22 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.normalizedName).toBe('이불 빨래');
   });
 
+  it('처음 보는 항목을 묻는 말은 새 항목 저장으로 열지 않는다', async () => {
+    const { service, ai } = buildService({
+      parse: parsed({ intent: 'query', matched_item_id: null, candidates: [], normalized_name: '베란다 청소' }),
+    });
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 언제 닦았지?', mode: 'voice' },
+      TODAY,
+    );
+
+    expect(ai.parseUtterance).toHaveBeenCalled();
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.cadence).toBeNull();
+  });
+
   it('Gemini 가 지어낸 항목 id 는 믿지 않는다', async () => {
     const { service } = buildService({
       parse: parsed({ matched_item_id: 'ghost', candidates: [], normalized_name: '베란다 청소' }),

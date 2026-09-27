@@ -34,7 +34,9 @@ export function overlayWithRules(
     daysAgo: facts.intent === 'query' ? 0 : facts.sawDate ? facts.daysAgo : llm.daysAgo,
     statedCadenceDays: facts.statedCadenceDays ?? llm.statedCadenceDays,
     matchedItemId: matchKnown(itemName, knownItems),
-    willSave: facts.willSave,
+    // 완료 표지가 없는 말(saveKind none)은 "안 했다"가 아니라 "규칙으로는 모름"이다.
+    // 서버 route() 와 같은 기준으로, 막는 것은 안 함·예정·불확실만이다.
+    willSave: facts.willSave || facts.saveKind === 'none',
   };
 }
 
