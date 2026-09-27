@@ -1,5 +1,7 @@
+import { clearCompiling, markCompiling } from './device-record';
 import {
   cancelledError,
+  deviceFailure,
   engineErrorMessage,
   GPU_INSECURE,
   GPU_UNAVAILABLE,
@@ -81,12 +83,17 @@ let generation = 0;
 let loadedSpec: ModelSpec | null = null;
 let loadingSpec: ModelSpec | null = null;
 let emit: (progress: EngineProgress) => void = () => undefined;
+/** 컴파일 시한을 넘기면 올리던 호출을 실패시킨다. */
+let failCompile: ((error: Error) => void) | null = null;
 
 async function startEngine(spec: ModelSpec): Promise<void> {
   const id = bumpGeneration();
+  /** 어느 단계에서 실패했는지. gpu·compile 실패는 기기 탓이라 다시 권하지 않는다. */
+  let phase: 'gpu' | 'download' | 'runtime' | 'compile' = 'gpu';
   try {
     const device = await createWebGpuDevice();
     if (!isCurrent(id)) throw cancelledError();
+    phase = 'download';
     if (navigator.storage?.persist) void navigator.storage.persist();
 
     const w = getWorker();
@@ -96,8 +103,12 @@ async function startEngine(spec: ModelSpec): Promise<void> {
       model: { url: spec.url, bytes: spec.bytes, opfsFile: spec.opfsFile, metaFile: spec.metaFile },
     });
     if (!isCurrent(id)) throw cancelledError();
+    phase = 'runtime';
     startCompileWatch();
-    const next = await createLlm(device, spec);
+    const genai = await loadFileset();
+    if (!isCurrent(id)) throw cancelledError();
+    phase = 'compile';
+    const next = await compileWithCrashMark(spec, () => createLlm(genai, device, spec));
     if (!isCurrent(id)) {
       closeLlm(next);
       throw cancelledError();
@@ -116,6 +127,8 @@ async function startEngine(spec: ModelSpec): Promise<void> {
       emit({ status: 'idle', loaded: 0, total: 0, message: '' });
       throw err instanceof Error ? err : cancelledError();
     }
+    // 기기 탓이면 알림은 engine 이 판정을 바꾼 뒤 한다.
+    if (phase === 'gpu' || phase === 'compile') throw deviceFailure(err);
     emit({ status: 'error', loaded: 0, total: 0, message: engineErrorMessage(err) });
     throw err instanceof Error ? err : new Error(engineErrorMessage(err));
   }
@@ -234,7 +247,9 @@ function startCompileWatch() {
   compileTick = setInterval(tick, 500);
   compileDeadline = setTimeout(() => {
     if (!isCurrent(id)) return;
-    failInit(new Error('이 기기에서 모델을 준비하지 못했어요. 페이지를 새로고침해 주세요.'));
+    const error = new Error('이 기기에서 모델을 준비하지 못했어요. 페이지를 새로고침해 주세요.');
+    if (failCompile) failCompile(error);
+    else failInit(error);
   }, COMPILE_TIMEOUT_MS);
 }
 
@@ -288,7 +303,7 @@ function teardownRuntime() {
   loadingSpec = null;
 }
 
-async function removeStoredModel(spec: ModelSpec) {
+export async function removeStoredModel(spec: ModelSpec) {
   try {
     const root = await navigator.storage.getDirectory();
     await Promise.allSettled([root.removeEntry(spec.opfsFile), root.removeEntry(spec.metaFile)]);
@@ -331,8 +346,33 @@ async function createWebGpuDevice(): Promise<GpuDevice> {
   }
 }
 
-async function createLlm(device: GpuDevice, spec: ModelSpec): Promise<LlmHandle> {
-  const genai = await loadFileset();
+/**
+ * GPU 에 올리는 동안 표시를 남긴다. 메모리가 모자라 탭이 죽으면 표시가 남아
+ * 다음 실행에서 실패로 센다. 사용자가 닫거나 떠나면(pagehide) 지운다.
+ */
+async function compileWithCrashMark(
+  spec: ModelSpec,
+  compile: () => Promise<LlmHandle>,
+): Promise<LlmHandle> {
+  markCompiling(spec.id);
+  window.addEventListener('pagehide', clearCompiling);
+  try {
+    return await Promise.race([
+      compile(),
+      new Promise<never>((_, reject) => {
+        failCompile = reject;
+      }),
+    ]);
+  } finally {
+    failCompile = null;
+    window.removeEventListener('pagehide', clearCompiling);
+    clearCompiling();
+  }
+}
+
+type Genai = Awaited<ReturnType<typeof loadFileset>>;
+
+async function createLlm(genai: Genai, device: GpuDevice, spec: ModelSpec): Promise<LlmHandle> {
   const file = await openOpfsFile(spec);
   const options = (forceF32 = false) => ({
     baseOptions: {
@@ -412,6 +452,26 @@ function isDegenerate(text: string) {
   if (text.includes('{') || text.includes('"intent"')) return false;
   const chunk = text.slice(-24);
   return text.split(chunk).length >= 4;
+}
+
+/**
+ * 앱 엔진과 같은 옵션으로 어댑터·장치까지 만들어 보고 바로 버린다.
+ * navigator.gpu 가 있어도 어댑터를 못 받는 기기가 있다(Galaxy S24+ 기본 설정).
+ */
+export async function probeWebGpu(): Promise<{ ok: boolean; reason: string }> {
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return { ok: false, reason: 'https 가 아님' };
+  }
+  if (typeof navigator === 'undefined' || !('gpu' in navigator)) {
+    return { ok: false, reason: 'WebGPU 없음' };
+  }
+  try {
+    const device = await createWebGpuDevice();
+    device.destroy?.();
+    return { ok: true, reason: '' };
+  } catch {
+    return { ok: false, reason: 'WebGPU 어댑터·장치를 받지 못함' };
+  }
 }
 
 export function hasWebGpu(): boolean {

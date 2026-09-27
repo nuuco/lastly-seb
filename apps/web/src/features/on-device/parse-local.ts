@@ -3,6 +3,7 @@ import type { ClientParseSlots } from '@lastly/contracts';
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import { hasModelConsent } from './consent';
 import {
+  engineNeedsConsent,
   ensureEngine,
   isEngineSupported,
   isEngineReady,
@@ -67,7 +68,8 @@ async function parseCaptureLocally(
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
   let modelError: string | null = null;
 
-  if (allowModel && !rulesFinished(rules) && hasModelConsent() && isEngineSupported()) {
+  const allowed = isEngineSupported() && (!engineNeedsConsent() || hasModelConsent());
+  if (allowModel && !rulesFinished(rules) && allowed) {
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);
