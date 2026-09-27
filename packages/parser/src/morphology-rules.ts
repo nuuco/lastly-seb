@@ -46,7 +46,8 @@ export function withoutIntentionAuxiliary(text: string): string {
     .replace(/[가-힣]+(?:을까|ㄹ까|까)\s*했(?:어|어요|다|음)?/g, ' ')
     // 앞 절 전체를 탐욕적으로 먹지 않도록 미래 동사 어미만 제거한다.
     // 예: "청소했고 ... 할거야"에서 앞의 "청소했고"는 완료로 남아야 한다.
-    .replace(/(?:할|갈|빨|읽을|먹을|닦을|넣을|채울|깎을|줄|시킬|버릴|쓸|올)\s*(?:거야|게|래)/g, ' ');
+    // "빨래" 는 거의 늘 명사다. 빨 은 래 를 빼고 본다.
+    .replace(/(?:할|갈|읽을|먹을|닦을|넣을|채울|깎을|줄|시킬|버릴|쓸|올)\s*(?:거야|게|래)|빨\s*(?:거야|게)/g, ' ');
 }
 
 export function readMorphologySignals(text: string): MorphologySignals {
@@ -68,7 +69,8 @@ export function readMorphologySignals(text: string): MorphologySignals {
   const intended =
     /(?:으려고|려고|려다|려다가|을까|ㄹ까|[가-힣]+까\s*했)/.test(normalized) ||
     /(?:어|아|여)야(?:\s|$)/.test(normalized) ||
-    /(?:할|갈|빨|읽을|먹을|닦을|청소할|정리할)\s*(?:거야|게|래)/.test(normalized) ||
+    // "빨래" 는 명사로 쓰이므로 빨 은 래 를 예정으로 보지 않는다.
+    /(?:할|갈|읽을|먹을|닦을|청소할|정리할)\s*(?:거야|게|래)|빨\s*(?:거야|게)/.test(normalized) ||
     /[가-힣]+\s*(?:생각|예정|계획|참)/.test(normalized) ||
     /(?:하고|해|하)\s*싶/.test(normalized) ||
     /예정|계획/.test(normalized);

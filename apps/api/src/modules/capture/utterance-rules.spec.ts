@@ -361,3 +361,25 @@ describe('형태소 기반 안전 규칙', () => {
     });
   });
 });
+
+describe('명사 빨래와 예정 표현', () => {
+  /**
+   * "빨래" 는 거의 늘 명사다. "빨(을)래" 로 읽으면 완료 어미 없는
+   * "베개 빨래" 같은 말이 예정으로 거절돼 서버까지 가지 못한다.
+   */
+  it.each(['베개 빨래', '빨래', '빨래 끝냄'])('%s는 예정으로 거절하지 않는다', (text) => {
+    expect(classifySave(text, SUN).kind).not.toBe('planned');
+  });
+
+  it('명사 빨래만 있으면 행동으로 보지 않는다', () => {
+    expect(readNameWithAction('베개 빨래').sawAction).toBe(false);
+  });
+
+  it('완료 어미가 붙으면 빨래는 완료다', () => {
+    expect(classifySave('이불 빨래 했어', SUN)).toMatchObject({ willSave: true, kind: 'completed' });
+  });
+
+  it.each(['빨 거야', '빨게', '빨래할래', '내일 빨래할 거야'])('%s는 예정으로 막는다', (text) => {
+    expect(classifySave(text, SUN)).toMatchObject({ willSave: false, kind: 'planned' });
+  });
+});
