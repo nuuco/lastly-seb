@@ -485,6 +485,53 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.answer?.itemId).toBe('item-1');
   });
 
+  it('Gemini 가 조회로 읽었는데 후보가 약하면 되묻는다', async () => {
+    const { service } = buildService({
+      parse: parsed({
+        intent: 'query',
+        matched_item_id: null,
+        candidates: [{ item_id: 'item-1', name: '이불 빨래', similarity: 0.6 }],
+      }),
+    });
+
+    const result = await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.answer).toBeNull();
+    expect(result.candidates).toHaveLength(1);
+  });
+
+  it('Gemini 가 조회로 읽었는데 후보가 없으면 새 항목으로 열지 않는다', async () => {
+    const { service } = buildService({
+      parse: parsed({
+        intent: 'query',
+        matched_item_id: null,
+        candidates: [],
+        normalized_name: '베란다 청소',
+      }),
+    });
+
+    const result = await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.cadence).toBeNull();
+  });
+
+  it('Gemini 가 조회로 읽고 후보가 확실하면 답한다', async () => {
+    const { service } = buildService({
+      parse: parsed({
+        intent: 'query',
+        matched_item_id: null,
+        candidates: [{ item_id: 'item-1', name: '이불 빨래', similarity: 0.9 }],
+      }),
+    });
+
+    const result = await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
+
+    expect(result.outcome).toBe('answered');
+    expect(result.answer?.itemId).toBe('item-1');
+  });
+
   it('Gemini 가 지어낸 항목 id 는 믿지 않는다', async () => {
     const { service } = buildService({
       parse: parsed({ matched_item_id: 'ghost', candidates: [], normalized_name: '베란다 청소' }),
