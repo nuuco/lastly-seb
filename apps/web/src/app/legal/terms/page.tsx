@@ -33,6 +33,11 @@ export default function TermsPage() {
         그 문장과 가진 항목 이름을 서버가 Google Gemini 로 보내 해석합니다.
       </p>
       <p>
+        언제 했는지 묻는 말은 기기 모델을 쓰는 경우에도, 어느 항목인지 확실히 찾지 못하면 그
+        문장과 가진 항목 이름을 Google Gemini 로 보내 후보를 고릅니다. 고른 항목은 확인을
+        받은 뒤에 답합니다.
+      </p>
+      <p>
         Gemma 모델 파일은 Google 이 제공하는 것이며, 받거나 쓰시면{' '}
         <a href="https://ai.google.dev/gemma/terms" target="_blank" rel="noreferrer">
           Gemma 이용약관
