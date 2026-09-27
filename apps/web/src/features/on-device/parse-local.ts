@@ -43,6 +43,11 @@ export async function interpretLocally(
   knownItems: OnDeviceKnownItem[],
   options: { allowModel?: boolean } = {},
 ): Promise<LocalInterpretation> {
+  // 항목 이름을 그대로 적은 말(자주 쓰는 문장 칩)은 서버가 이름으로 바로 붙인다.
+  // 서버와 같이 규칙보다 먼저 본다. 규칙이 "빨래" 를 예정으로 읽어도 칩은 막지 않는다.
+  if (isKnownName(text, knownItems)) {
+    return { parsed: null, deferred: false, slots: undefined, usedModel: false, modelError: null };
+  }
   const local = await parseCaptureLocally(text, referenceDate, knownItems, options.allowModel ?? true);
   const { parsed } = local;
   const deferred = Boolean(parsed && !parsed.willSave && parsed.intent === 'record');
@@ -51,6 +56,13 @@ export async function interpretLocally(
     deferred,
     slots: !deferred && parsed ? toClientSlots(parsed) : undefined,
   };
+}
+
+/** 서버 capture.service 의 이름 일치와 같은 기준. 띄어쓰기·대소문자는 보지 않는다. */
+function isKnownName(text: string, knownItems: OnDeviceKnownItem[]): boolean {
+  const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
+  const typed = squash(text);
+  return knownItems.some((item) => squash(item.name) === typed);
 }
 
 /**
