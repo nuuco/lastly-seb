@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { getSpeechRecognitionCtor, type SpeechRecognitionLike } from '@/lib/speech';
 
@@ -14,6 +14,10 @@ const NO = /^(?:아니|아냐|아니요|아뇨|취소|됐어|그만|싫어|닫�
 /**
  * 확인 시트에서 화면을 안 보고 응/아니로 답하게 한다.
  * 말로 들어온 기록이고 음성 안내가 켜져 있을 때만 듣는다.
+ *
+ * 돌려주는 stop 은 응/아니 듣기를 바로 끝낸다. 시트를 닫는 버튼이 먼저 부른다 —
+ * 시트가 닫히며 정리되길 기다리면 그 사이 "다시 말하기" 의 새 음성 인식이
+ * 마이크를 못 잡는다(브라우저는 음성 인식을 한 번에 하나만 허용한다).
  */
 export function useSpokenConfirm({
   enabled,
@@ -25,11 +29,12 @@ export function useSpokenConfirm({
   prompt: string;
   onYes: () => void;
   onNo: () => void;
-}): void {
+}): () => void {
   const yesRef = useRef(onYes);
   const noRef = useRef(onNo);
   yesRef.current = onYes;
   noRef.current = onNo;
+  const stopRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     if (!enabled || !isVoiceGuidanceOn()) return;
@@ -46,6 +51,7 @@ export function useSpokenConfirm({
       } catch {
         // already ended
       }
+      recognition = null;
       // 시트가 닫혀도 cleanup이 이 안내를 끊지 않는다.
       speak(yes ? '기록했어요' : '취소했어요');
       if (yes) yesRef.current();
@@ -94,7 +100,7 @@ export function useSpokenConfirm({
       listenTimer = setTimeout(listen, 400);
     });
 
-    return () => {
+    const stop = () => {
       const alreadyDecided = decided;
       decided = true;
       if (listenTimer) clearTimeout(listenTimer);
@@ -104,6 +110,15 @@ export function useSpokenConfirm({
       } catch {
         // ignore
       }
+      recognition = null;
+    };
+    stopRef.current = stop;
+
+    return () => {
+      stop();
+      if (stopRef.current === stop) stopRef.current = () => undefined;
     };
   }, [enabled, prompt]);
+
+  return useCallback(() => stopRef.current(), []);
 }

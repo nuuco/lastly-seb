@@ -109,7 +109,7 @@ export function ConfirmSheet({
     : (shown?.rationale ?? '');
   const showVoiceHint = mode === 'voice' && isVoiceGuidanceOn();
 
-  useSpokenConfirm({
+  const stopListening = useSpokenConfirm({
     enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
     prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
     onYes: () => onConfirm(confirmPayload),
@@ -125,7 +125,10 @@ export function ConfirmSheet({
          */}
         <SheetHeader
           title="기록 확인"
-          onCancel={onCancel ?? onRetry}
+          onCancel={() => {
+            stopListening();
+            (onCancel ?? onRetry)();
+          }}
           disabled={committing}
           className="mb-[22px]"
         />
@@ -221,7 +224,15 @@ export function ConfirmSheet({
             disabled: committing || !name.trim(),
             onClick: () => onConfirm(confirmPayload),
           }}
-          secondary={{ label: '다시 말하기', onClick: onRetry, disabled: committing }}
+          secondary={{
+            label: '다시 말하기',
+            // 응/아니 듣기를 먼저 끝내야 같은 틱에 켜는 새 음성 인식이 마이크를 잡는다.
+            onClick: () => {
+              stopListening();
+              onRetry();
+            },
+            disabled: committing,
+          }}
         />
       </Sheet>
 
