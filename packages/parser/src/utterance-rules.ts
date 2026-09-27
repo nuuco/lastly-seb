@@ -428,6 +428,11 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
   [/넣(?:었|어|을)[가-힣]*|채(?:웠|우)[가-힣]*/, '보충'],
   [/삶(?:았|아|을|기)[가-힣]*/, '삶기'],
   [/뒤집(?:었|어|을|기)[가-힣]*/, '뒤집기'],
+  // "에어컨 필터 털었음" 은 먼지를 턴 것이다. 사전의 "필터 청소" 와 만난다.
+  [/털(?:었|어|기)[가-힣]*/, '청소'],
+  [/씻(?:었|어|기)[가-힣]*/, '세척'],
+  [/잘(?:랐|라)[가-힣]*|자르[가-힣]*/, '자르기'],
+  [/꽂(?:았|아|기)[가-힣]*/, '꽂기'],
   [/목욕\s*(?:했|해|할|하|시)[가-힣]*/, '목욕'],
   [/돌(?:렸|리)[가-힣]*/, '돌리기'],
   [/세척\s*(?:했|해|할|하)[가-힣]*/, '세척'],
@@ -461,6 +466,22 @@ const TIME_EXPR =
  * 한 낱말 전체가 일치할 때만 지운다 — "나무 물 주기" 의 "나무" 를 건드리면 안 된다.
  */
 const FIRST_PERSON = /(?:^|\s)(?:나는|나도|내가|나|저는|제가|저)(?=\s|$)/g;
+
+/**
+ * 말을 고르며 넣는 군말·지시어. 무엇을 했는지 담지 않는다.
+ * 한 낱말 전체가 일치할 때만 지운다. 이것만 남은 말은 이름이 없다.
+ */
+const FILLER =
+  /(?:^|\s)(?:아|어|음|음음|으음|그|그거|그것|저거|이거|거시기|뭐|뭐더라|뭔가|있잖아|그러니까|좀|그냥|저기)(?=\s|$)/g;
+
+/** 이름에 붙지 않는 꾸밈말. "고양이 모래 새로 부었어", "식세기 필터 싹 헹굼". */
+const MANNER = /(?:^|\s)(?:새로|다시|싹|싹다|깨끗이|깨끗하게|대충|전부|모두|다|잘)(?=\s|$)/g;
+
+/** "방충망 뜯어서 씻었다" 의 "뜯어서". 다음 행동으로 이어 주는 말이라 이름이 아니다. */
+const CONNECTIVE = /(?:^|\s)[가-힣]*(?:어|아|여|해|워|겨|려|쳐|져|내)서(?=\s|$)/g;
+
+/** 사전에 없는 동사의 과거 활용형. "뿌렸어", "부었어". 이름으로 쓸 명사가 아니다. */
+const PAST_VERB = /(?:았|었|였|렸|쳤|졌|웠|됐|줬|왔|갔|봤|났|켰|썼|냈|뺐)(?:어|어요|다|음|지)?$/;
 
 /** 이름에 들어가면 안 되는 의문 표현. */
 const QUERY_EXPR = /(언제|얼마나|며칠|얼마만|몇\s*일|알려\s*줘|알려줄래|지\s*(?:얼마|몇))/g;
@@ -553,7 +574,9 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
    * 대문자(TV, LED)는 실제 제품 이름일 수 있으므로 남긴다.
    */
   s = s.replace(/(?:^|\s)[a-z]{2,}(?=\s|$)/g, ' ');
-  s = s.replace(/[?？!！.,·]/g, ' ');
+  s = s.replace(/[?？!！.,·…~]/g, ' ');
+  s = s.replace(FILLER, ' ').replace(FILLER, ' ');
+  s = s.replace(MANNER, ' ').replace(CONNECTIVE, ' ');
 
   // 남은 조사와 서술어를 턴다.
   s = s.replace(/\s+/g, ' ').trim();
@@ -571,8 +594,12 @@ export function readNameWithAction(text: string): { name: string | null; sawActi
   /**
    * 완료 표지("했어", "함")가 있으면 사전에 없는 동사("설치")도 남은 말을 이름으로 본다.
    * "음 그거" 처럼 완료가 없는 잔여는 계속 불신한다.
+   * 남은 말이 과거 활용형("뿌렸어")으로 끝나면 동사를 명사로 못 바꾼 것이라 불신한다.
    */
-  const sawAction = action !== null || (Boolean(s) && hasCompletedMarker(text));
+  const sawAction =
+    action !== null || (Boolean(s) && !PAST_VERB.test(s) && hasCompletedMarker(text));
+  // 행동을 찾았으면 곁에 남은 활용형은 두 번째 동사다. "운동화 빨아서 말렸어" 의 "말렸어".
+  if (action) s = s.split(' ').filter((word) => !PAST_VERB.test(word)).join(' ');
   if (!s && !action) return { name: null, sawAction };
   if (!action) return { name: s || null, sawAction };
   return { name: s ? `${s} ${action}` : action, sawAction };

@@ -1,5 +1,5 @@
 import type { ClientParseSlots } from '@lastly/contracts';
-import { squashName } from '@lastly/parser';
+import { readName, squashName } from '@lastly/parser';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import {
@@ -78,7 +78,8 @@ async function parseCaptureLocally(
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
   let modelError: string | null = null;
 
-  if (allowModel && !rulesFinished(rules) && canUseEngine()) {
+  // 군말만 있는 말("아 그거 했다 음")은 모델도 이름을 못 뽑는다. 서버가 바로 되묻는다.
+  if (allowModel && !rulesFinished(rules) && readName(text) !== null && canUseEngine()) {
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);
