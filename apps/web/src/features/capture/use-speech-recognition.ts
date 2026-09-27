@@ -13,6 +13,8 @@ import {
  *
  * 인식 객체를 들고 있지 않고 말할 때마다 만들었다가 끝나면 버린다.
  * 클릭과 같은 틱에서 start 한다. isFinal 이 없어도 침묵이면 stop 한다.
+ * getUserMedia 로 마이크를 따로 열지 않는다. 음성 인식과 동시에 잡으면
+ * 인식 쪽에 소리가 들어가지 않는다(Chrome·Safari). 권한은 인식이 직접 묻는다.
  */
 
 const MAX_LISTEN_MS = 15_000;
@@ -30,7 +32,6 @@ export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const safariStreamRef = useRef<MediaStream | null>(null);
   const listeningIntentRef = useRef(false);
   const requestStopRef = useRef<() => void>(() => undefined);
 
@@ -57,16 +58,9 @@ export function useSpeechRecognition() {
     }
   }, []);
 
-  const dropSafariStream = useCallback(() => {
-    const stream = safariStreamRef.current;
-    safariStreamRef.current = null;
-    stream?.getTracks().forEach((track) => track.stop());
-  }, []);
-
   const release = useCallback(() => {
     listeningIntentRef.current = false;
     clearTimers();
-    dropSafariStream();
 
     const recognition = recognitionRef.current;
     if (!recognition) return;
@@ -78,14 +72,13 @@ export function useSpeechRecognition() {
     } catch {
       // ignore
     }
-  }, [clearTimers, dropSafariStream]);
+  }, [clearTimers]);
 
   const requestStop = useCallback(() => {
     listeningIntentRef.current = false;
     clearTimers();
     const recognition = recognitionRef.current;
     if (!recognition) {
-      dropSafariStream();
       setState((prev) => ({ ...prev, listening: false }));
       return;
     }
@@ -95,7 +88,7 @@ export function useSpeechRecognition() {
       release();
       setState((prev) => ({ ...prev, listening: false }));
     }
-  }, [clearTimers, dropSafariStream, release]);
+  }, [clearTimers, release]);
 
   requestStopRef.current = requestStop;
 
@@ -177,7 +170,6 @@ export function useSpeechRecognition() {
     recognition.onend = () => {
       if (recognitionRef.current === recognition) recognitionRef.current = null;
       detachRecognition(recognition);
-      dropSafariStream();
       listeningIntentRef.current = false;
       clearTimers();
       setState((prev) => ({ ...prev, listening: false }));
@@ -193,21 +185,8 @@ export function useSpeechRecognition() {
     } catch {
       release();
       setState((prev) => ({ ...prev, listening: false }));
-      return;
     }
-
-    if (isSafariBrowser() && navigator.mediaDevices?.getUserMedia) {
-      void navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        if (!listeningIntentRef.current || recognitionRef.current !== recognition) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        safariStreamRef.current = stream;
-      }).catch(() => {
-        // 권한을 거부해도 인식은 이미 시작했다.
-      });
-    }
-  }, [clearTimers, dropSafariStream, release]);
+  }, [clearTimers, release]);
 
   const reset = useCallback(
     () => setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null })),
@@ -215,11 +194,6 @@ export function useSpeechRecognition() {
   );
 
   return { ...state, start, stop: requestStop, reset };
-}
-
-function isSafariBrowser() {
-  const ua = navigator.userAgent;
-  return /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Android/i.test(ua);
 }
 
 function describeError(code: string): string {
