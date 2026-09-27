@@ -499,6 +499,8 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.outcome).toBe('ambiguous');
     expect(result.answer).toBeNull();
     expect(result.candidates).toHaveLength(1);
+    // 되묻기 시트가 고른 후보를 저장하지 않고 답으로 보여주는 근거다.
+    expect(result.intent).toBe('query');
   });
 
   it('Gemini 가 조회로 읽었는데 후보가 없으면 새 항목으로 열지 않는다', async () => {
@@ -515,6 +517,19 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
 
     expect(result.outcome).toBe('unrecognized');
     expect(result.cadence).toBeNull();
+    expect(result.intent).toBe('query');
+  });
+
+  it('기록 되묻기에는 조회 표시를 붙이지 않는다', async () => {
+    const { service, items } = buildService({ parse: null });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
+    ]);
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.intent).toBeUndefined();
   });
 
   it('Gemini 가 조회로 읽고 후보가 확실하면 답한다', async () => {
@@ -757,6 +772,145 @@ describe('CaptureService.previewCadence — 이름을 고쳤을 때', () => {
     });
 
     expect(result.cadence?.source).toBe('community');
+  });
+});
+
+describe('CaptureService.interpret — 확실하지 않은 조회는 Gemini 추천으로 되묻기', () => {
+  const querySlots = (itemName: string | null) => ({
+    intent: 'query' as const,
+    itemName,
+    daysAgo: 0,
+    statedCadenceDays: null,
+    confidence: 0.8,
+  });
+  const rows = [
+    itemRow(),
+    itemRow({ id: 'item-2', name: '베란다 창틀 청소', last_done_on: '2026-09-03' }),
+  ];
+
+  it('글자로 확실히 찾으면 Gemini 를 부르지 않고 답한다', async () => {
+    const { service, ai, items } = buildService({ items: rows });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.9, last_done_on: '2026-08-25' },
+    ]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '이불빨래 언제 했지?', mode: 'voice', slots: querySlots('이불빨래 했지') },
+      TODAY,
+    );
+
+    expect(ai.parseUtterance).not.toHaveBeenCalled();
+    expect(result.outcome).toBe('answered');
+  });
+
+  it('후보가 약하면 Gemini 가 고른 항목을 되묻기 맨 위에 둔다', async () => {
+    const { service, ai, items } = buildService({
+      items: rows,
+      parse: parsed({ intent: 'query', matched_item_id: 'item-2', candidates: [], confidence: 0.8 }),
+    });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.5, last_done_on: '2026-08-25' },
+    ]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 창문 닦은 거 언제였지?', mode: 'voice', slots: querySlots('베란다 창문') },
+      TODAY,
+    );
+
+    expect(ai.parseUtterance).toHaveBeenCalledTimes(1);
+    // 바로 답하지 않고 확인받는다.
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.answer).toBeNull();
+    expect(result.intent).toBe('query');
+    expect(result.candidates.map((c) => c.itemId)).toEqual(['item-2', 'item-1']);
+    expect(result.candidates[0]?.daysSinceLastDone).toBe(3);
+  });
+
+  it('글자 후보가 없어도 Gemini 가 고르면 되묻는다', async () => {
+    const { service, items } = buildService({
+      items: rows,
+      parse: parsed({ intent: 'query', matched_item_id: 'item-2', candidates: [] }),
+    });
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '창문 닦은 거 언제였지?', mode: 'voice', slots: querySlots(null) },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.candidates.map((c) => c.itemId)).toEqual(['item-2']);
+  });
+
+  it('Gemini 가 고른 항목이 이미 후보에 있으면 맨 위로 올리기만 한다', async () => {
+    const { service, items } = buildService({
+      items: rows,
+      parse: parsed({ intent: 'query', matched_item_id: 'item-2', candidates: [] }),
+    });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
+      { item_id: 'item-2', name: '베란다 창틀 청소', similarity: 0.5, last_done_on: '2026-09-03' },
+    ]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '베란다 언제 닦았지?', mode: 'voice', slots: querySlots('베란다 청소') },
+      TODAY,
+    );
+
+    expect(result.candidates.map((c) => c.itemId)).toEqual(['item-2', 'item-1']);
+  });
+
+  it('Gemini 가 못 고르거나 실패하면 글자 후보만으로 되묻는다', async () => {
+    const { service, items } = buildService({
+      items: rows,
+      parse: parsed({ normalized_name: null, matched_item_id: null, candidates: [], confidence: 0 }),
+    });
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '그거 언제였지?', mode: 'voice', slots: querySlots(null) },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.intent).toBe('query');
+  });
+
+  it('Gemini 가 목록에 없는 항목을 고르면 무시한다', async () => {
+    const { service, items } = buildService({
+      items: rows,
+      parse: parsed({
+        intent: 'query',
+        matched_item_id: 'ghost',
+        candidates: [{ item_id: 'ghost', name: '유령', similarity: 0.9 }],
+      }),
+    });
+    items.matchByMeaning.mockResolvedValue([]);
+
+    const result = await service.interpret(
+      'user-1',
+      { text: '그거 언제였지?', mode: 'voice', slots: querySlots(null) },
+      TODAY,
+    );
+
+    expect(result.outcome).toBe('unrecognized');
+    expect(result.candidates).toHaveLength(0);
+  });
+
+  it('칸 없이 와서 이미 Gemini 로 해석한 조회는 다시 부르지 않는다', async () => {
+    const { service, ai } = buildService({
+      items: rows,
+      parse: parsed({ intent: 'query', matched_item_id: null, candidates: [] }),
+    });
+
+    await service.interpret('user-1', { text: '음 그거 언제였지', mode: 'voice' }, TODAY);
+
+    expect(ai.parseUtterance).toHaveBeenCalledTimes(1);
   });
 });
 

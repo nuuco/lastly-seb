@@ -150,11 +150,7 @@ export class CaptureService {
      * 칸 없이 왔다 = 기기 모델이 돌지 않았다(못 쓰는 기기, 받기 전, 모델 오류).
      * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다. 응답이 없으면 직접 고르게 한다.
      */
-    const parsed = await this.ai.parseUtterance({
-      text: input.text,
-      reference_date: referenceDate,
-      known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
-    });
+    const parsed = await this.askGemini(input, referenceDate, known);
     return parsed && !isEmptyParse(parsed)
       ? { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' }
       : { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
@@ -179,11 +175,12 @@ export class CaptureService {
 
     // 묻는 말이면 기록하지 않는다. 칸 경로와 같은 기준으로 답하거나 되묻는다.
     if (parsed.intent === 'query') {
-      return this.answerQuery(userId, input, referenceDate, today, {
+      return this.answerQuery(userId, input, referenceDate, known, today, {
         targetId: claimed,
         name: parsed.normalized_name,
         candidates,
         confidence: parsed.confidence,
+        askGemini: false,
       });
     }
 
@@ -411,7 +408,7 @@ export class CaptureService {
       const rows = matched
         ? []
         : await this.items.matchByMeaning(userId, name ?? input.text, null, 5).catch(() => []);
-      return this.answerQuery(userId, input, referenceDate, today, {
+      return this.answerQuery(userId, input, referenceDate, known, today, {
         targetId: matched?.id ?? null,
         name,
         candidates: this.toCandidates(
@@ -420,6 +417,7 @@ export class CaptureService {
           today,
         ),
         confidence: slots.confidence,
+        askGemini: true,
       });
     }
 
@@ -486,26 +484,83 @@ export class CaptureService {
    * 묻는 말의 답 — 설계 07-C. 아무것도 기록하지 않는다.
    * 항목을 짚었거나 후보가 확실하면 답하고, 애매하면 되묻고, 후보가 없으면 못 알아들은 것으로 본다.
    * 칸 경로와 Gemini 경로가 같은 기준을 쓴다. 새 항목으로 저장하는 길은 없다.
+   *
+   * 글자 비교로 확실히 짚지 못하면(askGemini) Gemini 에게 항목 목록에서 뜻으로 고르게 한다.
+   * 고른 항목도 바로 답하지 않고 되묻기 맨 위에 둔다. 틀린 날짜를 자신 있게 알려주지 않게.
    */
   private async answerQuery(
     userId: string,
     input: InterpretRequest,
     referenceDate: string,
+    known: ItemRow[],
     today: Date,
-    part: { targetId: string | null; name: string | null; candidates: ItemCandidate[]; confidence: number },
+    part: {
+      targetId: string | null;
+      name: string | null;
+      candidates: ItemCandidate[];
+      confidence: number;
+      askGemini: boolean;
+    },
   ): Promise<InterpretResult> {
     const top = part.candidates[0];
     const target = part.targetId ?? (top && top.similarity >= MATCH_THRESHOLD ? top.itemId : null);
     if (target) return this.answer(userId, input, referenceDate, target, today);
 
-    return this.draftResult(userId, input, {
-      outcome: part.candidates.length > 0 ? 'ambiguous' : 'unrecognized',
+    const candidates = part.askGemini
+      ? await this.withGeminiPick(input, referenceDate, known, today, part.candidates)
+      : part.candidates;
+
+    const result = this.draftResult(userId, input, {
+      outcome: candidates.length > 0 ? 'ambiguous' : 'unrecognized',
       normalizedName: part.name,
       doneOn: referenceDate,
       matchedItemId: null,
-      candidates: part.candidates,
+      candidates,
       cadence: null,
       confidence: part.confidence,
+    });
+    // 되묻기 시트가 후보를 저장하지 않고 답으로 보여주도록 조회임을 알린다.
+    return { ...result, intent: 'query' };
+  }
+
+  /** 확실히 짚지 못한 조회의 되묻기 목록 맨 앞에 Gemini 가 뜻으로 고른 항목을 둔다. */
+  private async withGeminiPick(
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    candidates: ItemCandidate[],
+  ): Promise<ItemCandidate[]> {
+    if (known.length === 0) return candidates;
+    const parsed = await this.askGemini(input, referenceDate, known);
+    if (!parsed || isEmptyParse(parsed)) {
+      this.logger.log('조회 보강 Gemini · 추천 없음');
+      return candidates;
+    }
+
+    // 모델이 없는 id를 지어냈을 수 있으므로 목록에 있는 항목만 받는다.
+    const row = (id: string | null) => (id ? known.find((i) => i.id === id) : undefined);
+    const picked =
+      row(parsed.matched_item_id) ?? row(parsed.candidates.find((c) => row(c.item_id))?.item_id ?? null);
+    this.logger.log(`조회 보강 Gemini · 추천 ${picked ? '있음' : '없음'}`);
+    if (!picked) return candidates;
+
+    const pick: ItemCandidate = candidates.find((c) => c.itemId === picked.id) ?? {
+      itemId: picked.id,
+      name: picked.name,
+      similarity: Math.min(1, Math.max(0, parsed.confidence)),
+      lastDoneOn: picked.last_done_on,
+      daysSinceLastDone: this.cadence.daysSince(picked.last_done_on, today),
+    };
+    return [pick, ...candidates.filter((c) => c.itemId !== picked.id)].slice(0, 5);
+  }
+
+  /** 문장 해석을 Gemini 에게 맡긴다. 사용자가 가진 항목 목록을 함께 보낸다. */
+  private askGemini(input: InterpretRequest, referenceDate: string, known: ItemRow[]) {
+    return this.ai.parseUtterance({
+      text: input.text,
+      reference_date: referenceDate,
+      known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
     });
   }
 
@@ -652,6 +707,7 @@ export class CaptureService {
     return {
       transcript: input.text,
       outcome: 'answered',
+      intent: 'query',
       normalizedName: item.name,
       doneOn: referenceDate,
       matchedItemId: item.id,

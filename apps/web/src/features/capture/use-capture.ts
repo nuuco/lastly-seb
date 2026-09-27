@@ -226,10 +226,57 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     },
   });
 
-  /** 재확인 시트에서 후보를 골랐을 때 — 바로 저장으로 넘어간다. */
+  /**
+   * 조회 되묻기에서 고른 항목의 답 — 설계 07-C. 아무것도 저장하지 않는다.
+   * 항목을 못 읽으면(연결 끊김) 후보에 실려 온 마지막 수행일로 답한다.
+   */
+  const answerCandidate = useMutation({
+    mutationFn: async (itemId: string): Promise<NonNullable<InterpretResult['answer']>> => {
+      try {
+        const item = await itemsApi.get(itemId);
+        return {
+          itemId: item.id,
+          name: item.name,
+          lastDoneOn: item.lastDoneOn,
+          daysSinceLastDone: item.daysSinceLastDone,
+          nextDueOn: item.nextDueOn,
+          daysUntilDue: item.daysUntilDue,
+        };
+      } catch {
+        const candidate = result?.candidates.find((c) => c.itemId === itemId);
+        if (!candidate) throw new Error('항목을 찾지 못했어요');
+        return {
+          itemId,
+          name: candidate.name,
+          lastDoneOn: candidate.lastDoneOn,
+          daysSinceLastDone: candidate.daysSinceLastDone,
+          nextDueOn: null,
+          daysUntilDue: null,
+        };
+      }
+    },
+    onSuccess: (answer) => {
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              outcome: 'answered',
+              normalizedName: answer.name,
+              matchedItemId: answer.itemId,
+              candidates: [],
+              answer,
+            }
+          : prev,
+      );
+      setStep('answered');
+    },
+  });
+
+  /** 재확인 시트에서 후보를 골랐을 때. 기록이면 바로 저장, 조회면 그 항목의 답을 보여준다. */
   const chooseCandidate = useCallback(
-    (itemId: string) => commit.mutate({ itemId }),
-    [commit],
+    (itemId: string) =>
+      result?.intent === 'query' ? answerCandidate.mutate(itemId) : commit.mutate({ itemId }),
+    [answerCandidate, commit, result?.intent],
   );
 
   /** 재확인 시트에서 "새 항목으로 만들기". 이름은 원문을 그대로 쓴다. */
@@ -296,7 +343,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     interpret: interpret.mutate,
     interpreting: interpret.isPending,
     commit: commit.mutate,
-    committing: commit.isPending,
+    committing: commit.isPending || answerCandidate.isPending,
     chooseCandidate,
     createAsNew,
     saveRaw: saveRaw.mutate,
