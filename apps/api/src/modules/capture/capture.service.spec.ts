@@ -499,6 +499,8 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.outcome).toBe('ambiguous');
     expect(result.answer).toBeNull();
     expect(result.candidates).toHaveLength(1);
+    // 되묻기 시트가 고른 후보를 저장하지 않고 답으로 보여주는 근거다.
+    expect(result.intent).toBe('query');
   });
 
   it('Gemini 가 조회로 읽었는데 후보가 없으면 새 항목으로 열지 않는다', async () => {
@@ -515,6 +517,19 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
 
     expect(result.outcome).toBe('unrecognized');
     expect(result.cadence).toBeNull();
+    expect(result.intent).toBe('query');
+  });
+
+  it('기록 되묻기에는 조회 표시를 붙이지 않는다', async () => {
+    const { service, items } = buildService({ parse: null });
+    items.matchByMeaning.mockResolvedValue([
+      { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
+    ]);
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.intent).toBeUndefined();
   });
 
   it('Gemini 가 조회로 읽고 후보가 확실하면 답한다', async () => {

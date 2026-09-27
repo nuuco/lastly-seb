@@ -498,7 +498,7 @@ export class CaptureService {
     const target = part.targetId ?? (top && top.similarity >= MATCH_THRESHOLD ? top.itemId : null);
     if (target) return this.answer(userId, input, referenceDate, target, today);
 
-    return this.draftResult(userId, input, {
+    const result = this.draftResult(userId, input, {
       outcome: part.candidates.length > 0 ? 'ambiguous' : 'unrecognized',
       normalizedName: part.name,
       doneOn: referenceDate,
@@ -507,6 +507,8 @@ export class CaptureService {
       cadence: null,
       confidence: part.confidence,
     });
+    // 되묻기 시트가 후보를 저장하지 않고 답으로 보여주도록 조회임을 알린다.
+    return { ...result, intent: 'query' };
   }
 
   private draftResult(
@@ -652,6 +654,7 @@ export class CaptureService {
     return {
       transcript: input.text,
       outcome: 'answered',
+      intent: 'query',
       normalizedName: item.name,
       doneOn: referenceDate,
       matchedItemId: item.id,

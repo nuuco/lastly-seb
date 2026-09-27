@@ -104,6 +104,11 @@ export const interpretResultSchema = z.object({
    * gemini: 서버 Gemini / none: 해석 실패(되묻기)
    */
   via: interpretViaSchema.optional(),
+  /**
+   * 조회에 대한 결과(답·되묻기·못 찾음)면 query. 기록이면 비운다.
+   * 되묻기 시트가 조회일 때 후보를 저장하지 않고 답을 보여주는 데 쓴다.
+   */
+  intent: z.enum(['record', 'query']).optional(),
 });
 export type InterpretResult = z.infer<typeof interpretResultSchema>;
 
