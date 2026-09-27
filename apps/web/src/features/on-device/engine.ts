@@ -1,7 +1,13 @@
 import { overlayWithRules } from './apply-rules';
 import { checkLocalAi, getLocalAiSupport, reportLocalAiFailure } from './capability';
+import { hasModelConsent } from './consent';
 import { createChromeNanoModel } from './chrome-nano-model';
-import { isDeviceFailure, isEngineCancelled, LOCAL_AI_UNSUPPORTED } from './engine-errors';
+import {
+  cancelledError,
+  isDeviceFailure,
+  isEngineCancelled,
+  LOCAL_AI_UNSUPPORTED,
+} from './engine-errors';
 import type { LocalModel, ParseInput } from './local-model';
 import { createMediaPipeModel } from './mediapipe-model';
 import { defaultGemmaSpec, getModel, listModels, type ModelId, type ModelSpec } from './models';
@@ -44,7 +50,7 @@ export function engineProgressHint(progress: EngineProgress): string | null {
 
 const progressHandlers = new Set<(progress: EngineProgress) => void>();
 const instances = new Map<ModelId, LocalModel>();
-/** setActiveModel 로 고른 모델. 없으면 기기 판정(capability.ts)을 따른다. */
+/** 실험실이 setActiveModel 로 고른 모델. 없으면 기기 판정(capability.ts)을 따른다. */
 let override: ModelId | null = null;
 
 function emit(progress: EngineProgress) {
@@ -96,8 +102,13 @@ export function isEngineSupported(): boolean {
 }
 
 /** 받을 파일이 있어 동의를 받아야 하는지. Nano 는 Chrome 이 관리해 묻지 않는다. */
-export function engineNeedsConsent(): boolean {
+function engineNeedsConsent(): boolean {
   return current()?.spec.runtime !== 'chrome-builtin';
+}
+
+/** 지금 모델을 써도 되는지. 쓸 수 있는 기기이고, 받아야 하는 모델이면 동의가 있을 때. */
+export function canUseEngine(): boolean {
+  return isEngineSupported() && (!engineNeedsConsent() || hasModelConsent());
 }
 
 export async function ensureEngine(): Promise<void> {
@@ -109,8 +120,7 @@ export async function ensureEngine(): Promise<void> {
     await model.prepare();
   } catch (err) {
     // 실험실이 고른 모델의 실패는 앱 판정에 남기지 않는다. 일부러 여러 모델을 올려 보는 곳이다.
-    if (isEngineCancelled(err) || override) throw err;
-    if (model.spec.runtime === 'mediapipe' && !isDeviceFailure(err)) throw err;
+    if (isEngineCancelled(err) || override || !isDeviceFailure(err)) throw err;
     // 기기가 못 올렸다. 받은 파일을 지우고 다시 판정한다. Nano 였으면 Gemma 로 갈 수 있다.
     const reason = err instanceof Error ? err.message : String(err);
     model.unload();
@@ -120,8 +130,9 @@ export async function ensureEngine(): Promise<void> {
       emit({ status: 'error', loaded: 0, total: 0, message: LOCAL_AI_UNSUPPORTED });
       throw new Error(LOCAL_AI_UNSUPPORTED);
     }
+    // 다른 모델로 넘어갔다. 화면은 판정 변경(watchLocalAi)으로 다시 그리므로 이 실패는 알리지 않는다.
     emit({ status: 'idle', loaded: 0, total: 0, message: '' });
-    throw err;
+    throw cancelledError();
   }
 }
 

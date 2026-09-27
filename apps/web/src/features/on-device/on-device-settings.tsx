@@ -15,7 +15,7 @@ import {
   isEngineBusy,
   isEngineCancelled,
   isEngineReady,
-  engineNeedsConsent,
+  canUseEngine,
   subscribeEngineProgress,
   type EngineProgress,
 } from '@/features/on-device/engine';
@@ -64,8 +64,9 @@ export function OnDeviceSettings() {
       setKind(support.kind);
       setSpec(activeModelSpec());
       setReady(isEngineReady());
-      if (support.kind === 'none') return;
-      if (isEngineReady() || (engineNeedsConsent() && current !== 'granted')) return;
+      // 판정이 바뀌면 앞 모델의 오류는 지운다. 기기 불가 알림은 이어서 오는 진행 알림이 다시 채운다.
+      setError(null);
+      if (!canUseEngine() || isEngineReady()) return;
       setBusy(true);
       void ensureEngine()
         .then(() => setReady(true))
