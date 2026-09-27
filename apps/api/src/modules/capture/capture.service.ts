@@ -159,13 +159,14 @@ export class CaptureService {
     today: Date,
     parsed: AiParseResponse,
   ): Promise<InterpretResult> {
-    const candidates = this.toCandidates(parsed.candidates, known, today);
-
-    // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목인지 확인한다.
-    const claimed =
-      parsed.matched_item_id && known.some((i) => i.id === parsed.matched_item_id)
-        ? parsed.matched_item_id
-        : null;
+    // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목만 남긴다.
+    const isKnown = (id: string | null) => Boolean(id && known.some((i) => i.id === id));
+    const candidates = this.toCandidates(
+      parsed.candidates.filter((c) => isKnown(c.item_id)),
+      known,
+      today,
+    );
+    const claimed = isKnown(parsed.matched_item_id) ? parsed.matched_item_id : null;
 
     // 묻는 말이면 기록하지 않는다. 칸 경로와 같은 기준으로 답하거나 되묻는다.
     if (parsed.intent === 'query') {
@@ -177,26 +178,22 @@ export class CaptureService {
       });
     }
 
-    const outcome = this.decideOutcome(parsed.normalized_name, parsed.confidence, claimed, candidates);
-    const matchedItemId =
-      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
-
-    return this.draftResult(userId, input, {
-      outcome,
-      normalizedName: parsed.normalized_name,
-      doneOn: parsed.done_on,
-      matchedItemId,
-      candidates: outcome === 'ambiguous' ? candidates : [],
-      cadence: await this.resolveCadence(
-        userId,
-        outcome,
-        matchedItemId,
-        parsed.normalized_name,
-        parsed.done_on,
-        parsed.stated_cadence_days ?? null,
-      ),
+    return this.recordResult(userId, input, known, {
+      name: parsed.normalized_name,
+      doneOn: this.safeDoneOn(parsed.done_on, referenceDate),
       confidence: parsed.confidence,
+      claimed,
+      candidates,
+      statedCadenceDays: parsed.stated_cadence_days ?? null,
     });
+  }
+
+  /**
+   * 모델이 준 날짜는 믿기 전에 본다. 형식이 틀렸거나 기준일보다 뒤(미래)면 기준일로 둔다.
+   * 미래 날짜로 기록되면 다음 알림이 그만큼 밀린다.
+   */
+  private safeDoneOn(doneOn: string, referenceDate: string): string {
+    return /^\d{4}-\d{2}-\d{2}$/.test(doneOn) && doneOn <= referenceDate ? doneOn : referenceDate;
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
@@ -425,28 +422,54 @@ export class CaptureService {
       known,
       today,
     );
-    const claimed = matched?.id ?? null;
-    const outcome = this.decideOutcome(name, slots.confidence, claimed, candidates);
+    return this.recordResult(userId, input, known, {
+      name,
+      doneOn,
+      confidence: slots.confidence,
+      claimed: matched?.id ?? null,
+      candidates,
+      statedCadenceDays: slots.statedCadenceDays,
+    });
+  }
+
+  /**
+   * 기록하려는 말의 결과. 칸 경로와 Gemini 경로가 같은 기준을 쓴다.
+   * 기존 항목에 붙으면 이름은 그 항목의 이름으로 보여준다.
+   */
+  private async recordResult(
+    userId: string,
+    input: InterpretRequest,
+    known: ItemRow[],
+    part: {
+      name: string | null;
+      doneOn: string;
+      confidence: number;
+      claimed: string | null;
+      candidates: ItemCandidate[];
+      statedCadenceDays: number | null;
+    },
+  ): Promise<InterpretResult> {
+    const outcome = this.decideOutcome(part.name, part.confidence, part.claimed, part.candidates);
     const matchedItemId =
-      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
+      outcome === 'matched_existing' ? (part.claimed ?? part.candidates[0]?.itemId ?? null) : null;
 
     return this.draftResult(userId, input, {
       outcome,
       normalizedName: matchedItemId
-        ? (known.find((i) => i.id === matchedItemId)?.name ?? name)
-        : name,
-      doneOn,
+        ? (known.find((i) => i.id === matchedItemId)?.name ?? part.name)
+        : part.name,
+      doneOn: part.doneOn,
       matchedItemId,
-      candidates: outcome === 'ambiguous' ? candidates : [],
+      candidates: outcome === 'ambiguous' ? part.candidates : [],
       cadence: await this.resolveCadence(
         userId,
         outcome,
         matchedItemId,
-        name,
-        doneOn,
-        slots.statedCadenceDays,
+        part.name,
+        part.doneOn,
+        part.statedCadenceDays,
       ),
-      confidence: slots.confidence,
+      confidence: part.confidence,
     });
   }
 

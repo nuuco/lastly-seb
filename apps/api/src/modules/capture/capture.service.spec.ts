@@ -532,6 +532,51 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     expect(result.answer?.itemId).toBe('item-1');
   });
 
+  it('Gemini 가 미래 날짜를 주면 기준일로 기록한다', async () => {
+    const { service } = buildService({ parse: parsed({ done_on: '2026-09-20' }) });
+    const future = await service.interpret(
+      'user-1',
+      { text: '음 그거 있잖아', mode: 'text', referenceDate: '2026-09-06' },
+      TODAY,
+    );
+    expect(future.doneOn).toBe('2026-09-06');
+
+    const { service: s2 } = buildService({ parse: parsed({ done_on: '2026-09-04' }) });
+    const past = await s2.interpret(
+      'user-1',
+      { text: '음 그거 있잖아', mode: 'text', referenceDate: '2026-09-06' },
+      TODAY,
+    );
+    expect(past.doneOn).toBe('2026-09-04');
+  });
+
+  it('Gemini 후보 중 없는 항목은 되묻기 목록에 올리지 않는다', async () => {
+    const { service } = buildService({
+      parse: parsed({
+        matched_item_id: null,
+        confidence: 0.9,
+        candidates: [
+          { item_id: 'ghost', name: '유령 항목', similarity: 0.7 },
+          { item_id: 'item-1', name: '이불 빨래', similarity: 0.6 },
+        ],
+      }),
+    });
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.outcome).toBe('ambiguous');
+    expect(result.candidates.map((c) => c.itemId)).toEqual(['item-1']);
+  });
+
+  it('Gemini 가 기존 항목에 붙이면 그 항목 이름으로 보여준다', async () => {
+    const { service } = buildService({ parse: parsed({ normalized_name: '이불빨기' }) });
+
+    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+
+    expect(result.matchedItemId).toBe('item-1');
+    expect(result.normalizedName).toBe('이불 빨래');
+  });
+
   it('Gemini 가 지어낸 항목 id 는 믿지 않는다', async () => {
     const { service } = buildService({
       parse: parsed({ matched_item_id: 'ghost', candidates: [], normalized_name: '베란다 청소' }),
