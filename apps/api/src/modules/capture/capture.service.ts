@@ -25,7 +25,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
-import { readUtterance, type UtteranceFacts } from '@lastly/parser';
+import { readUtterance, squashName, type UtteranceFacts } from '@lastly/parser';
 import { appToday } from '../../common/clock';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
@@ -50,12 +50,6 @@ export const FALLBACK_CADENCE: CadenceRule = {
  */
 const isEmptyParse = (p: AiParseResponse) =>
   !p.normalized_name && !p.matched_item_id && p.candidates.length === 0 && p.confidence === 0;
-
-/**
- * 이름을 견주기 위해 공백을 지우고 소문자로 눕힌다.
- * "화분 물 주기" 와 "화분물주기" 는 사람에겐 같은 말이다.
- */
-const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
 
 /**
  * 한 문장을 항목·날짜·주기로 바꾼다.
@@ -96,8 +90,8 @@ export class CaptureService {
      * AI가 자거나 죽어 있어도 칩은 항상 동작해야 한다 — 눌러서 넣은 이름을
      * "혹시 이건가요?" 하고 되묻는 건 어느 경우에도 말이 안 된다.
      */
-    const typed = squash(input.text);
-    const exact = known.find((i) => squash(i.name) === typed);
+    const typed = squashName(input.text);
+    const exact = known.find((i) => squashName(i.name) === typed);
     if (exact) {
       const result = this.draftResult(userId, input, {
         outcome: 'matched_existing',
@@ -306,7 +300,7 @@ export class CaptureService {
    */
   async previewCadence(userId: string, input: CadencePreviewRequest): Promise<CadencePreviewResult> {
     const known = await this.items.listActive(userId);
-    const exact = known.find((i) => squash(i.name) === squash(input.name));
+    const exact = known.find((i) => squashName(i.name) === squashName(input.name));
 
     return {
       matchedItemId: exact?.id ?? null,
@@ -684,8 +678,8 @@ export class CaptureService {
     name: string,
     known: ItemRow[],
   ): Promise<ItemRow | null> {
-    const squashed = squash(name);
-    const exact = known.find((i) => squash(i.name) === squashed);
+    const squashed = squashName(name);
+    const exact = known.find((i) => squashName(i.name) === squashed);
     if (exact) return exact;
 
     const rows = await this.items.matchByMeaning(userId, name, null, 3).catch(() => []);

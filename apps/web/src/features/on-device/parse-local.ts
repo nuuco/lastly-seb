@@ -1,4 +1,5 @@
 import type { ClientParseSlots } from '@lastly/contracts';
+import { squashName } from '@lastly/parser';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import {
@@ -60,9 +61,8 @@ export async function interpretLocally(
 
 /** 서버 capture.service 의 이름 일치와 같은 기준. 띄어쓰기·대소문자는 보지 않는다. */
 function isKnownName(text: string, knownItems: OnDeviceKnownItem[]): boolean {
-  const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
-  const typed = squash(text);
-  return knownItems.some((item) => squash(item.name) === typed);
+  const typed = squashName(text);
+  return knownItems.some((item) => squashName(item.name) === typed);
 }
 
 /**

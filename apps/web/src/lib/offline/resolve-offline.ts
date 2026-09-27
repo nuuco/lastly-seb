@@ -1,14 +1,11 @@
 'use client';
 
 import type { HomeFeed, InterpretResult, Item } from '@lastly/contracts';
-import { readUtterance } from '@lastly/parser';
+import { readUtterance, squashName } from '@lastly/parser';
 
 import { nextDueAfter, todayIso } from '@/lib/date';
 import { applyLocalLog, loadFeed } from './feed-cache';
 import { addRaw, addResolved } from './pending-captures';
-
-/** 이름 비교용. 띄어쓰기와 대소문자를 지운다 — 서버의 squash 와 같은 규칙이다. */
-const squash = (s: string) => s.replace(/\s+/g, '').toLowerCase();
 
 /**
  * 글자가 얼마나 겹치는지. 0~1.
@@ -18,7 +15,7 @@ const squash = (s: string) => s.replace(/\s+/g, '').toLowerCase();
  * 우리가 단정하지 않으면 "이불 빨래" 옆에 "침구 빨래" 가 따로 생기는 일을 막을 수 있다.
  */
 function similarity(a: string, b: string): number {
-  const of = (s: string) => new Set(squash(s).split(''));
+  const of = (s: string) => new Set(squashName(s).split(''));
   const x = of(a);
   const y = of(b);
   const shared = [...x].filter((c) => y.has(c)).length;
@@ -62,7 +59,7 @@ export function resolveOffline(text: string, mode: 'voice' | 'text'): OfflineOut
   const doneOn = new Date(Date.now() - facts.daysAgo * 86_400_000).toISOString().slice(0, 10);
 
   // 이름이 그대로 있으면 물어볼 것이 없다.
-  const exact = items.find((i) => squash(i.name) === squash(facts.name!));
+  const exact = items.find((i) => squashName(i.name) === squashName(facts.name!));
   if (exact) {
     addResolved(exact.id, exact.name, doneOn);
     return { kind: 'saved', itemName: exact.name, feed: applyLocalLog(exact.id, doneOn, today) };
