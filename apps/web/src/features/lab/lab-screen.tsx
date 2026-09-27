@@ -205,7 +205,7 @@ export function LabScreen() {
   /** 앱 경로 결과를 가르는 표시: 규칙 수정본 + 앱 지시문 수정본. */
   const appRunTag = aTag ? `${tag}+${aTag}` : tag;
 
-  /** 고른 엔진이 실제로 올라갔는지. Nano 가 없는 기기는 1B 로 대체되므로 막는다. */
+  /** 고른 엔진이 실제로 올라갔는지. setActiveModel 로 고정하므로 대체되지 않지만, 기록이 섞이지 않게 한 번 더 본다. */
   const engineMatches = useCallback(() => {
     if (!isOnDevice(engine)) return true;
     return activeModelSpec().id === engine;
@@ -256,7 +256,7 @@ export function LabScreen() {
 
     try {
       await ensureEngine();
-      // Nano API 는 있는데 사양이 모자라면 엔진이 준비 중에 Gemma 로 바꾼다. 그 기록을 Nano 로 남기지 않는다.
+      // 고른 모델과 올라간 모델이 다르면 그 기록을 고른 모델로 남기지 않는다.
       if (!engineMatches()) {
         markUnsupported();
         return;

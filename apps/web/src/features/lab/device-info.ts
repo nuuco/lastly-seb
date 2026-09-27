@@ -1,5 +1,5 @@
 import { chromeNanoAvailability } from '@/features/on-device/chrome-nano-model';
-import { defaultModelId, FALLBACK_MODEL, getModel, type ModelId } from '@/features/on-device/models';
+import { defaultGemmaSpec, getModel, type ModelId } from '@/features/on-device/models';
 
 import type { EngineId } from './evaluate';
 import type { BenchRecord } from './lab-store';
@@ -122,7 +122,7 @@ export type Verdict = { ok: boolean | null; text: string };
  * - Gemma: https + WebGPU Core 어댑터 (mediapipe-model.ts createWebGpuDevice).
  *   270M 과 1B 는 조건이 같아도 메모리로 갈리므로 ① 준비 결과(bench)로 정한다.
  * - Nano: LanguageModel API + availability (chrome-nano-model.ts)
- * - 앱 경로: 기본 모델(models.ts defaultModelId) → Nano 를 못 쓰면 FALLBACK_MODEL → 규칙만
+ * - 앱 경로: Nano 가 이미 설치돼 있으면 Nano → 아니면 기본 Gemma(models.ts defaultGemmaSpec) → 규칙만 (capability.ts)
  */
 export function engineVerdicts(
   device: DeviceInfo,
@@ -165,18 +165,17 @@ export function engineVerdicts(
 
   const verdicts = { 'gemma3-270m': gemma('gemma3-270m'), 'gemma3-1b': gemma('gemma3-1b'), 'chrome-nano': nano };
 
-  const chosen = defaultModelId();
-  const used: ModelId = chosen === 'chrome-nano' && !nano.ok ? FALLBACK_MODEL : chosen;
+  const used: ModelId =
+    device.nano === 'available' && nano.ok ? 'chrome-nano' : defaultGemmaSpec().id;
   const usedLabel = getModel(used).label;
-  const fallbackNote = used !== chosen ? ` (기본 ${getModel(chosen).label} 대신)` : '';
   const app: Verdict =
     verdicts[used].ok === true
-      ? { ok: true, text: `규칙 → ${usedLabel}${fallbackNote}` }
+      ? { ok: true, text: `규칙 → ${usedLabel}` }
       : verdicts[used].ok === null
-        ? { ok: null, text: `규칙 → ${usedLabel}${fallbackNote} · ① 준비로 확인` }
+        ? { ok: null, text: `규칙 → ${usedLabel} · ① 준비로 확인` }
         : {
             ok: false,
-            text: `규칙만 — ${usedLabel} 사용 불가. 다른 모델로 자동으로 바꾸지 않아요`,
+            text: `규칙 → 서버 Gemini — ${usedLabel} 사용 불가`,
           };
 
   return { rule: { ok: true, text: '항상 가능' }, ...verdicts, app };
