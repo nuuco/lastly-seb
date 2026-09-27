@@ -4,7 +4,7 @@ import type { InterpretResult } from '@lastly/contracts';
 import { useEffect, useState } from 'react';
 
 import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
-import { Sheet } from '@/components/ui/sheet';
+import { Sheet, SheetHeader } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
 
 interface DisambiguateSheetProps {
@@ -64,12 +64,7 @@ export function DisambiguateSheet({
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 고르기">
-      <div className="flex items-center justify-between">
-        <span className="text-16 font-semibold text-ink">{asking ? '물어보기' : '기록하기'}</span>
-        <button type="button" onClick={onDismiss} className="text-14 text-ink-3">
-          취소
-        </button>
-      </div>
+      <SheetHeader title={asking ? '물어보기' : '기록하기'} onCancel={onDismiss} />
 
       <p className="mt-[26px] text-13 text-ink-3">
         {mode === 'voice' ? '이렇게 들었어요' : '이렇게 적으셨어요'}
