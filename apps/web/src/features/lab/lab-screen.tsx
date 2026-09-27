@@ -526,10 +526,10 @@ export function LabScreen() {
           <label className="mt-2 flex items-center gap-2 text-[13px]">
             <input
               type="checkbox"
-              checked={appPrompt.itemIds}
-              onChange={(e) => changeAppPrompt({ ...appPrompt, itemIds: e.target.checked })}
+              checked={appPrompt.withItems}
+              onChange={(e) => changeAppPrompt({ ...appPrompt, withItems: e.target.checked })}
             />
-            기존 항목에 id 붙이기 (끄면 <code>기존 항목: 이불 빨래, …</code> 처럼 이름만)
+            기존 항목 이름도 넘기기 (<code>기존 항목: 이불 빨래, …</code>. 앱은 안 넘김 — 베끼는지 볼 때)
           </label>
         }
         footer={'고친 뒤 ③에서 "앱 경로"로 다시 돌리면 표 2에 "앱 지시문 #번호" 줄이 원본 줄과 나란히 생겨요.'}
@@ -662,7 +662,7 @@ function DirectInput({
       if (engine === 'cloud-gemini') {
         out.promptCloud = `[system]\n${CLOUD_SYSTEM_PROMPT}\n\n[user]\n${buildCloudUserPrompt(input, referenceDate, knownItems)}`;
       } else {
-        out.promptApp = buildParseInstruction(input, referenceDate, knownItems);
+        out.promptApp = buildParseInstruction(input, knownItems);
       }
       out.promptExperiment = buildExperimentInstruction(input, referenceDate, knownItems, promptBody);
       setResult(out);

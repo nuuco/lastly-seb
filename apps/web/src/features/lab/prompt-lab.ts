@@ -49,16 +49,16 @@ const APP_KEY = 'lastly-lab-app-prompt';
 
 export const ORIGINAL_APP_PROMPT: AppInstructionOverride = {
   body: APP_INSTRUCTIONS,
-  itemIds: true,
+  withItems: false,
 };
 
 export function isOriginalAppPrompt(edit: AppInstructionOverride): boolean {
-  return edit.itemIds && edit.body.trim() === APP_INSTRUCTIONS.trim();
+  return !edit.withItems && edit.body.trim() === APP_INSTRUCTIONS.trim();
 }
 
 export function appPromptTag(edit: AppInstructionOverride): string {
   if (isOriginalAppPrompt(edit)) return '';
-  return hashTag(`${edit.itemIds ? 'ids' : 'names'}\n${edit.body}`);
+  return hashTag(`${edit.withItems ? 'items' : 'plain'}\n${edit.body}`);
 }
 
 export function loadAppPrompt(): AppInstructionOverride {
@@ -66,7 +66,7 @@ export function loadAppPrompt(): AppInstructionOverride {
     const raw = localStorage.getItem(APP_KEY);
     if (!raw) return ORIGINAL_APP_PROMPT;
     const parsed = JSON.parse(raw) as Partial<AppInstructionOverride>;
-    return { body: parsed.body || APP_INSTRUCTIONS, itemIds: parsed.itemIds ?? true };
+    return { body: parsed.body || APP_INSTRUCTIONS, withItems: parsed.withItems ?? false };
   } catch {
     return ORIGINAL_APP_PROMPT;
   }

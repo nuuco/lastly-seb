@@ -241,7 +241,7 @@ describe('CaptureService.interpret — AI 장애 시', () => {
      */
     const result = await service.interpret(
       'user-1',
-      { text: '음 그거 있잖아', mode: 'text' },
+      { text: '제습기 물통', mode: 'text' },
       TODAY,
     );
 
@@ -285,7 +285,7 @@ describe('CaptureService.interpret — AI 장애 시', () => {
 
     const result = await service.interpret(
       'user-1',
-      { text: '음 그거 있잖아', mode: 'text' },
+      { text: '제습기 물통', mode: 'text' },
       TODAY,
     );
 
@@ -461,13 +461,27 @@ describe('CaptureService.interpret — 규칙이 이름만 뽑은 새 항목', (
     expect(result.normalizedName).toBeNull();
     expect(result.degraded).toBe(true);
   });
+
+  it.each(['음 그러니까 그거', '아 그거 했다 음…', '그거 했어', '오늘 뭔가 했다'])(
+    '군말만 있는 말(%s)은 Gemini 를 부르지 않고 직접 고르게 한다',
+    async (text) => {
+      const { service, ai } = buildService({});
+
+      const result = await service.interpret('user-1', { text, mode: 'voice' }, TODAY);
+
+      expect(ai.parseUtterance).not.toHaveBeenCalled();
+      expect(result.via).toBe('rules');
+      expect(result.normalizedName).toBeNull();
+      expect(result.outcome).toBe('unrecognized');
+    },
+  );
 });
 
 describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
   it('규칙이 이름을 못 뽑으면 Gemini 로 해석한다', async () => {
     const { service, ai } = buildService({});
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(ai.parseUtterance).toHaveBeenCalledTimes(1);
     expect(result.via).toBe('gemini');
@@ -526,7 +540,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
     ]);
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.intent).toBeUndefined();
@@ -551,7 +565,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     const { service } = buildService({ parse: parsed({ done_on: '2026-09-20' }) });
     const future = await service.interpret(
       'user-1',
-      { text: '음 그거 있잖아', mode: 'text', referenceDate: '2026-09-06' },
+      { text: '제습기 물통', mode: 'text', referenceDate: '2026-09-06' },
       TODAY,
     );
     expect(future.doneOn).toBe('2026-09-06');
@@ -559,7 +573,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     const { service: s2 } = buildService({ parse: parsed({ done_on: '2026-09-04' }) });
     const past = await s2.interpret(
       'user-1',
-      { text: '음 그거 있잖아', mode: 'text', referenceDate: '2026-09-06' },
+      { text: '제습기 물통', mode: 'text', referenceDate: '2026-09-06' },
       TODAY,
     );
     expect(past.doneOn).toBe('2026-09-04');
@@ -577,7 +591,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
       }),
     });
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.outcome).toBe('ambiguous');
     expect(result.candidates.map((c) => c.itemId)).toEqual(['item-1']);
@@ -586,7 +600,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
   it('Gemini 가 기존 항목에 붙이면 그 항목 이름으로 보여준다', async () => {
     const { service } = buildService({ parse: parsed({ normalized_name: '이불빨기' }) });
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.matchedItemId).toBe('item-1');
     expect(result.normalizedName).toBe('이불 빨래');
@@ -613,7 +627,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
       parse: parsed({ matched_item_id: 'ghost', candidates: [], normalized_name: '베란다 청소' }),
     });
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.matchedItemId).toBeNull();
     expect(result.outcome).toBe('new_item');
@@ -625,7 +639,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
     const result = await service.interpret(
       'user-1',
       {
-        text: '음 그거 있잖아',
+        text: '제습기 물통',
         mode: 'text',
         slots: { intent: 'record', itemName: '이불 빨래', daysAgo: 0, statedCadenceDays: null, confidence: 0.9 },
       },
@@ -651,7 +665,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
       { item_id: 'item-1', name: '이불 빨래', similarity: 0.6, last_done_on: '2026-08-25' },
     ]);
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.via).toBe('none');
     expect(result.degraded).toBe(true);
@@ -662,7 +676,7 @@ describe('CaptureService.interpret — 칸 없이 온 문장은 Gemini', () => {
   it('Gemini 도 응답하지 않으면 경로를 none 으로 남긴다', async () => {
     const { service } = buildService({ parse: null });
 
-    const result = await service.interpret('user-1', { text: '음 그거 있잖아', mode: 'text' }, TODAY);
+    const result = await service.interpret('user-1', { text: '제습기 물통', mode: 'text' }, TODAY);
 
     expect(result.via).toBe('none');
   });

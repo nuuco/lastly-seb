@@ -1,5 +1,5 @@
 import type { ClientParseSlots } from '@lastly/contracts';
-import { squashName } from '@lastly/parser';
+import { readName, squashName } from '@lastly/parser';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
 import {
@@ -79,11 +79,14 @@ async function parseCaptureLocally(
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
   let modelError: string | null = null;
 
-  if (allowModel && !rulesFinished(rules) && canUseEngine()) {
+  // 군말만 있는 말("아 그거 했다 음")은 모델도 이름을 못 뽑는다. 서버가 바로 되묻는다.
+  if (allowModel && !rulesFinished(rules) && readName(text) !== null && canUseEngine()) {
     if (isEngineReady()) {
       try {
         const parsed = await parseOnDevice(text, referenceDate, knownItems);
-        return { parsed, usedModel: true, modelError: null };
+        // 모델도 이름을 못 뽑았거나 근거 없는 이름이라 버렸으면 칸을 보내지 않는다.
+        // 빈 이름 칸이 가면 서버가 Gemini 를 건너뛰고 바로 되묻는다.
+        return { parsed: parsed.itemName ? parsed : null, usedModel: true, modelError: null };
       } catch (err) {
         // 모델이 깨져도 기록은 규칙·서버로 이어간다.
         modelError = err instanceof Error ? err.message : String(err);

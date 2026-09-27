@@ -145,6 +145,14 @@ export class CaptureService {
     }
 
     /**
+     * 군말·시간 표현만 남은 말("아 그거 했다 음")은 무엇을 했는지 담지 않는다.
+     * Gemini 에 보내도 뽑을 이름이 없으므로 부르지 않고 직접 고르게 한다.
+     */
+    if (facts.intent === 'record' && !facts.name) {
+      return { result: await this.withoutAi(userId, input, referenceDate, known), via: 'rules' };
+    }
+
+    /**
      * 칸 없이 왔다 = 기기 모델이 돌지 않았다(못 쓰는 기기, 받기 전, 모델 오류).
      * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다. 응답이 없으면 직접 고르게 한다.
      */

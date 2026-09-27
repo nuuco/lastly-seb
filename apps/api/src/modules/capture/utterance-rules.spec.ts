@@ -196,6 +196,42 @@ describe('사전에 없던 동사', () => {
   });
 });
 
+describe('군말과 사전에 없는 활용형', () => {
+  /**
+   * 완료 표지만 보고 남은 말을 이름으로 믿으면 "그거", "아 그거 했다 음" 이
+   * 항목 이름이 된다. 군말은 지우고, 명사로 못 바꾼 동사는 규칙이 끝내지 않는다.
+   */
+  it.each(['아 그거 했다 음…', '그거 했어', '뭐 했어', '음 했음', '오늘 뭔가 했다', '어제 좀 했음', '음 그거 있잖아'])(
+    '%s 는 이름이 없다',
+    (text) => {
+      expect(readNameWithAction(text)).toEqual({ name: null, sawAction: false });
+    },
+  );
+
+  it.each([
+    ['에어컨 필터 털었음', '에어컨 필터 청소'],
+    ['방충망 뜯어서 씻었다', '방충망 세척'],
+    ['식물 영양제 꽂았어', '식물 영양제 꽂기'],
+    ['강아지 발톱 잘라줬어', '강아지 발톱 자르기'],
+    ['운동화 빨아서 말렸어', '운동화 빨래'],
+    ['냉장고 정리 싹 했어', '냉장고 정리'],
+    ['그 화분 물 줬어', '화분 물 주기'],
+  ])('%s → %s', (text, name) => {
+    expect(readNameWithAction(text)).toEqual({ name, sawAction: true });
+  });
+
+  it.each(['욕실 곰팡이 뿌렸어', '고양이 모래 새로 부었어'])(
+    '%s 는 동사를 명사로 못 바꿔 규칙이 끝내지 않는다',
+    (text) => {
+      expect(readNameWithAction(text).sawAction).toBe(false);
+    },
+  );
+
+  it('안 자른 일은 저장하지 않는다', () => {
+    expect(classifySave('손톱 안 잘랐어', SUN)).toMatchObject({ willSave: false, kind: 'incomplete' });
+  });
+});
+
 describe('저장 여부', () => {
   it.each([
     '나 오늘 책 읽었고 일주일에 한번씩 읽을거야',
