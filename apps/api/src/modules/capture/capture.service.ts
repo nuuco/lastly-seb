@@ -139,8 +139,9 @@ export class CaptureService {
     /**
      * 규칙이 이름을 뽑았으면 주기만 채운다. 아는 행동을 찾아낸 경우에만 이름으로 믿는다.
      * 브라우저의 rulesFinished 와 같은 기준이다.
+     * 묻는 말은 여기서 새 항목으로 만들지 않는다. 못 짚은 조회는 아래 Gemini·되묻기로 간다.
      */
-    if (facts.sawAction && facts.name) {
+    if (facts.intent === 'record' && facts.sawAction && facts.name) {
       const result = await this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
       return { result, via: 'rules' };
     }
