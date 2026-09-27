@@ -1,5 +1,5 @@
 import { overlayWithRules } from './apply-rules';
-import { getLocalAiSupport, reportLocalAiFailure } from './capability';
+import { checkLocalAi, getLocalAiSupport, reportLocalAiFailure } from './capability';
 import { createChromeNanoModel } from './chrome-nano-model';
 import { isDeviceFailure, isEngineCancelled, LOCAL_AI_UNSUPPORTED } from './engine-errors';
 import type { LocalModel } from './local-model';
@@ -101,6 +101,8 @@ export function engineNeedsConsent(): boolean {
 }
 
 export async function ensureEngine(): Promise<void> {
+  // 지난 실행의 저장값만 보고 받기를 시작하지 않는다. 이번 실행의 검사를 기다린다.
+  if (!override) await checkLocalAi();
   const model = current();
   if (!model) throw new Error(LOCAL_AI_UNSUPPORTED);
   try {
