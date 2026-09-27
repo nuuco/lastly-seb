@@ -140,11 +140,6 @@ export function isEngineReady(): boolean {
   return current()?.isReady() ?? false;
 }
 
-/** 설정에서 이 기기 이해를 끌 때. 워커만 내린다. */
-export function unloadEngine(): void {
-  current()?.unload();
-}
-
 /** 받기를 멈춘다. 덜 받은 파일은 지운다. */
 export async function cancelEngineLoad(): Promise<void> {
   await current()?.cancel();

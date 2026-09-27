@@ -10,7 +10,7 @@ import {
 } from './engine';
 import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
 
-export function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
+function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
   return {
     intent: parsed.intent,
     itemName: parsed.itemName,
