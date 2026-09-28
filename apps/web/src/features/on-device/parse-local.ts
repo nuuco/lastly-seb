@@ -1,16 +1,16 @@
 import type { ClientParseSlots } from '@lastly/contracts';
+import { readName, RULE_NAME_CONFIDENCE, squashName } from '@lastly/parser';
 
 import { parseWithRulesOnly, rulesFinished } from './apply-rules';
-import { hasModelConsent } from './consent';
 import {
+  canUseEngine,
   ensureEngine,
-  hasWebGpu,
   isEngineReady,
   parseOnDevice,
 } from './engine';
 import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
 
-export function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
+function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
   return {
     intent: parsed.intent,
     itemName: parsed.itemName,
@@ -20,29 +20,88 @@ export function toClientSlots(parsed: OnDeviceParseResult): ClientParseSlots {
   };
 }
 
+export const DEFERRED_MESSAGE = '아직 안 한 일은 기록하지 않아요';
+
+export interface LocalInterpretation {
+  /** null 이면 기기에서 못 채웠다. 서버가 규칙·되묻기로 이어간다. */
+  parsed: OnDeviceParseResult | null;
+  /** 저장하지 않을 말(못 함·예정·애매). 서버로 보내지 않는다. */
+  deferred: boolean;
+  /** 서버로 보낼 칸. */
+  slots: ClientParseSlots | undefined;
+  /** 모델까지 돌았는지. 규칙으로 끝났거나 모델이 준비 전이면 false. 측정·로그용. */
+  usedModel: boolean;
+  modelError: string | null;
+}
+
+/**
+ * 캡처가 서버로 보내기 전까지 기기에서 하는 일 전부.
+ * 규칙 → (규칙이 못 끝냈으면) 모델 → 저장하지 않을 말 거르기 → 서버로 보낼 칸.
+ */
+export async function interpretLocally(
+  text: string,
+  referenceDate: string,
+  knownItems: OnDeviceKnownItem[],
+  options: { allowModel?: boolean } = {},
+): Promise<LocalInterpretation> {
+  // 항목 이름을 그대로 적은 말(자주 쓰는 문장 칩)은 서버가 이름으로 바로 붙인다.
+  // 서버와 같이 규칙보다 먼저 본다. 규칙이 "빨래" 를 예정으로 읽어도 칩은 막지 않는다.
+  if (isKnownName(text, knownItems)) {
+    return { parsed: null, deferred: false, slots: undefined, usedModel: false, modelError: null };
+  }
+  const local = await parseCaptureLocally(text, referenceDate, knownItems, options.allowModel ?? true);
+  const { parsed } = local;
+  const deferred = Boolean(parsed && !parsed.willSave && parsed.intent === 'record');
+  return {
+    ...local,
+    deferred,
+    slots: !deferred && parsed ? toClientSlots(parsed) : undefined,
+  };
+}
+
+/** 서버 capture.service 의 이름 일치와 같은 기준. 띄어쓰기·대소문자는 보지 않는다. */
+function isKnownName(text: string, knownItems: OnDeviceKnownItem[]): boolean {
+  const typed = squashName(text);
+  return knownItems.some((item) => squashName(item.name) === typed);
+}
+
 /**
  * 이 기기에서 칸을 채운다. 규칙이 못 끝낸 문장만 모델을 돌린다.
  * 이름도 의도도 없으면 null — 그때는 서버가 규칙·되묻기로 이어간다.
  */
-export async function parseCaptureLocally(
+async function parseCaptureLocally(
   text: string,
   referenceDate: string,
   knownItems: OnDeviceKnownItem[],
-): Promise<OnDeviceParseResult | null> {
+  allowModel: boolean,
+): Promise<{ parsed: OnDeviceParseResult | null; usedModel: boolean; modelError: string | null }> {
   const rules = parseWithRulesOnly(text, referenceDate, knownItems);
+  let modelError: string | null = null;
 
-  if (!rulesFinished(rules) && hasModelConsent() && hasWebGpu()) {
+  // 규칙이 문장에서 뽑은 이름. 행동을 못 알아봐 믿지는 않지만 모델이 실패하면 대신 쓴다.
+  // 이마저 없는 군말뿐인 말("아 그거 했다 음")은 모델도 못 뽑는다. 서버가 바로 되묻는다.
+  const ruleName = readName(text);
+  if (allowModel && !rulesFinished(rules) && ruleName !== null && canUseEngine()) {
     if (isEngineReady()) {
       try {
-        return await parseOnDevice(text, referenceDate, knownItems);
-      } catch {
+        const parsed = await parseOnDevice(text, referenceDate, knownItems);
+        if (parsed.itemName) return { parsed, usedModel: true, modelError: null };
+        // 모델이 이름을 못 냈거나 근거 없는 이름이라 버렸으면 문장에서 뽑은 이름을 쓴다.
+        // "고양이 모래 부었어" 처럼 어색해도 확인 시트에서 고친다. Gemini 는 부르지 않는다.
+        return {
+          parsed: { ...parsed, itemName: ruleName, confidence: RULE_NAME_CONFIDENCE },
+          usedModel: true,
+          modelError: null,
+        };
+      } catch (err) {
         // 모델이 깨져도 기록은 규칙·서버로 이어간다.
+        modelError = err instanceof Error ? err.message : String(err);
       }
     } else {
       void ensureEngine().catch(() => undefined);
     }
   }
 
-  if (rules.itemName || rules.intent === 'query' || !rules.willSave) return rules;
-  return null;
+  const parsed = rules.itemName || rules.intent === 'query' || !rules.willSave ? rules : null;
+  return { parsed, usedModel: false, modelError };
 }

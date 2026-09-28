@@ -4,7 +4,7 @@ import type { InterpretResult } from '@lastly/contracts';
 import { useEffect, useState } from 'react';
 
 import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
-import { Sheet } from '@/components/ui/sheet';
+import { Sheet, SheetHeader } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
 
 interface DisambiguateSheetProps {
@@ -24,7 +24,10 @@ interface DisambiguateSheetProps {
 /**
  * 못 알아들었거나 후보가 여럿일 때.
  *
- * 어떤 경우에도 사용자가 적은 것은 남길 수 있어야 한다. AI 가 못 알아들었다고
+ * 조회(result.intent === 'query')면 고르는 것은 "물어본 항목" 이다. 고르면 답을 보여주고
+ * 저장하지 않는다. 새 항목으로 남기는 칸도 두지 않는다 — 기록하려던 거면 다시 말하면 된다.
+ *
+ * 기록이면 어떤 경우에도 사용자가 적은 것은 남길 수 있어야 한다. AI 가 못 알아들었다고
  * 해서 방금 한 일이 없던 일이 되는 건 아니다. 그래서 이름을 고쳐 쓸 수 있는
  * 칸을 두고, 그대로 저장하는 길을 항상 연다.
  *
@@ -42,27 +45,26 @@ export function DisambiguateSheet({
   mode,
 }: DisambiguateSheetProps) {
   const candidates = result.candidates;
+  const asking = result.intent === 'query';
   const [name, setName] = useState(result.normalizedName ?? result.transcript);
-  const notice = describeNotice(result.degraded, candidates.length > 0, mode);
-  const candidateKey = candidates.map((c) => c.itemId).join(',');
+  const notice = asking
+    ? describeQueryNotice(candidates.length > 0)
+    : describeNotice(result.degraded, candidates.length > 0, mode);
+  // 문자열로 만들어 두면 렌더마다 새로 생기는 배열 때문에 다시 읽지 않는다.
+  const spoken =
+    candidates.length > 0
+      ? `혹시 ${candidates.map((c) => c.name).join(', ')} 중 어떤 건가요?`
+      : notice.title;
 
   useEffect(() => {
     if (!open) return;
-    const names = candidates.map((c) => c.name);
-    const text =
-      names.length > 0 ? `혹시 ${names.join(', ')} 중 어떤 건가요?` : notice.title;
-    speak(text);
+    speak(spoken);
     return () => stopSpeaking();
-  }, [open, notice.title, candidateKey]);
+  }, [open, spoken]);
 
   return (
     <Sheet open={open} onClose={onDismiss} label="항목 고르기">
-      <div className="flex items-center justify-between">
-        <span className="text-16 font-semibold text-ink">기록하기</span>
-        <button type="button" onClick={onDismiss} className="text-14 text-ink-3">
-          취소
-        </button>
-      </div>
+      <SheetHeader title={asking ? '물어보기' : '기록하기'} onCancel={onDismiss} />
 
       <p className="mt-[26px] text-13 text-ink-3">
         {mode === 'voice' ? '이렇게 들었어요' : '이렇게 적으셨어요'}
@@ -101,27 +103,32 @@ export function DisambiguateSheet({
       {/**
        * 여기가 막다른 길을 여는 자리다.
        * 후보가 없어도, AI 가 죽어 있어도 이 칸을 고쳐 그대로 저장할 수 있다.
+       * 조회에는 두지 않는다. 물어본 말이 기록으로 남으면 없던 일이 생긴다.
        */}
-      <p className="mt-[22px] text-12.5 tracking-wide4 text-ink-3">
-        {candidates.length > 0 ? '아니면 새 항목으로' : '이름을 정해 남겨주세요'}
-      </p>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        aria-label="항목 이름"
-        maxLength={60}
-        placeholder="예: 이불 빨래"
-        className="mt-2.5 w-full rounded-row border-[1.5px] border-line bg-card px-[18px] py-4 text-17 font-bold tracking-t3 text-ink outline-none focus:border-action placeholder:font-normal placeholder:text-ink-3"
-      />
+      {asking ? null : (
+        <>
+          <p className="mt-[22px] text-12.5 tracking-wide4 text-ink-3">
+            {candidates.length > 0 ? '아니면 새 항목으로' : '이름을 정해 남겨주세요'}
+          </p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="항목 이름"
+            maxLength={60}
+            placeholder="예: 이불 빨래"
+            className="mt-2.5 w-full rounded-row border-[1.5px] border-line bg-card px-[18px] py-4 text-17 font-bold tracking-t3 text-ink outline-none focus:border-action placeholder:font-normal placeholder:text-ink-3"
+          />
 
-      <button
-        type="button"
-        disabled={committing || !name.trim()}
-        onClick={() => onCreateNew(name.trim())}
-        className="mt-3 flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
-      >
-        {committing ? '저장하는 중…' : '이 이름으로 기록하기'}
-      </button>
+          <button
+            type="button"
+            disabled={committing || !name.trim()}
+            onClick={() => onCreateNew(name.trim())}
+            className="mt-3 flex h-[58px] w-full items-center justify-center rounded-lg bg-action text-17 font-semibold text-white shadow-action active:bg-action-pressed disabled:opacity-60"
+          >
+            {committing ? '저장하는 중…' : '이 이름으로 기록하기'}
+          </button>
+        </>
+      )}
 
       {/* 말로 들어왔을 때만. 적어서 들어온 사람에게 "다시 말하기" 는 뜬금없다. */}
       {mode === 'voice' ? (
@@ -139,6 +146,12 @@ export function DisambiguateSheet({
       ) : null}
     </Sheet>
   );
+}
+
+function describeQueryNotice(hasCandidates: boolean): { title: string; body: string } {
+  return hasCandidates
+    ? { title: '어떤 항목을 물어보신 건지 골라 주세요', body: '고르시면 마지막으로 한 날을 알려드릴게요.' }
+    : { title: '어떤 항목인지 찾지 못했어요', body: '항목 이름을 넣어 다시 물어봐 주세요.' };
 }
 
 function describeNotice(

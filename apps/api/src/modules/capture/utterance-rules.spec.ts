@@ -1,4 +1,12 @@
-import { classifySave, readCadenceDays, readDaysAgo, readIntent, readName, readNameWithAction } from '@lastly/parser';
+import {
+  classifySave,
+  readCadenceDays,
+  readDaysAgo,
+  readIntent,
+  readName,
+  readNameWithAction,
+  readUtterance,
+} from '@lastly/parser';
 
 /**
  * 규칙 파서는 LLM 을 부르지 않고 끝낼 수 있는 문장을 가려내는 자리다.
@@ -19,6 +27,8 @@ describe('주기 읽기', () => {
     ['열흘마다 갈아', 10],
     ['매일 하는 거야', 1],
     ['격주로 할래', 14],
+    ['주 1회 필터 갈았어', 7],
+    ['2주 1회 필터 갈았어', 14],
   ])('%s → %s일', (text, days) => {
     expect(readCadenceDays(text)).toBe(days);
   });
@@ -66,6 +76,35 @@ describe('날짜 읽기', () => {
     expect(readDaysAgo('이불 빨았어', SUN)).toEqual({ daysAgo: 0, saw: false });
     expect(readDaysAgo('오늘 이불 빨았어', SUN)).toEqual({ daysAgo: 0, saw: true });
   });
+
+  it('절대 날짜도 기준일보다 과거면 정확한 일수로 읽는다', () => {
+    expect(readDaysAgo('2026년 9월 10일 정수기 필터 갈았어', SUN)).toEqual({
+      daysAgo: 3,
+      saw: true,
+    });
+  });
+
+  it.each([
+    '2026-09-10 정수기 필터 갈았어',
+    '2026.09.10 정수기 필터 갈았어',
+    '9월 10일 정수기 필터 갈았어',
+  ])('%s도 과거 절대 날짜로 읽는다', (text) => {
+    expect(readDaysAgo(text, SUN)).toEqual({ daysAgo: 3, saw: true });
+  });
+
+  it('미래 절대 날짜는 수행일로 저장할 수 없도록 오늘로 고정한다', () => {
+    expect(readDaysAgo('2099년 8월 1일 방 청소했어', SUN)).toEqual({
+      daysAgo: 0,
+      saw: true,
+    });
+  });
+
+  it('유효하지 않은 절대 날짜는 오늘 날짜로 조용히 대체하지 않는다', () => {
+    expect(readDaysAgo('2026년 2월 30일 방 청소했어', SUN)).toEqual({
+      daysAgo: 0,
+      saw: true,
+    });
+  });
 });
 
 describe('의도 읽기', () => {
@@ -87,6 +126,8 @@ describe('이름 읽기', () => {
     ['그저께 칫솔 갈았어', '칫솔 교체'],
     ['이불 세탁했어', '이불 빨래'],
     ['3일 전에 정수기 필터 갈았어', '정수기 필터 교체'],
+    ['2026년 9월 10일 방 청소했어', '방 청소'],
+    ['2026-09-10 방 청소했어', '방 청소'],
     ['오늘 이불 빨았어 한달에 한번 빨거야', '이불 빨래'],
     ['세탁조 청소했어 세달에 한번 할래', '세탁조 청소'],
     ['마지막으로 이불 언제 빨았지?', '이불 빨래'],
@@ -98,6 +139,19 @@ describe('이름 읽기', () => {
     // 대상의 종류는 끝이 없다. 행동만 바꾸고 나머지는 건드리지 않는다.
     expect(readName('가습기 필터 갈았어')).toBe('가습기 필터 교체');
     expect(readName('블라인드 닦았어')).toBe('블라인드 청소');
+  });
+
+  it.each([
+    ['나 오늘 책 읽었고 일주일에 한번씩 읽을거야', '책 읽기', 7],
+    ['주방후드 청소했고 다음주부터 일주일에 한번씩할거야', '주방후드 청소', 7],
+    ['내일 방 청소할 거야', '방 청소', null],
+    ['모레 이불 빨 거야', '이불 빨래', null],
+    ['주 1회 필터 갈았어', '필터 교체', 7],
+    ['2주 1회 필터 갈았어', '필터 교체', 14],
+  ] as const)('%s에서 완료 행동과 주기를 항목명에서 분리한다', (text, name, cadenceDays) => {
+    const got = readNameWithAction(text);
+    expect(got).toEqual({ name, sawAction: true });
+    if (cadenceDays !== null) expect(readCadenceDays(text)).toBe(cadenceDays);
   });
 });
 
@@ -142,7 +196,83 @@ describe('사전에 없던 동사', () => {
   });
 });
 
+describe('군말과 사전에 없는 활용형', () => {
+  /**
+   * 완료 표지만 보고 남은 말을 이름으로 믿으면 "그거", "아 그거 했다 음" 이
+   * 항목 이름이 된다. 군말은 지우고, 명사로 못 바꾼 동사는 규칙이 끝내지 않는다.
+   */
+  it.each(['아 그거 했다 음…', '그거 했어', '뭐 했어', '음 했음', '오늘 뭔가 했다', '어제 좀 했음', '음 그거 있잖아'])(
+    '%s 는 이름이 없다',
+    (text) => {
+      expect(readNameWithAction(text)).toEqual({ name: null, sawAction: false });
+    },
+  );
+
+  it.each([
+    ['에어컨 필터 털었음', '에어컨 필터 청소'],
+    ['방충망 뜯어서 씻었다', '방충망 세척'],
+    ['식물 영양제 꽂았어', '식물 영양제 꽂기'],
+    ['강아지 발톱 잘라줬어', '강아지 발톱 자르기'],
+    ['운동화 빨아서 말렸어', '운동화 빨래'],
+    ['냉장고 정리 싹 했어', '냉장고 정리'],
+    ['그 화분 물 줬어', '화분 물 주기'],
+  ])('%s → %s', (text, name) => {
+    expect(readNameWithAction(text)).toEqual({ name, sawAction: true });
+  });
+
+  it.each(['욕실 곰팡이 뿌렸어', '고양이 모래 새로 부었어'])(
+    '%s 는 동사를 명사로 못 바꿔 규칙이 끝내지 않는다',
+    (text) => {
+      expect(readNameWithAction(text).sawAction).toBe(false);
+    },
+  );
+
+  it('안 자른 일은 저장하지 않는다', () => {
+    expect(classifySave('손톱 안 잘랐어', SUN)).toMatchObject({ willSave: false, kind: 'incomplete' });
+  });
+});
+
+describe('전해 들은 말과 대로 끝나는 명사', () => {
+  /**
+   * "대" 를 어디서나 전해 들은 말("했대")로 읽으면 침대·세면대가 든 기록이 저장되지 않는다.
+   */
+  it.each([
+    ['나 오늘 세면대 소독했어', '세면대 소독'],
+    ['침대 시트 갈았어', '침대 시트 교체'],
+    ['싱크대 청소했어', '싱크대 청소'],
+    ['빨래 건조대 정리했어', '빨래 건조대 정리'],
+    ['오늘 침대 청소함', '침대 청소'],
+    ['에어컨 한대 청소했어', '에어컨 한대 청소'],
+  ])('%s 는 저장한다', (text, name) => {
+    expect(readUtterance(text, SUN)).toMatchObject({ willSave: true, saveKind: 'completed', name });
+  });
+
+  it.each(['방 청소했대', '엄마가 빨았대', '이불 빨았대', '내일 청소한대', '청소하겠대', '청소한다며', '빨았다던데'])(
+    '%s 는 전해 들은 말이라 저장하지 않는다',
+    (text) => {
+      expect(classifySave(text, SUN).willSave).toBe(false);
+    },
+  );
+});
+
 describe('저장 여부', () => {
+  it.each([
+    '나 오늘 책 읽었고 일주일에 한번씩 읽을거야',
+    '주방후드 청소했고 다음주부터 일주일에 한번씩할거야',
+  ])('%s는 완료 기록으로 저장할 수 있다', (text) => {
+    expect(classifySave(text, SUN)).toMatchObject({
+      intent: 'record',
+      willSave: true,
+      kind: 'completed',
+    });
+    expect(readUtterance(text, SUN)).toMatchObject({
+      name: expect.any(String),
+      statedCadenceDays: 7,
+      willSave: true,
+      saveKind: 'completed',
+    });
+  });
+
   it('완료 뒤에 할거야는 주기이지 예정이 아니다', () => {
     const save = classifySave('오늘 가습기 필터 설치했고 한달마다 할거야');
     expect(save.kind).toBe('completed');
@@ -196,5 +326,119 @@ describe('저장 여부', () => {
   it('완료 표지 없는 잔여는 이름으로 믿지 않는다', () => {
     const got = readNameWithAction('오늘 점심 맛있었다');
     expect(got.sawAction).toBe(false);
+  });
+
+  it.each(['오늘 점심 맛있었다', '응 그거야'])('완료·행동 없는 말은 저장하지 않는다', (text) => {
+    expect(classifySave(text, SUN)).toEqual({
+      intent: 'record',
+      willSave: false,
+      kind: 'none',
+    });
+    expect(readUtterance(text, SUN)).toMatchObject({
+      willSave: false,
+      saveKind: 'none',
+      sawAction: false,
+    });
+  });
+
+  it('미래 절대 날짜의 완료 표현은 저장하지 않는다', () => {
+    const save = classifySave('2099년 8월 1일 방 청소했어', SUN);
+    expect(save.kind).toBe('planned');
+    expect(save.willSave).toBe(false);
+  });
+
+  it.each(['내일 방 청소했어', '다음 주 방 청소했어'])('%s도 저장하지 않는다', (text) => {
+    const save = classifySave(text, SUN);
+    expect(save.kind).toBe('planned');
+    expect(save.willSave).toBe(false);
+  });
+
+  it('완료 뒤의 미래 일정 시작은 반복 주기로 읽되 미래 완료는 계속 차단한다', () => {
+    expect(classifySave('오늘 책 읽었어 내일부터 매일 할거야', SUN)).toMatchObject({
+      kind: 'completed',
+      willSave: true,
+    });
+    expect(classifySave('내일 책 읽었어 일주일마다 할거야', SUN)).toMatchObject({
+      kind: 'planned',
+      willSave: false,
+    });
+  });
+
+  it('통합 발화 결과도 미래 완료를 저장 대상으로 표시하지 않는다', () => {
+    expect(readUtterance('2099년 8월 1일 방 청소했어', SUN)).toMatchObject({
+      daysAgo: 0,
+      sawDate: true,
+      name: '방 청소',
+      willSave: false,
+    });
+  });
+
+  it('유효하지 않은 절대 날짜의 완료 표현은 저장하지 않는다', () => {
+    const save = classifySave('2026년 2월 30일 방 청소했어', SUN);
+    expect(save.kind).toBe('uncertain');
+    expect(save.willSave).toBe(false);
+  });
+});
+
+describe('형태소 기반 안전 규칙', () => {
+  it.each([
+    ['화분 물 안 줬어', 'incomplete'],
+    ['화분 물 못 줬어', 'incomplete'],
+    ['신발 빨려고 했어', 'planned'],
+    ['신발 빨아야 해', 'planned'],
+    ['신발 빨 생각이었어', 'planned'],
+    ['신발 빨까 했어', 'planned'],
+    ['화분 물 줄 생각이야', 'planned'],
+    ['신발 빨았을 수도 있어', 'uncertain'],
+    ['친구가 식탁 닦았어', 'uncertain'],
+    ['문 열었다고 들었어', 'uncertain'],
+    ['방 청소했다며', 'uncertain'],
+    ['방 청소했대', 'uncertain'],
+    ['문안열었어', 'incomplete'],
+    ['신발 빨 뻔했어', 'incomplete'],
+    ['책을 읽어야 했어', 'planned'],
+    ['방 청소하고 싶었어', 'planned'],
+  ] as const)('%s는 저장하지 않는다', (text, kind) => {
+    expect(classifySave(text, SUN)).toMatchObject({
+      willSave: false,
+      kind,
+    });
+  });
+
+  it.each(['화분 물 줬어', '아이 약 먹였어', '문 열었어'])('%s는 완료로 읽는다', (text) => {
+    expect(classifySave(text, SUN)).toMatchObject({
+      intent: 'record',
+      willSave: true,
+      kind: 'completed',
+    });
+  });
+
+  it('형용사 수식어가 있는 완료 행동은 막지 않는다', () => {
+    expect(classifySave('좋은 세제 넣었어', SUN)).toMatchObject({
+      willSave: true,
+      kind: 'completed',
+    });
+  });
+});
+
+describe('명사 빨래와 예정 표현', () => {
+  /**
+   * "빨래" 는 거의 늘 명사다. "빨(을)래" 로 읽으면 완료 어미 없는
+   * "베개 빨래" 같은 말이 예정으로 거절돼 서버까지 가지 못한다.
+   */
+  it.each(['베개 빨래', '빨래', '빨래 끝냄'])('%s는 예정으로 거절하지 않는다', (text) => {
+    expect(classifySave(text, SUN).kind).not.toBe('planned');
+  });
+
+  it('명사 빨래만 있으면 행동으로 보지 않는다', () => {
+    expect(readNameWithAction('베개 빨래').sawAction).toBe(false);
+  });
+
+  it('완료 어미가 붙으면 빨래는 완료다', () => {
+    expect(classifySave('이불 빨래 했어', SUN)).toMatchObject({ willSave: true, kind: 'completed' });
+  });
+
+  it.each(['빨 거야', '빨게', '빨래할래', '내일 빨래할 거야'])('%s는 예정으로 막는다', (text) => {
+    expect(classifySave(text, SUN)).toMatchObject({ willSave: false, kind: 'planned' });
   });
 });

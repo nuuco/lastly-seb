@@ -10,11 +10,13 @@ import type {
   CadencePreviewResult,
   InterpretRequest,
   InterpretResult,
+  InterpretVia,
   ItemCandidate,
 } from '@lastly/contracts';
 import { format, subDays } from 'date-fns';
 
 import { AiClient } from '../../infra/ai/ai.client';
+import type { AiParseResponse } from '../../infra/ai/ai.types';
 import { CadenceService } from '../cadence/cadence.service';
 import { PriorsRepository } from '../cadence/priors.repository';
 import { toCadenceRule, toItem } from '../items/items.mapper';
@@ -23,7 +25,7 @@ import { ItemsRepository } from '../items/items.repository';
 import { ItemsService } from '../items/items.service';
 import { LogsService } from '../items/logs.service';
 import { DraftTokenService } from './draft-token.service';
-import { readUtterance, type UtteranceFacts } from '@lastly/parser';
+import { readUtterance, RULE_NAME_CONFIDENCE, squashName, type UtteranceFacts } from '@lastly/parser';
 import { appToday } from '../../common/clock';
 
 /** 이 이상이면 확실한 매칭으로 보고 바로 확인 시트(08)를 띄운다. */
@@ -42,14 +44,21 @@ export const FALLBACK_CADENCE: CadenceRule = {
 };
 
 /**
- * 이름을 견주기 위해 공백을 지우고 소문자로 눕힌다.
- * "화분 물 주기" 와 "화분물주기" 는 사람에겐 같은 말이다.
+ * AI 서비스는 LLM 이 실패해도(한도 초과·오류) 빈 결과를 정상 응답으로 돌려준다.
+ * 이름·매칭·후보가 모두 없고 확신도가 0 이면 대답을 못 받은 것으로 본다.
+ * 그래야 "또렷하게 말해주세요" 대신 대체 경로(의미 검색 후보)로 간다.
  */
-const squash = (v: string) => v.replace(/\s+/g, '').toLowerCase();
+/** 목록에서 id 로 항목을 찾는다. 모델이 지어낸 id·빈 값이면 undefined. */
+const knownRow = (known: ItemRow[], id: string | null | undefined) =>
+  id ? known.find((i) => i.id === id) : undefined;
+
+const isEmptyParse = (p: AiParseResponse) =>
+  !p.normalized_name && !p.matched_item_id && p.candidates.length === 0 && p.confidence === 0;
 
 /**
  * 한 문장을 항목·날짜·주기로 바꾼다.
- * 칸은 브라우저(규칙·기기 모델)가 채우고, 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
+ * 칸은 브라우저(규칙·기기 모델)가 채운다. 칸 없이 오면 규칙 → Gemini 로 해석한다.
+ * 사용자를 어느 화면으로 보낼지(outcome)는 여기서 정한다.
  */
 @Injectable()
 export class CaptureService {
@@ -66,6 +75,16 @@ export class CaptureService {
   ) {}
 
   async interpret(userId: string, input: InterpretRequest, today = appToday()): Promise<InterpretResult> {
+    const { result, via } = await this.route(userId, input, today);
+    this.logger.log(`해석 경로 ${via} · ${result.outcome}`);
+    return { ...result, via };
+  }
+
+  private async route(
+    userId: string,
+    input: InterpretRequest,
+    today: Date,
+  ): Promise<{ result: InterpretResult; via: InterpretVia }> {
     const referenceDate = input.referenceDate ?? format(today, 'yyyy-MM-dd');
     const known = await this.items.listActive(userId);
 
@@ -75,36 +94,19 @@ export class CaptureService {
      * AI가 자거나 죽어 있어도 칩은 항상 동작해야 한다 — 눌러서 넣은 이름을
      * "혹시 이건가요?" 하고 되묻는 건 어느 경우에도 말이 안 된다.
      */
-    const typed = squash(input.text);
-    const exact = known.find((i) => squash(i.name) === typed);
+    const typed = squashName(input.text);
+    const exact = known.find((i) => squashName(i.name) === typed);
     if (exact) {
-      return {
-        transcript: input.text,
+      const result = this.draftResult(userId, input, {
         outcome: 'matched_existing',
         normalizedName: exact.name,
         doneOn: referenceDate,
         matchedItemId: exact.id,
         candidates: [],
-        cadence: await this.resolveCadence(
-          userId,
-          'matched_existing',
-          exact.id,
-          exact.name,
-          referenceDate,
-        ),
+        cadence: await this.resolveCadence(userId, 'matched_existing', exact.id, exact.name, referenceDate),
         confidence: 1,
-        degraded: false,
-        answer: null,
-        draftToken: this.draft.sign({
-          userId,
-          rawInput: input.text,
-          normalizedName: exact.name,
-          doneOn: referenceDate,
-          matchedItemId: exact.id,
-          mode: input.mode,
-          issuedAt: Date.now(),
-        }),
-      };
+      });
+      return { result, via: 'rules' };
     }
 
     /**
@@ -113,7 +115,8 @@ export class CaptureService {
      * 서버 규칙이 쓰레기 조각으로 덮지 않게 규칙보다 앞에 둔다.
      */
     if (input.slots) {
-      return this.fromClientSlots(userId, input, input.slots, referenceDate, known, today);
+      const result = await this.fromClientSlots(userId, input, input.slots, referenceDate, known, today);
+      return { result, via: 'client' };
     }
 
     /**
@@ -124,20 +127,101 @@ export class CaptureService {
      * LLM 을 부르면 돈과 시간을 쓰고도 같은 답을 받는다.
      */
     const facts = readUtterance(input.text, new Date(`${referenceDate}T00:00:00`));
-    if (!facts.willSave && facts.intent !== 'query') {
-      return this.declinedRecord(userId, input, referenceDate);
+    if (!facts.willSave && facts.intent !== 'query' && facts.saveKind !== 'none') {
+      return { result: await this.declinedRecord(userId, input, referenceDate), via: 'rules' };
     }
 
     const ruled = await this.byRules(userId, input, referenceDate, known, today, facts);
-    if (ruled) return ruled;
+    if (ruled) return { result: ruled, via: 'rules' };
 
     /**
-     * 규칙이 이름을 뽑았으면 주기만 채운다. 문장 해석용 Gemini 는 쓰지 않는다.
-     * 아는 행동을 찾아낸 경우에만 이름으로 믿는다. 그렇지 않으면 남은 말일 뿐이다.
+     * 규칙이 이름을 뽑았으면 주기만 채운다. 아는 행동을 찾아낸 경우에만 이름으로 믿는다.
+     * 브라우저의 rulesFinished 와 같은 기준이다.
+     * 묻는 말은 여기서 새 항목으로 만들지 않는다. 못 짚은 조회는 아래 Gemini·되묻기로 간다.
      */
-    return facts.sawAction && facts.name
-      ? this.fromRulesOnly(userId, input, referenceDate, facts.name, facts)
-      : this.withoutAi(userId, input, referenceDate, known);
+    if (facts.intent === 'record' && facts.sawAction && facts.name) {
+      const result = await this.fromRulesOnly(userId, input, referenceDate, facts.name, facts);
+      return { result, via: 'rules' };
+    }
+
+    /**
+     * 군말·시간 표현만 남은 말("아 그거 했다 음")은 무엇을 했는지 담지 않는다.
+     * Gemini 에 보내도 뽑을 이름이 없으므로 부르지 않고 직접 고르게 한다.
+     */
+    if (facts.intent === 'record' && !facts.name) {
+      return { result: await this.withoutAi(userId, input, referenceDate, known), via: 'rules' };
+    }
+
+    /**
+     * 칸 없이 왔다 = 기기 모델이 돌지 않았다(못 쓰는 기기, 받기 전, 모델 오류).
+     * 규칙으로 못 끝낸 문장만 Gemini 로 해석한다.
+     */
+    const parsed = await this.askGemini(input, referenceDate, known);
+    if (parsed && !isEmptyParse(parsed)) {
+      return { result: await this.fromAi(userId, input, referenceDate, known, today, parsed), via: 'gemini' };
+    }
+
+    /**
+     * Gemini 가 못 알아들었거나 응답이 없으면 규칙이 문장에서 뽑은 이름으로 확인 시트를 연다.
+     * "고양이 모래 부었어" 처럼 어색해도 시트에서 고치면 된다. 이름이 없는 말만 직접 고르게 한다.
+     */
+    if (facts.intent === 'record' && facts.name) {
+      const slots: ClientParseSlots = {
+        intent: 'record',
+        itemName: facts.name,
+        daysAgo: facts.daysAgo,
+        statedCadenceDays: facts.statedCadenceDays,
+        confidence: RULE_NAME_CONFIDENCE,
+      };
+      const result = await this.fromClientSlots(userId, input, slots, referenceDate, known, today);
+      return { result, via: 'rules' };
+    }
+    return { result: await this.withoutAi(userId, input, referenceDate, known), via: 'none' };
+  }
+
+  private async fromAi(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    parsed: AiParseResponse,
+  ): Promise<InterpretResult> {
+    // 모델이 없는 id를 지어냈을 수 있으므로 실재하는 항목만 남긴다.
+    const candidates = this.toCandidates(
+      parsed.candidates.filter((c) => knownRow(known, c.item_id)),
+      known,
+      today,
+    );
+    const claimed = knownRow(known, parsed.matched_item_id)?.id ?? null;
+
+    // 묻는 말이면 기록하지 않는다. 칸 경로와 같은 기준으로 답하거나 되묻는다.
+    if (parsed.intent === 'query') {
+      return this.answerQuery(userId, input, referenceDate, known, today, {
+        targetId: claimed,
+        name: parsed.normalized_name,
+        candidates,
+        confidence: parsed.confidence,
+        askGemini: false,
+      });
+    }
+
+    return this.recordResult(userId, input, known, {
+      name: parsed.normalized_name,
+      doneOn: this.safeDoneOn(parsed.done_on, referenceDate),
+      confidence: parsed.confidence,
+      claimed,
+      candidates,
+      statedCadenceDays: parsed.stated_cadence_days ?? null,
+    });
+  }
+
+  /**
+   * 모델이 준 날짜는 믿기 전에 본다. 형식이 틀렸거나 기준일보다 뒤(미래)면 기준일로 둔다.
+   * 미래 날짜로 기록되면 다음 알림이 그만큼 밀린다.
+   */
+  private safeDoneOn(doneOn: string, referenceDate: string): string {
+    return /^\d{4}-\d{2}-\d{2}$/.test(doneOn) && doneOn <= referenceDate ? doneOn : referenceDate;
   }
 
   /** 확인 시트(08/09)의 "이대로 저장하기". 시트에서 고친 값이 AI 판단보다 우선한다. */
@@ -244,7 +328,7 @@ export class CaptureService {
    */
   async previewCadence(userId: string, input: CadencePreviewRequest): Promise<CadencePreviewResult> {
     const known = await this.items.listActive(userId);
-    const exact = known.find((i) => squash(i.name) === squash(input.name));
+    const exact = known.find((i) => squashName(i.name) === squashName(input.name));
 
     return {
       matchedItemId: exact?.id ?? null,
@@ -343,39 +427,19 @@ export class CaptureService {
     const matched = name ? await this.findByName(userId, name, known) : null;
 
     if (slots.intent === 'query') {
-      if (matched) return this.answer(userId, input, referenceDate, matched.id, today);
-
-      const rows = await this.items
-        .matchByMeaning(userId, name ?? input.text, null, 5)
-        .catch(() => []);
-      const candidates = this.toCandidates(
-        rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
-        known,
-        today,
-      );
-      const top = candidates[0];
-      if (top && top.similarity >= MATCH_THRESHOLD) {
-        return this.answer(userId, input, referenceDate, top.itemId, today);
-      }
-      if (candidates.length > 0) {
-        return this.slotResult(userId, input, {
-          outcome: 'ambiguous',
-          normalizedName: name,
-          doneOn: referenceDate,
-          matchedItemId: null,
-          candidates,
-          cadence: null,
-          confidence: slots.confidence,
-        });
-      }
-      return this.slotResult(userId, input, {
-        outcome: 'unrecognized',
-        normalizedName: name,
-        doneOn: referenceDate,
-        matchedItemId: null,
-        candidates: [],
-        cadence: null,
+      const rows = matched
+        ? []
+        : await this.items.matchByMeaning(userId, name ?? input.text, null, 5).catch(() => []);
+      return this.answerQuery(userId, input, referenceDate, known, today, {
+        targetId: matched?.id ?? null,
+        name,
+        candidates: this.toCandidates(
+          rows.map((r) => ({ item_id: r.item_id, name: r.name, similarity: r.similarity })),
+          known,
+          today,
+        ),
         confidence: slots.confidence,
+        askGemini: true,
       });
     }
 
@@ -387,32 +451,142 @@ export class CaptureService {
       known,
       today,
     );
-    const claimed = matched?.id ?? null;
-    const outcome = this.decideOutcome(name, slots.confidence, claimed, candidates);
-    const matchedItemId =
-      outcome === 'matched_existing' ? (claimed ?? candidates[0]?.itemId ?? null) : null;
+    return this.recordResult(userId, input, known, {
+      name,
+      doneOn,
+      confidence: slots.confidence,
+      claimed: matched?.id ?? null,
+      candidates,
+      statedCadenceDays: slots.statedCadenceDays,
+    });
+  }
 
-    return this.slotResult(userId, input, {
+  /**
+   * 기록하려는 말의 결과. 칸 경로와 Gemini 경로가 같은 기준을 쓴다.
+   * 기존 항목에 붙으면 이름은 그 항목의 이름으로 보여준다.
+   */
+  private async recordResult(
+    userId: string,
+    input: InterpretRequest,
+    known: ItemRow[],
+    part: {
+      name: string | null;
+      doneOn: string;
+      confidence: number;
+      claimed: string | null;
+      candidates: ItemCandidate[];
+      statedCadenceDays: number | null;
+    },
+  ): Promise<InterpretResult> {
+    const outcome = this.decideOutcome(part.name, part.confidence, part.claimed, part.candidates);
+    const matchedItemId =
+      outcome === 'matched_existing' ? (part.claimed ?? part.candidates[0]?.itemId ?? null) : null;
+
+    return this.draftResult(userId, input, {
       outcome,
       normalizedName: matchedItemId
-        ? (known.find((i) => i.id === matchedItemId)?.name ?? name)
-        : name,
-      doneOn,
+        ? (knownRow(known, matchedItemId)?.name ?? part.name)
+        : part.name,
+      doneOn: part.doneOn,
       matchedItemId,
-      candidates: outcome === 'ambiguous' ? candidates : [],
+      candidates: outcome === 'ambiguous' ? part.candidates : [],
       cadence: await this.resolveCadence(
         userId,
         outcome,
         matchedItemId,
-        name,
-        doneOn,
-        slots.statedCadenceDays,
+        part.name,
+        part.doneOn,
+        part.statedCadenceDays,
       ),
-      confidence: slots.confidence,
+      confidence: part.confidence,
     });
   }
 
-  private slotResult(
+  /**
+   * 묻는 말의 답 — 설계 07-C. 아무것도 기록하지 않는다.
+   * 항목을 짚었거나 후보가 확실하면 답하고, 애매하면 되묻고, 후보가 없으면 못 알아들은 것으로 본다.
+   * 칸 경로와 Gemini 경로가 같은 기준을 쓴다. 새 항목으로 저장하는 길은 없다.
+   *
+   * 글자 비교로 확실히 짚지 못하면(askGemini) Gemini 에게 항목 목록에서 뜻으로 고르게 한다.
+   * 고른 항목도 바로 답하지 않고 되묻기 맨 위에 둔다. 틀린 날짜를 자신 있게 알려주지 않게.
+   */
+  private async answerQuery(
+    userId: string,
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    part: {
+      targetId: string | null;
+      name: string | null;
+      candidates: ItemCandidate[];
+      confidence: number;
+      askGemini: boolean;
+    },
+  ): Promise<InterpretResult> {
+    const top = part.candidates[0];
+    const target = part.targetId ?? (top && top.similarity >= MATCH_THRESHOLD ? top.itemId : null);
+    if (target) return this.answer(userId, input, referenceDate, target, today);
+
+    const candidates = part.askGemini
+      ? await this.withGeminiPick(input, referenceDate, known, today, part.candidates)
+      : part.candidates;
+
+    const result = this.draftResult(userId, input, {
+      outcome: candidates.length > 0 ? 'ambiguous' : 'unrecognized',
+      normalizedName: part.name,
+      doneOn: referenceDate,
+      matchedItemId: null,
+      candidates,
+      cadence: null,
+      confidence: part.confidence,
+    });
+    // 되묻기 시트가 후보를 저장하지 않고 답으로 보여주도록 조회임을 알린다.
+    return { ...result, intent: 'query' };
+  }
+
+  /** 확실히 짚지 못한 조회의 되묻기 목록 맨 앞에 Gemini 가 뜻으로 고른 항목을 둔다. */
+  private async withGeminiPick(
+    input: InterpretRequest,
+    referenceDate: string,
+    known: ItemRow[],
+    today: Date,
+    candidates: ItemCandidate[],
+  ): Promise<ItemCandidate[]> {
+    if (known.length === 0) return candidates;
+    const parsed = await this.askGemini(input, referenceDate, known);
+    if (!parsed || isEmptyParse(parsed)) {
+      this.logger.log('조회 보강 Gemini · 추천 없음');
+      return candidates;
+    }
+
+    // 모델이 없는 id를 지어냈을 수 있으므로 목록에 있는 항목만 받는다.
+    const picked =
+      knownRow(known, parsed.matched_item_id) ??
+      knownRow(known, parsed.candidates.find((c) => knownRow(known, c.item_id))?.item_id);
+    this.logger.log(`조회 보강 Gemini · 추천 ${picked ? '있음' : '없음'}`);
+    if (!picked) return candidates;
+
+    const pick: ItemCandidate = candidates.find((c) => c.itemId === picked.id) ?? {
+      itemId: picked.id,
+      name: picked.name,
+      similarity: Math.min(1, Math.max(0, parsed.confidence)),
+      lastDoneOn: picked.last_done_on,
+      daysSinceLastDone: this.cadence.daysSince(picked.last_done_on, today),
+    };
+    return [pick, ...candidates.filter((c) => c.itemId !== picked.id)].slice(0, 5);
+  }
+
+  /** 문장 해석을 Gemini 에게 맡긴다. 사용자가 가진 항목 목록을 함께 보낸다. */
+  private askGemini(input: InterpretRequest, referenceDate: string, known: ItemRow[]) {
+    return this.ai.parseUtterance({
+      text: input.text,
+      reference_date: referenceDate,
+      known_items: known.map((i) => ({ id: i.id, name: i.name, last_done_on: i.last_done_on })),
+    });
+  }
+
+  private draftResult(
     userId: string,
     input: InterpretRequest,
     part: {
@@ -532,15 +706,15 @@ export class CaptureService {
     name: string,
     known: ItemRow[],
   ): Promise<ItemRow | null> {
-    const squashed = squash(name);
-    const exact = known.find((i) => squash(i.name) === squashed);
+    const squashed = squashName(name);
+    const exact = known.find((i) => squashName(i.name) === squashed);
     if (exact) return exact;
 
     const rows = await this.items.matchByMeaning(userId, name, null, 3).catch(() => []);
     const top = rows[0];
     if (!top || top.similarity < MATCH_THRESHOLD) return null;
 
-    return known.find((i) => i.id === top.item_id) ?? null;
+    return knownRow(known, top.item_id) ?? null;
   }
 
   private async answer(
@@ -555,6 +729,7 @@ export class CaptureService {
     return {
       transcript: input.text,
       outcome: 'answered',
+      intent: 'query',
       normalizedName: item.name,
       doneOn: referenceDate,
       matchedItemId: item.id,

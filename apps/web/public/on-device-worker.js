@@ -1,17 +1,15 @@
 /**
  * Gemma 파일을 OPFS에 받는 워커.
  * GPU 장치는 복제할 수 없어서 올리기는 페이지에서 한다.
+ * 파일 이름·크기는 init 메시지로 받는다 (models.ts).
  */
-const MODEL_OPFS_FILE = 'gemma3-1b-it-int4-web.task';
-const MODEL_META_FILE = 'gemma3-1b-it-int4-web.meta.json';
-const DEFAULT_MODEL_BYTES = 700_383_232;
 const DOWNLOAD_STALL_MS = 30_000;
 
 self.onmessage = async (event) => {
   const msg = event.data;
   try {
     if (msg.type === 'init') {
-      await ensureModelFile(msg.modelUrl, msg.id);
+      await ensureModelFile(msg.model, msg.id);
       self.postMessage({ id: msg.id, type: 'ready' });
       return;
     }
@@ -24,9 +22,9 @@ self.onmessage = async (event) => {
   }
 };
 
-async function ensureModelFile(modelUrl, requestId) {
-  const modelUrlAbs = new URL(modelUrl, self.location.origin).href;
-  const cached = await openCachedFile(modelUrlAbs);
+async function ensureModelFile(model, requestId) {
+  const url = new URL(model.url, self.location.origin).href;
+  const cached = await openCachedFile(model, url);
   if (cached) return cached;
 
   self.postMessage({
@@ -34,24 +32,24 @@ async function ensureModelFile(modelUrl, requestId) {
     type: 'progress',
     stage: 'download',
     loaded: 0,
-    total: DEFAULT_MODEL_BYTES,
+    total: model.bytes,
   });
-  return downloadModel(modelUrlAbs, requestId);
+  return downloadModel(model, url, requestId);
 }
 
-async function openCachedFile(url) {
+async function openCachedFile(model, url) {
   try {
     const root = await navigator.storage.getDirectory();
-    const meta = await readOpfsJson(root, MODEL_META_FILE);
+    const meta = await readOpfsJson(root, model.metaFile);
     if (meta?.url && meta.url !== url) {
-      await removeOpfsModel(root);
+      await removeOpfsModel(root, model);
       return null;
     }
-    const handle = await root.getFileHandle(MODEL_OPFS_FILE);
+    const handle = await root.getFileHandle(model.opfsFile);
     const file = await handle.getFile();
-    const expected = meta?.bytes > 0 ? meta.bytes : DEFAULT_MODEL_BYTES;
+    const expected = meta?.bytes > 0 ? meta.bytes : model.bytes;
     if (!isCompleteSize(file.size, expected)) {
-      await removeOpfsModel(root);
+      await removeOpfsModel(root, model);
       return null;
     }
     return file;
@@ -64,15 +62,12 @@ function isCompleteSize(size, expected) {
   return size === expected;
 }
 
-async function removeOpfsModel(root) {
-  await Promise.allSettled([
-    root.removeEntry(MODEL_OPFS_FILE),
-    root.removeEntry(MODEL_META_FILE),
-  ]);
+async function removeOpfsModel(root, model) {
+  await Promise.allSettled([root.removeEntry(model.opfsFile), root.removeEntry(model.metaFile)]);
 }
 
-async function writeMeta(root, url, bytes) {
-  const metaHandle = await root.getFileHandle(MODEL_META_FILE, { create: true });
+async function writeMeta(root, model, url, bytes) {
+  const metaHandle = await root.getFileHandle(model.metaFile, { create: true });
   const metaWritable = await metaHandle.createWritable();
   await metaWritable.write(JSON.stringify({ url, bytes }));
   await metaWritable.close();
@@ -88,17 +83,17 @@ async function readOpfsJson(root, name) {
   }
 }
 
-async function downloadModel(url, requestId) {
+async function downloadModel(model, url, requestId) {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('모델 파일을 받지 못했어요.');
 
   const total =
     Number(res.headers.get('content-length') || res.headers.get('x-linked-size') || 0) ||
-    DEFAULT_MODEL_BYTES;
+    model.bytes;
 
   const root = await navigator.storage.getDirectory();
-  await removeOpfsModel(root);
-  const handle = await root.getFileHandle(MODEL_OPFS_FILE, { create: true });
+  await removeOpfsModel(root, model);
+  const handle = await root.getFileHandle(model.opfsFile, { create: true });
   const writable = await handle.createWritable();
 
   let loaded = 0;
@@ -129,14 +124,14 @@ async function downloadModel(url, requestId) {
     } catch {
       // ignore
     }
-    await removeOpfsModel(root);
+    await removeOpfsModel(root, model);
     throw err;
   }
 
-  await writeMeta(root, url, loaded);
+  await writeMeta(root, model, url, loaded);
   const file = await handle.getFile();
-  if (!isCompleteSize(file.size, total) && !isCompleteSize(file.size, DEFAULT_MODEL_BYTES)) {
-    await removeOpfsModel(root);
+  if (!isCompleteSize(file.size, total) && !isCompleteSize(file.size, model.bytes)) {
+    await removeOpfsModel(root, model);
     throw new Error('모델 파일이 덜 받아졌어요. 다시 받아 주세요.');
   }
   return file;

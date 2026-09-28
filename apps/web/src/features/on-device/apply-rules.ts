@@ -1,4 +1,4 @@
-import { readUtterance } from '@lastly/parser';
+import { isGroundedName, readUtterance } from '@lastly/parser';
 
 import type { OnDeviceKnownItem, OnDeviceParseResult } from './types';
 
@@ -25,7 +25,10 @@ export function overlayWithRules(
   llm: OnDeviceParseResult,
 ): OnDeviceParseResult {
   const facts = readUtterance(text, new Date(`${referenceDate}T00:00:00`));
-  const itemName = facts.sawAction ? facts.name : llm.itemName;
+  // 모델 이름은 문장에 근거할 때만 쓴다. 버리면 parse-local 이 문장에서 뽑은 이름으로 대신한다.
+  const modelName = llm.itemName?.trim() || null;
+  const grounded = modelName && isGroundedName(modelName, text) ? modelName : null;
+  const itemName = facts.sawAction ? facts.name : grounded;
 
   return {
     ...llm,
@@ -34,7 +37,9 @@ export function overlayWithRules(
     daysAgo: facts.intent === 'query' ? 0 : facts.sawDate ? facts.daysAgo : llm.daysAgo,
     statedCadenceDays: facts.statedCadenceDays ?? llm.statedCadenceDays,
     matchedItemId: matchKnown(itemName, knownItems),
-    willSave: facts.willSave,
+    // 완료 표지가 없는 말(saveKind none)은 "안 했다"가 아니라 "규칙으로는 모름"이다.
+    // 서버 route() 와 같은 기준으로, 막는 것은 안 함·예정·불확실만이다.
+    willSave: facts.willSave || facts.saveKind === 'none',
   };
 }
 

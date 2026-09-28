@@ -17,24 +17,26 @@ import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
 import { CalendarView } from '@/features/calendar/calendar-view';
 import {
   getModelConsent,
-  hasModelConsent,
   setModelConsent,
   clearModelConsent,
 } from '@/features/on-device/consent';
+import { watchLocalAi, type LocalAiSupport } from '@/features/on-device/capability';
 import {
   cancelEngineLoad,
   engineErrorMessage,
+  canUseEngine,
   engineProgressHint,
   engineProgressLabel,
   ensureEngine,
-  hasWebGpu,
   isEngineCancelled,
   subscribeEngineProgress,
   type EngineProgress,
 } from '@/features/on-device/engine';
+import { LOCAL_AI_UNSUPPORTED } from '@/features/on-device/engine-errors';
 import { EngineProgressBar } from '@/features/on-device/engine-progress-bar';
 import { ModelConsentSheet } from '@/features/on-device/model-consent-sheet';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
+import { stopSpeaking } from '@/features/on-device/voice-guidance';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
 import { profileApi } from '@/lib/api/profile';
@@ -156,6 +158,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const [consentOpen, setConsentOpen] = useState(false);
   const [modelProgress, setModelProgress] = useState<EngineProgress | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
+  /** 받거나 올리다 기기 때문에 실패했을 때 한 번 알린다. 이후 받기 안내는 뜨지 않는다. */
+  const [localAiNotice, setLocalAiNotice] = useState<string | null>(null);
   /** 상세에서 항목을 지우고 넘어왔다면 되돌릴 기회를 띄운다. */
   const [deleted, setDeleted] = useState<DeletedNotice | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
@@ -244,6 +248,12 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         setConsentOpen(false);
       }
       if (next.status === 'error') {
+        if (next.message === LOCAL_AI_UNSUPPORTED) {
+          setModelError(null);
+          setConsentOpen(false);
+          setLocalAiNotice(next.message);
+          return;
+        }
         setModelError(next.message);
         setConsentOpen(true);
       }
@@ -253,19 +263,33 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     });
   }, []);
 
+  /**
+   * 앱을 켤 때 이 기기에서 로컬 AI 를 쓸 수 있는지 먼저 본다(capability.ts).
+   * 못 쓰는 기기에는 받기 안내를 띄우지 않는다. Nano 는 받을 것이 없어 묻지 않는다.
+   */
   useEffect(() => {
-    if (typeof window !== 'undefined' && !window.isSecureContext) {
-      setModelError('이 주소에서는 쓸 수 없어요. localhost로 열어 주세요.');
-      if (getModelConsent() !== 'declined') setConsentOpen(true);
-      return;
-    }
-    if (!hasWebGpu()) return;
-    if (getModelConsent() === null) setConsentOpen(true);
-    if (hasModelConsent()) void ensureEngine().catch((err) => {
-      if (isEngineCancelled(err)) return;
-      setModelError(engineErrorMessage(err));
+    return watchLocalAi((support: LocalAiSupport) => {
+      // 판정이 바뀌면(Nano 실패 → Gemma 등) 앞 모델의 오류 문구를 남기지 않는다.
+      setModelError(null);
+      if (support.kind === 'none') {
+        setConsentOpen(false);
+        return;
+      }
+      if (canUseEngine()) {
+        void ensureEngine().catch(showModelError);
+        return;
+      }
+      if (getModelConsent() === null) setConsentOpen(true);
     });
   }, []);
+
+  function showModelError(err: unknown) {
+    if (isEngineCancelled(err)) return;
+    const message = engineErrorMessage(err);
+    // 기기 탓 실패는 진행 알림에서 토스트로 한 번 알렸다.
+    if (message === LOCAL_AI_UNSUPPORTED) return;
+    setModelError(message);
+  }
 
   const restore = useMutation({
     mutationFn: (id: string) => itemsApi.restore(id),
@@ -289,6 +313,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
    */
   const retryWithVoice = () => {
     capture.cancel();
+    // 시트가 읽던 안내를 먼저 끊는다. 말하는 중에는 마이크를 못 잡는 브라우저가 있다(iOS Safari).
+    stopSpeaking();
     if (downloadingModel) inputRef.current?.focus();
     else if (speech.supported) speech.start();
     else inputRef.current?.focus();
@@ -540,6 +566,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         <Toast message={capture.pendingSaved} onDismiss={capture.dismissPendingSaved} durationMs={6000} />
       ) : null}
 
+      {localAiNotice ? (
+        <Toast message={localAiNotice} onDismiss={() => setLocalAiNotice(null)} />
+      ) : null}
+
       {capture.deferredMessage ? (
         <Toast message={capture.deferredMessage} onDismiss={capture.dismissDeferred} />
       ) : null}
@@ -553,10 +583,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           setModelError(null);
           void ensureEngine()
             .then(() => setConsentOpen(false))
-            .catch((err) => {
-              if (isEngineCancelled(err)) return;
-              setModelError(engineErrorMessage(err));
-            });
+            .catch(showModelError);
         }}
         onLater={() => {
           setModelConsent('declined');

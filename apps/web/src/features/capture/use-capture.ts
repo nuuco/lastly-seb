@@ -4,7 +4,13 @@ import type { CadenceRule, CommitResult, InterpretResult } from '@lastly/contrac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
-import { parseCaptureLocally, toClientSlots } from '@/features/on-device/parse-local';
+import { getLocalAiSupport } from '@/features/on-device/capability';
+import { activeModelSpec } from '@/features/on-device/engine';
+import {
+  DEFERRED_MESSAGE,
+  interpretLocally,
+  type LocalInterpretation,
+} from '@/features/on-device/parse-local';
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { speak } from '@/features/on-device/voice-guidance';
 import { captureApi } from '@/lib/api/capture';
@@ -70,22 +76,22 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       asrConfidence?: number;
       knownItems?: OnDeviceKnownItem[];
     }) => {
-      const parsed = await parseCaptureLocally(
-        input.text,
-        todayIso(),
-        input.knownItems ?? [],
-      );
+      const started = performance.now();
+      const local = await interpretLocally(input.text, todayIso(), input.knownItems ?? []);
 
-      if (parsed && !parsed.willSave && parsed.intent === 'record') {
-        return { deferred: '아직 안 한 일은 기록하지 않아요' as const };
+      if (local.deferred) {
+        logInterpretPath('기기 규칙 (저장 안 함)', local, started);
+        return { deferred: DEFERRED_MESSAGE };
       }
 
-      return captureApi.interpret({
+      const result = await captureApi.interpret({
         text: input.text,
         mode: input.mode,
         asrConfidence: input.asrConfidence,
-        slots: parsed ? toClientSlots(parsed) : undefined,
+        slots: local.slots,
       });
+      logInterpretPath(result.via ?? '알 수 없음', local, started, result.outcome);
+      return result;
     },
     onMutate: (input) => {
       abandoned.current = false;
@@ -220,10 +226,57 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     },
   });
 
-  /** 재확인 시트에서 후보를 골랐을 때 — 바로 저장으로 넘어간다. */
+  /**
+   * 조회 되묻기에서 고른 항목의 답 — 설계 07-C. 아무것도 저장하지 않는다.
+   * 항목을 못 읽으면(연결 끊김) 후보에 실려 온 마지막 수행일로 답한다.
+   */
+  const answerCandidate = useMutation({
+    mutationFn: async (itemId: string): Promise<NonNullable<InterpretResult['answer']>> => {
+      try {
+        const item = await itemsApi.get(itemId);
+        return {
+          itemId: item.id,
+          name: item.name,
+          lastDoneOn: item.lastDoneOn,
+          daysSinceLastDone: item.daysSinceLastDone,
+          nextDueOn: item.nextDueOn,
+          daysUntilDue: item.daysUntilDue,
+        };
+      } catch {
+        const candidate = result?.candidates.find((c) => c.itemId === itemId);
+        if (!candidate) throw new Error('항목을 찾지 못했어요');
+        return {
+          itemId,
+          name: candidate.name,
+          lastDoneOn: candidate.lastDoneOn,
+          daysSinceLastDone: candidate.daysSinceLastDone,
+          nextDueOn: null,
+          daysUntilDue: null,
+        };
+      }
+    },
+    onSuccess: (answer) => {
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              outcome: 'answered',
+              normalizedName: answer.name,
+              matchedItemId: answer.itemId,
+              candidates: [],
+              answer,
+            }
+          : prev,
+      );
+      setStep('answered');
+    },
+  });
+
+  /** 재확인 시트에서 후보를 골랐을 때. 기록이면 바로 저장, 조회면 그 항목의 답을 보여준다. */
   const chooseCandidate = useCallback(
-    (itemId: string) => commit.mutate({ itemId }),
-    [commit],
+    (itemId: string) =>
+      result?.intent === 'query' ? answerCandidate.mutate(itemId) : commit.mutate({ itemId }),
+    [answerCandidate, commit, result?.intent],
   );
 
   /** 재확인 시트에서 "새 항목으로 만들기". 이름은 원문을 그대로 쓴다. */
@@ -290,7 +343,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     interpret: interpret.mutate,
     interpreting: interpret.isPending,
     commit: commit.mutate,
-    committing: commit.isPending,
+    committing: commit.isPending || answerCandidate.isPending,
     chooseCandidate,
     createAsNew,
     saveRaw: saveRaw.mutate,
@@ -335,4 +388,24 @@ function stepForOutcome(result: InterpretResult): CaptureStep {
     case 'unrecognized':
       return 'retry';
   }
+}
+
+/**
+ * 개발자도구 콘솔에서 해석 경로를 본다. 화면에는 보이지 않는다. 문장 원문은 찍지 않는다.
+ * via: rules(서버 규칙) · client(브라우저 칸) · gemini · none(되묻기)
+ */
+function logInterpretPath(
+  via: string,
+  local: LocalInterpretation,
+  started: number,
+  outcome?: string,
+) {
+  console.info('[lastly] 해석', {
+    via,
+    기기: local.usedModel ? activeModelSpec().id : local.slots ? '규칙' : '안 씀',
+    기기오류: local.modelError,
+    로컬AI: getLocalAiSupport()?.kind ?? '판정 전',
+    outcome,
+    ms: Math.round(performance.now() - started),
+  });
 }

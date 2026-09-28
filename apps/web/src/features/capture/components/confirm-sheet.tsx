@@ -4,7 +4,7 @@ import type { CadenceRule, InterpretResult } from '@lastly/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { Sheet, SheetActions, SheetRow } from '@/components/ui/sheet';
+import { Sheet, SheetActions, SheetHeader, SheetRow } from '@/components/ui/sheet';
 import { isVoiceGuidanceOn } from '@/features/on-device/consent';
 import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
@@ -27,7 +27,7 @@ interface ConfirmSheetProps {
     cadence?: CadenceRule;
   }) => void;
   onRetry: () => void;
-  /** 응/아니의 아니 — 시트를 닫는다. */
+  /** 취소 버튼·음성 "아니" — 저장하지 않고 시트만 닫는다. */
   onCancel?: () => void;
   committing: boolean;
   mode?: 'voice' | 'text';
@@ -109,7 +109,7 @@ export function ConfirmSheet({
     : (shown?.rationale ?? '');
   const showVoiceHint = mode === 'voice' && isVoiceGuidanceOn();
 
-  useSpokenConfirm({
+  const stopListening = useSpokenConfirm({
     enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
     prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
     onYes: () => onConfirm(confirmPayload),
@@ -119,6 +119,19 @@ export function ConfirmSheet({
   return (
     <>
       <Sheet open={open} onClose={onRetry} dismissible={false} label="기록 확인">
+        {/*
+         * 배경 탭으로는 닫지 않는다(방금 말한 것을 실수로 잃지 않게). 대신 저장도 다시 말하기도
+         * 아닌 "그만두기" 는 이 버튼으로 연다. 되묻기 시트와 같은 자리·모양이다.
+         */}
+        <SheetHeader
+          title="기록 확인"
+          onCancel={() => {
+            stopListening();
+            (onCancel ?? onRetry)();
+          }}
+          disabled={committing}
+          className="mb-[22px]"
+        />
         <p className="text-13 text-ink-3">이렇게 들었어요</p>
         <p className="mt-2 text-18 font-semibold tracking-[-.02em] text-ink-2">
           “{result.transcript}”
@@ -211,7 +224,15 @@ export function ConfirmSheet({
             disabled: committing || !name.trim(),
             onClick: () => onConfirm(confirmPayload),
           }}
-          secondary={{ label: '다시 말하기', onClick: onRetry, disabled: committing }}
+          secondary={{
+            label: '다시 말하기',
+            // 응/아니 듣기를 먼저 끝내야 같은 틱에 켜는 새 음성 인식이 마이크를 잡는다.
+            onClick: () => {
+              stopListening();
+              onRetry();
+            },
+            disabled: committing,
+          }}
         />
       </Sheet>
 
