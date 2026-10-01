@@ -100,6 +100,7 @@ import {
   type RuleEdit,
   type RuleKey,
 } from './rules-lab';
+import { VoiceConfirmLab } from './voice-confirm-lab';
 
 const ENGINES: EngineId[] = ['rule', 'gemma3-1b', 'gemma3-270m', 'chrome-nano', 'cloud-gemini'];
 const MODES: RunMode[] = ['app', 'experiment'];
@@ -534,6 +535,8 @@ export function LabScreen() {
         }
         footer={'고친 뒤 ③에서 "앱 경로"로 다시 돌리면 표 2에 "앱 지시문 #번호" 줄이 원본 줄과 나란히 생겨요.'}
       />
+
+      <VoiceConfirmLab />
     </main>
   );
 }

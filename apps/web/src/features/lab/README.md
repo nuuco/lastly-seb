@@ -32,3 +32,4 @@ dev 서버이거나 `NEXT_PUBLIC_ENABLE_LAB=true` 일 때만 열린다.
 - `rules-lab.ts` 규칙 고쳐 보기
 - `cloud-gemini.ts` Cloud LLM 줄 (apps/ai 와 같은 지시문)
 - `lab-store.ts` 결과를 이 브라우저에 저장
+- `voice-confirm-lab.tsx` ⑩ 확인 시트 응/아니 듣기를 서버 없이 돌리고 시간 기록 표시
