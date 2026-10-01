@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   detachRecognition,
   getSpeechRecognitionCtor,
+  speechUnavailableMessage,
   type SpeechRecognitionLike,
 } from '@/lib/speech';
 
@@ -115,7 +116,7 @@ export function useSpeechRecognition() {
   const start = useCallback(() => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
-      setState((prev) => ({ ...prev, error: '이 브라우저에서는 음성 입력을 쓸 수 없어요.' }));
+      setState((prev) => ({ ...prev, error: speechUnavailableMessage() }));
       return;
     }
 
@@ -193,7 +194,13 @@ export function useSpeechRecognition() {
     [],
   );
 
-  return { ...state, start, stop: requestStop, reset };
+  /** 음성 입력을 못 쓰는 환경에서 마이크를 눌렀을 때 이유를 보인다. */
+  const explainUnavailable = useCallback(
+    () => setState((prev) => ({ ...prev, error: speechUnavailableMessage() })),
+    [],
+  );
+
+  return { ...state, start, stop: requestStop, reset, explainUnavailable };
 }
 
 function describeError(code: string): string {

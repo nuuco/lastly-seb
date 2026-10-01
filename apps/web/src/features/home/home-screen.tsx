@@ -317,7 +317,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     stopSpeaking();
     if (downloadingModel) inputRef.current?.focus();
     else if (speech.supported) speech.start();
-    else inputRef.current?.focus();
+    else {
+      speech.explainUnavailable();
+      inputRef.current?.focus();
+    }
   };
 
   const submitDraft = (mode: 'voice' | 'text') => {
@@ -461,7 +464,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           if (capture.step !== 'idle') capture.cancel();
           if (speech.listening) speech.stop();
           else if (speech.supported) speech.start();
-          else inputRef.current?.focus();
+          else {
+            speech.explainUnavailable();
+            inputRef.current?.focus();
+          }
         }}
         micDisabled={downloadingModel}
         listening={speech.listening}
