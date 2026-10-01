@@ -15,6 +15,7 @@ import {
 
 /** 2026-09-13 은 일요일. 요일 계산이 걸린 케이스의 기준일이다. */
 const SUN = new Date(2026, 8, 13);
+const MON = new Date(2026, 8, 14);
 
 describe('주기 읽기', () => {
   it.each([
@@ -58,6 +59,15 @@ describe('날짜 읽기', () => {
     ['이틀 전에 했어', 2],
   ])('%s → %s일 전', (text, days) => {
     expect(readDaysAgo(text, SUN).daysAgo).toBe(days);
+  });
+
+  it.each([
+    ['일욜 청소기 돌렸어', 1, '청소기 돌리기'],
+    ['일욜에 청소기 돌렸어', 1, '청소기 돌리기'],
+    ['일요일 청소기 돌렸어', 1, '청소기 돌리기'],
+  ])('%s를 지난 일요일의 기록으로 읽는다', (text, days, name) => {
+    expect(readDaysAgo(text, MON)).toEqual({ daysAgo: days, saw: true });
+    expect(readName(text)).toBe(name);
   });
 
   it('지난주 요일은 기준일에서 거슬러 센다', () => {
