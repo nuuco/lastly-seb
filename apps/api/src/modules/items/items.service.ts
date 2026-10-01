@@ -150,7 +150,19 @@ export class ItemsService {
   async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
     const patch: Record<string, unknown> = {};
 
-    if (input.name !== undefined) patch.name = input.name;
+    if (input.name !== undefined) {
+      const name = input.name.trim();
+      const current = await this.items.findById(userId, itemId);
+      if (name) patch.name = name;
+      if (name && name !== current.name) {
+        const taken = await this.items.findByName(userId, name);
+        if (taken && taken.id !== itemId) {
+          throw new ConflictException('같은 이름의 항목이 이미 있어요.');
+        }
+        // 말로 찾을 때 쓰는 임베딩도 새 이름으로. 실패하면 비워 두고 이름 일치로 찾게 한다.
+        patch.name_embedding = (await this.ai.embed(name))?.embedding ?? null;
+      }
+    }
     if (input.status !== undefined) patch.status = input.status;
     if (input.cadenceSource !== undefined) patch.cadence_source = input.cadenceSource;
     if (input.cadence) {
