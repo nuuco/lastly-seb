@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { Sheet, SheetActions, SheetHeader, SheetRow } from '@/components/ui/sheet';
-import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
+import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
 import { describeCadence, formatShortDate, ruleToDays, todayIso } from '@/lib/date';
@@ -26,7 +26,7 @@ interface ConfirmSheetProps {
     cadence?: CadenceRule;
   }) => void;
   onRetry: () => void;
-  /** 취소 버튼 — 저장하지 않고 시트만 닫는다. */
+  /** 취소 버튼·음성 "아니" — 저장하지 않고 시트만 닫는다. */
   onCancel?: () => void;
   committing: boolean;
   mode?: 'voice' | 'text';
@@ -107,14 +107,12 @@ export function ConfirmSheet({
     ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
     : (shown?.rationale ?? '');
 
-  /** 말로 들어온 기록이면 들은 내용을 읽어 준다. 답은 버튼으로만 받는다. */
-  const spoken = open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim());
-  const spokenText = `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)} 한 걸로 들었어요`;
-  useEffect(() => {
-    if (!spoken) return;
-    speak(spokenText);
-    return () => stopSpeaking();
-  }, [spoken, spokenText]);
+  const stopListening = useSpokenConfirm({
+    enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
+    prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
+    onYes: () => onConfirm(confirmPayload),
+    onNo: () => (onCancel ?? onRetry)(),
+  });
 
   return (
     <>
@@ -125,7 +123,10 @@ export function ConfirmSheet({
          */}
         <SheetHeader
           title="기록 확인"
-          onCancel={() => (onCancel ?? onRetry)()}
+          onCancel={() => {
+            stopListening();
+            (onCancel ?? onRetry)();
+          }}
           disabled={committing}
           className="mb-[22px]"
         />
@@ -218,7 +219,11 @@ export function ConfirmSheet({
           }}
           secondary={{
             label: '다시 말하기',
-            onClick: onRetry,
+            // 응/아니 듣기를 먼저 끝내야 같은 틱에 켜는 새 음성 인식이 마이크를 잡는다.
+            onClick: () => {
+              stopListening();
+              onRetry();
+            },
             disabled: committing,
           }}
         />
