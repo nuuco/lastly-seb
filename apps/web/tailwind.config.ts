@@ -40,6 +40,8 @@ const config: Config = {
         'dot-on': 'var(--lastly-dot-on)',
         'dot-off': 'var(--lastly-dot-off)',
         'dot-mute': 'var(--lastly-dot-mute)',
+        'dot-due': 'var(--lastly-dot-due)',
+        'due-ink': 'var(--lastly-due-ink)',
 
         'listen-edge': 'var(--lastly-listen-edge)',
         'ink-mute': 'var(--lastly-ink-mute)',

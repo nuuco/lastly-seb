@@ -97,7 +97,7 @@ export function CalendarView({
       </div>
 
       <div className="mt-3 flex items-center gap-3.5 px-1.5 text-12 text-ink-3">
-        <Legend className="bg-action" label="예정일" />
+        <Legend className="bg-dot-due" label="예정일" />
         <Legend className="bg-dot-mute" label="완료 이력" />
         <Legend className="bg-danger" label="밀린 항목" />
       </div>
@@ -188,11 +188,12 @@ function Legend({ className, label }: { className: string; label: string }) {
   );
 }
 
+// 예정은 더스티 블루, 밀림은 빨강. 테라코타(action)는 danger 와 붙어 보여 쓰지 않는다.
 const kindDot = (kind: CalendarMark['kind']) =>
-  kind === 'due' ? 'bg-action' : kind === 'overdue' ? 'bg-danger' : 'bg-dot-mute';
+  kind === 'due' ? 'bg-dot-due' : kind === 'overdue' ? 'bg-danger' : 'bg-dot-mute';
 
 const kindTone = (kind: CalendarMark['kind']) =>
-  kind === 'due' ? 'text-action' : kind === 'overdue' ? 'text-danger' : 'text-ink-3';
+  kind === 'due' ? 'text-due-ink' : kind === 'overdue' ? 'text-danger' : 'text-ink-3';
 
 function kindLabel(mark: CalendarMark): string {
   if (mark.kind === 'done') return '했어요';
