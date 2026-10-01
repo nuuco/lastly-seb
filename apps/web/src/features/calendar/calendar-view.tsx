@@ -33,6 +33,8 @@ export function CalendarView({
   const data = useQuery({
     queryKey: ['calendar', month],
     queryFn: () => itemsApi.calendar(month),
+    // 기록·이름·주기는 홈·상세 여러 곳에서 바뀐다. 무효화를 곳곳에 두는 대신 달력을 열 때마다 새로 받는다.
+    staleTime: 0,
   });
 
   const days = data.data?.days ?? {};

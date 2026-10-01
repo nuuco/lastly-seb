@@ -36,9 +36,10 @@ export function RenameSheet({ itemId, name, onClose, onSaved }: RenameSheetProps
       await itemsApi.update(itemId, { name: next });
       onSaved();
     } catch (e) {
+      // 이름이 겹치면 서버가 이유를 말해 준다. 그 밖의 실패는 다시 시도를 권한다.
       setError(
         e instanceof ApiError && e.status === 409
-          ? '같은 이름의 항목이 이미 있어요.'
+          ? e.message
           : '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
       );
     } finally {

@@ -60,8 +60,6 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
       queryClient.invalidateQueries({ queryKey: queryKeys.item(itemId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.logs(itemId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.home }),
-      // 달력은 달마다 따로 캐시한다. 이름·기록이 바뀌면 모든 달을 다시 받는다.
-      queryClient.invalidateQueries({ queryKey: ['calendar'] }),
     ]);
 
   const complete = useMutation({
