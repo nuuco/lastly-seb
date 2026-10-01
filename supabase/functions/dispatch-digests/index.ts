@@ -177,6 +177,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  /**
+   * 한 사람에게만 보내고 싶을 때. 처음 켤 때 자기 계정으로만 확인하기 위한 것이다.
+   * cron 은 본문을 비워 보내므로 평소에는 모든 대상에게 간다.
+   */
+  const onlyUserId = await req
+    .json()
+    .then((b) => (typeof b?.userId === 'string' ? b.userId : null))
+    .catch(() => null);
+
   const now = new Date();
   const { data, error } = await admin.rpc('users_due_for_digest', { p_now: now.toISOString() });
 
@@ -188,7 +197,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  const rows = (data ?? []) as DigestRow[];
+  const all = (data ?? []) as DigestRow[];
+  const rows = onlyUserId ? all.filter((r) => r.user_id === onlyUserId) : all;
   let sent = 0;
   let failed = 0;
 
@@ -203,7 +213,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  console.log(`다이제스트 대상 ${rows.length}명 · 발송 ${sent} · 실패 ${failed}`);
+  console.log(
+    `다이제스트 대상 ${rows.length}명 · 발송 ${sent} · 실패 ${failed}` +
+      (onlyUserId ? ` (전체 ${all.length}명 중 지정한 1명만)` : ''),
+  );
 
   return new Response(JSON.stringify({ candidates: rows.length, sent, failed }), {
     headers: { 'Content-Type': 'application/json' },
