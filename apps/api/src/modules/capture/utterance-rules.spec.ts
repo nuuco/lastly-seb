@@ -154,6 +154,7 @@ describe('이름 읽기', () => {
   it.each([
     ['나 오늘 책 읽었고 일주일에 한번씩 읽을거야', '책 읽기', 7],
     ['주방후드 청소했고 다음주부터 일주일에 한번씩할거야', '주방후드 청소', 7],
+    ['일요일 책읽음', '책 읽기', null],
     ['내일 방 청소할 거야', '방 청소', null],
     ['모레 이불 빨 거야', '이불 빨래', null],
     ['주 1회 필터 갈았어', '필터 교체', 7],
@@ -162,6 +163,17 @@ describe('이름 읽기', () => {
     const got = readNameWithAction(text);
     expect(got).toEqual({ name, sawAction: true });
     if (cadenceDays !== null) expect(readCadenceDays(text)).toBe(cadenceDays);
+  });
+
+  it('붙여 쓴 읽음도 완료 행동으로 읽는다', () => {
+    expect(readUtterance('일요일 책읽음', SUN)).toMatchObject({
+      daysAgo: 0,
+      sawDate: true,
+      name: '책 읽기',
+      sawAction: true,
+      willSave: true,
+      saveKind: 'completed',
+    });
   });
 });
 
