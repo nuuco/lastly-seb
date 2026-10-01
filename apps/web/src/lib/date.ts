@@ -108,10 +108,14 @@ export function nextDueAfter(doneOn: string, rule: CadenceRule): string {
     return format(base, 'yyyy-MM-dd');
   }
 
-  // N주마다 그 요일들. 한 날이 속한 주(월요일 시작)에 남은 요일, 없으면 N주 뒤 주의 첫 요일.
-  const weekStart = addDays(from, -((from.getDay() + 6) % 7));
+  // N주마다 그 요일들. 한 날은 가장 가까운 지정 요일의 차례로 보고(같으면 앞쪽),
+  // 그 차례의 주(월요일 시작)에 남은 요일, 없으면 N주 뒤 주의 첫 요일.
+  const slot = [0, -1, 1, -2, 2, -3, 3]
+    .map((k) => addDays(from, k))
+    .find((d) => rule.weekdays.includes(d.getDay()))!;
+  const weekStart = addDays(slot, -((slot.getDay() + 6) % 7));
   const offsets = rule.weekdays.map((d) => (d + 6) % 7).sort((a, b) => a - b);
-  const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > from);
+  const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > slot);
   const next = later ?? addDays(addWeeks(weekStart, rule.interval), offsets[0]!);
   return format(next, 'yyyy-MM-dd');
 }

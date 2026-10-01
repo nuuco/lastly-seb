@@ -51,6 +51,20 @@ describe('CadenceService', () => {
     ).toEqual(['2026-10-02', '2026-10-07', '2026-10-09', '2026-10-14', '2026-10-16']);
   });
 
+  it('일찍 하면 다가오던 차례를 채운 것으로 본다', () => {
+    // 매주 토요일인데 09-17(목)에 함 → 09-19(토) 가 아니라 09-26(토)
+    expect(service.nextDueOn('2026-09-17', rule({ interval: 1, weekdays: [6] }))).toBe('2026-09-26');
+    // 격주 토요일을 09-17(목)에 함 → 10-03(토)
+    expect(service.nextDueOn('2026-09-17', rule({ interval: 2, weekdays: [6] }))).toBe('2026-10-03');
+  });
+
+  it('늦게 하면 지나간 차례를 채운 것으로 본다', () => {
+    // 격주 토요일을 09-07(월)에 함 → 09-05(토) 차례 → 09-19(토)
+    expect(service.nextDueOn('2026-09-07', rule({ interval: 2, weekdays: [6] }))).toBe('2026-09-19');
+    // 수·금인데 10-03(토)에 함 → 10-02(금) 차례 → 10-07(수)
+    expect(service.nextDueOn('2026-10-03', rule({ interval: 1, weekdays: [3, 5] }))).toBe('2026-10-07');
+  });
+
   it('일요일 지정은 그 주의 마지막 날이다', () => {
     // 10-05(월) → 같은 주 일요일 10-11
     expect(service.nextDueOn('2026-10-05', rule({ interval: 1, weekdays: [0] }))).toBe('2026-10-11');

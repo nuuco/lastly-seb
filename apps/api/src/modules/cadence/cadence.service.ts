@@ -28,10 +28,14 @@ export class CadenceService {
     }
 
     // 요일 지정은 "N주마다 그 요일들" 이다. 한 주는 월요일에 시작한다.
-    // 한 날이 속한 주에 남은 지정 요일이 있으면 그날, 없으면 N주 뒤 주의 첫 지정 요일.
-    const weekStart = addDays(from, -((getDay(from) + 6) % 7));
+    // 한 날은 가장 가까운 지정 요일의 차례로 본다(거리가 같으면 앞쪽). 늦게 하든 일찍 하든 그 차례를 채운 것이다.
+    // 그 차례의 주에 남은 지정 요일이 있으면 그날, 없으면 N주 뒤 주의 첫 지정 요일.
+    const slot = [0, -1, 1, -2, 2, -3, 3]
+      .map((k) => addDays(from, k))
+      .find((d) => rule.weekdays.includes(getDay(d)))!;
+    const weekStart = addDays(slot, -((getDay(slot) + 6) % 7));
     const offsets = rule.weekdays.map((d) => (d + 6) % 7).sort((a, b) => a - b);
-    const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > from);
+    const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > slot);
     const next = later ?? addDays(addWeeks(weekStart, rule.interval), offsets[0]!);
     return format(next, 'yyyy-MM-dd');
   }
