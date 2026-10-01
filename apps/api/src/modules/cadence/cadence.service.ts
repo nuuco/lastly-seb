@@ -16,21 +16,24 @@ export class CadenceService {
     if (!lastDoneOn) return null;
 
     const from = parseISO(lastDoneOn);
-    const base =
-      rule.unit === 'day'
-        ? addDays(from, rule.interval)
-        : rule.unit === 'week'
-          ? addWeeks(from, rule.interval)
-          : addMonths(from, rule.interval);
 
     if (rule.unit !== 'week' || rule.weekdays.length === 0) {
+      const base =
+        rule.unit === 'day'
+          ? addDays(from, rule.interval)
+          : rule.unit === 'week'
+            ? addWeeks(from, rule.interval)
+            : addMonths(from, rule.interval);
       return format(base, 'yyyy-MM-dd');
     }
 
-    // 지정 요일 중 base 이후(당일 포함) 가장 이른 날로 스냅한다.
-    const baseDow = getDay(base);
-    const bestDelta = Math.min(...rule.weekdays.map((d) => (d - baseDow + 7) % 7));
-    return format(addDays(base, bestDelta), 'yyyy-MM-dd');
+    // 요일 지정은 "N주마다 그 요일들" 이다. 한 주는 월요일에 시작한다.
+    // 한 날이 속한 주에 남은 지정 요일이 있으면 그날, 없으면 N주 뒤 주의 첫 지정 요일.
+    const weekStart = addDays(from, -((getDay(from) + 6) % 7));
+    const offsets = rule.weekdays.map((d) => (d + 6) % 7).sort((a, b) => a - b);
+    const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > from);
+    const next = later ?? addDays(addWeeks(weekStart, rule.interval), offsets[0]!);
+    return format(next, 'yyyy-MM-dd');
   }
 
   /**
