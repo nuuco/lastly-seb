@@ -202,8 +202,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         mode: 'voice',
         knownItems: knownFrom(shownRef.current),
       });
+      // 들은 말이 없으면 비우지 않는다. 함께 온 안내(권한·홈 화면 앱)가 지워진다.
+      resetSpeech();
     }
-    resetSpeech();
   }, [listening, transcript, resetSpeech]);
 
   /** 해석이 시작되면 메인 마이크를 놓는다. */
