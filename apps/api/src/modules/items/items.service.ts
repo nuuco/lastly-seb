@@ -125,9 +125,7 @@ export class ItemsService {
   }
 
   async create(userId: string, input: CreateItemInput, today = appToday()): Promise<Item> {
-    if (await this.items.findByName(userId, input.name)) {
-      throw new ConflictException('같은 이름의 항목이 이미 있어요.');
-    }
+    await this.assertNameFree(userId, input.name);
 
     // 임베딩은 있으면 좋고 없어도 되는 값이다. 실패해도 항목 생성은 진행한다.
     const embedding = (await this.ai.embed(input.name))?.embedding ?? null;
@@ -150,15 +148,12 @@ export class ItemsService {
   async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
     const patch: Record<string, unknown> = {};
 
-    if (input.name !== undefined) {
-      const name = input.name.trim();
+    const name = input.name?.trim();
+    if (name) {
+      patch.name = name;
       const current = await this.items.findById(userId, itemId);
-      if (name) patch.name = name;
-      if (name && name !== current.name) {
-        const taken = await this.items.findByName(userId, name);
-        if (taken && taken.id !== itemId) {
-          throw new ConflictException('같은 이름의 항목이 이미 있어요.');
-        }
+      if (name !== current.name) {
+        await this.assertNameFree(userId, name, itemId);
         // 말로 찾을 때 쓰는 임베딩도 새 이름으로. 실패하면 비워 두고 이름 일치로 찾게 한다.
         patch.name_embedding = (await this.ai.embed(name))?.embedding ?? null;
       }
@@ -187,6 +182,14 @@ export class ItemsService {
 
     return toItem(await this.items.update(userId, itemId, patch), this.cadence, today);
   }
+  /** 같은 사람에게 같은 이름의 항목은 하나뿐이다(DB items_name_unique_per_user). */
+  private async assertNameFree(userId: string, name: string, exceptId?: string): Promise<void> {
+    const taken = await this.items.findByName(userId, name);
+    if (taken && taken.id !== exceptId) {
+      throw new ConflictException('같은 이름의 항목이 이미 있어요.');
+    }
+  }
+
   async remove(userId: string, itemId: string): Promise<void> {
     await this.items.archive(userId, itemId);
   }
