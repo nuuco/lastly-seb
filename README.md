@@ -62,6 +62,7 @@ web ──HTTP──> api ──HTTP──> ai ──> Gemini
 | `packages/contracts` | web ↔ api 공유 zod 스키마 | [README](packages/contracts/README.md) |
 | `packages/parser` | LLM 없이 문장에서 뽑는 규칙 | [README](packages/parser/README.md) |
 | `packages/design-tokens` | 설계에서 추출한 색·타이포·그림자 | [tokens.css](packages/design-tokens/src/tokens.css) |
+| 인프라 | 서버 위치 · 슬립 대응 · 저장 정책. **왜 그렇게 정했는가** | [INFRA.md](docs/INFRA.md) |
 
 작업 규칙 — 커밋 메시지 형식, 화면을 손대기 전 대조, dev 와 build 를 같이 돌리면
 깨지는 이유 — 은 [CLAUDE.md](CLAUDE.md) 에 있다. 사람이 읽어도 되고 AI 에게
