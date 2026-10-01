@@ -7,6 +7,19 @@
 -- 늦게 하든 일찍 하든 그 차례를 채운 것으로 본다.
 -- 그 차례의 주(월요일 시작)에 남은 지정 요일이 있으면 그날, 없으면 N주 뒤 주의 첫 지정 요일.
 -- apps/api 의 CadenceService.nextDueOn, apps/web 의 nextDueAfter 와 같은 규칙이다.
+
+-- 다시 계산할 항목은 함수를 바꾸기 전에 고른다. 저장된 날짜가 이전 규칙의 결과와 같은 항목만이다.
+-- 알림의 "3일 뒤" · "주말에" 처럼 next_due_on 만 직접 미룬 항목과 쉬어가는 항목은 사용자가 고른 날짜를 지킨다.
+create temp table weekday_cadence_targets as
+  select id
+    from public.items
+   where cadence_unit = 'week'
+     and cardinality(cadence_weekdays) > 0
+     and snoozed_until is null
+     and next_due_on is not distinct from public.calc_next_due(
+           last_done_on, cadence_unit, cadence_interval, cadence_weekdays
+         );
+
 create or replace function public.calc_next_due(
   p_from      date,
   p_unit      public.cadence_unit,
@@ -65,12 +78,11 @@ begin
 end;
 $$;
 
--- 이미 저장된 요일 지정 항목의 다음 예정일을 새 규칙으로 다시 잡는다.
--- 쉬어가는 중인 항목은 사용자가 고른 날짜를 지킨다.
+-- 고른 항목의 다음 예정일을 새 규칙으로 다시 잡는다.
 update public.items
    set next_due_on = public.calc_next_due(
                        last_done_on, cadence_unit, cadence_interval, cadence_weekdays
                      )
- where cadence_unit = 'week'
-   and cardinality(cadence_weekdays) > 0
-   and snoozed_until is null;
+ where id in (select id from weekday_cadence_targets);
+
+drop table weekday_cadence_targets;
