@@ -4,8 +4,9 @@
 *.tsbuildinfo
 .DS_Store
 .env
-.env.*.local
+.env.*
 .env.local
+.env.*.local
 .mypy_cache/
 .next/
 .pytest_cache/

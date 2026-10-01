@@ -202,8 +202,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         mode: 'voice',
         knownItems: knownFrom(shownRef.current),
       });
+      // 들은 말이 없으면 비우지 않는다. 함께 온 안내(권한·홈 화면 앱)가 지워진다.
+      resetSpeech();
     }
-    resetSpeech();
   }, [listening, transcript, resetSpeech]);
 
   /** 해석이 시작되면 메인 마이크를 놓는다. */
@@ -317,7 +318,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     stopSpeaking();
     if (downloadingModel) inputRef.current?.focus();
     else if (speech.supported) speech.start();
-    else inputRef.current?.focus();
+    else {
+      speech.explainUnavailable();
+      inputRef.current?.focus();
+    }
   };
 
   const submitDraft = (mode: 'voice' | 'text') => {
@@ -461,7 +465,10 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           if (capture.step !== 'idle') capture.cancel();
           if (speech.listening) speech.stop();
           else if (speech.supported) speech.start();
-          else inputRef.current?.focus();
+          else {
+            speech.explainUnavailable();
+            inputRef.current?.focus();
+          }
         }}
         micDisabled={downloadingModel}
         listening={speech.listening}

@@ -196,14 +196,21 @@ src/
 
 ## 알림 배치
 
-`notifications.dispatchDigests`가 **매시 정각**에 돌면서, 그 시각이 알림 시간인
-사용자에게만 보낸다. 사용자마다 타임존이 다르므로 비교는 각자의 로컬 시각
-기준(`users_due_for_digest` RPC)으로 한다.
+**지금 발송하는 쪽은 여기가 아니다.** Supabase Edge Function
+([`supabase/functions/dispatch-digests/`](../../supabase/functions/dispatch-digests/))이 보낸다.
 
-**서버 안의 타이머로 돌지 않는다.** 무료 플랜은 접속이 없으면 서버를 재워 시계를
-믿을 수 없다. `ENABLE_CRON=false` 로 두고 Supabase 의 `pg_cron` 이 밖에서
-`POST /v1/internal/dispatch-digests` 를 부른다 (`CRON_SECRET` 으로 지킨다).
-스케줄은 `supabase/migrations/…_dispatch_digests_cron.sql` 에 있다.
+무료 플랜은 접속이 없으면 이 서버를 재운다. 알림을 보내려고 깨우고 기다리는 동안
+실패하면 그 시간대 알림이 통째로 빠진다. Edge Function 은 잠들지 않는다.
+
+여기 남은 `notifications.dispatchDigests` 는 **되돌릴 때를 위한 것**이다. 로직은 같다 —
+그 시각이 알림 시간인 사용자에게만 보내고, 비교는 각자의 로컬 시각
+기준(`users_due_for_digest` RPC)으로 한다. 두 구현이 같은 RPC 를 쓰므로
+대상 선정 기준은 한 곳에만 있다.
+
+**둘 중 어느 쪽이 도는지는 마이그레이션 한 줄로 갈린다** —
+`dispatch_digests()` 가 부르는 주소다
+(`supabase/migrations/…_digests_via_edge_function.sql`).
+서버 안의 타이머는 어느 쪽이든 쓰지 않는다 (`ENABLE_CRON=false`).
 
 같은 날 이미 보냈으면 건너뛰고, 주말 알림을 껐으면 토·일에는 보내지 않는다.
 만료된 푸시 구독(404·410)은 조용히 정리한다.
