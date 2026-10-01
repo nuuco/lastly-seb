@@ -301,10 +301,11 @@ Vercel · Render · Supabase 무료 플랜을 쓴다.
 클릭 단위 절차는 **[docs/DEPLOY.md](docs/DEPLOY.md)** 에 있다.
 
 ```
-web    → Vercel             무료
-api    → Render             무료 (15분 미접속 시 잠듦)
-ai     → Render             무료
-스케줄 → Supabase pg_cron   깨우기 · 알림 배치
+web    → Vercel                     무료
+api    → Render                     무료 (15분 미접속 시 잠듦)
+ai     → Render                     무료
+알림   → Supabase Edge Function     무료 (잠들지 않음)
+스케줄 → Supabase pg_cron           깨우기 · 알림 배치 호출
 ```
 
 Render 와 Vercel 모두 **자동 배포를 꺼 두었다.** 코드를 밀었다고 올라가지 않는다.
@@ -323,11 +324,19 @@ DB 는 항상 켜져 있고 예약이 밀리지 않는다.
 | job | 언제 | 무엇 |
 |---|---|---|
 | `keep-api-awake` | `*/5 23,0-14 * * *` (KST 08–24시, 5분마다) | `/v1/health` 를 찔러 잠들지 못하게 한다 |
-| `dispatch-digests` | `0 * * * *` | `/v1/internal/dispatch-digests` 호출 |
+| `dispatch-digests` | `0 * * * *` | Edge Function `dispatch-digests` 호출 |
 
 주소와 시간은 [`20260920000002_keep_api_awake.sql`](supabase/migrations/20260920000002_keep_api_awake.sql) ·
-[`20260920000003_dispatch_digests_cron.sql`](supabase/migrations/20260920000003_dispatch_digests_cron.sql)
+[`20261001000001_digests_via_edge_function.sql`](supabase/migrations/20261001000001_digests_via_edge_function.sql)
 두 파일에만 있다. 고칠 때 그 파일을 고치고 `pnpm db:push` 한다.
+
+**알림 발송은 API 가 아니라 Edge Function 이 한다.**
+[`supabase/functions/dispatch-digests/`](supabase/functions/dispatch-digests/) 가 그것이다.
+API 가 잠들어 있어도 알림은 제 시각에 나간다 — 깨우고 기다리다 실패하면 그 시간대가 통째로 빠지던 자리다.
+보낼 대상을 고르는 기준은 `users_due_for_digest` 로 그대로다.
+
+`apps/api` 에도 같은 로직이 남아 있다(`POST /v1/internal/dispatch-digests`).
+되돌릴 때를 위해 둔 것이고, 전환은 위 마이그레이션의 주소 한 줄로 갈린다.
 
 `CRON_SECRET` 은 마이그레이션이 아니라 **Supabase Vault** 에 `cron_secret` 이름으로 둔다.
 파일에 적으면 공개 저장소에 남는다.
