@@ -33,6 +33,23 @@ export class CadenceService {
     return format(addDays(base, bestDelta), 'yyyy-MM-dd');
   }
 
+  /**
+   * first 부터 주기를 이어 붙여 [from, to] 안에 드는 예정일을 모두 낸다.
+   * 매번 제때 했다고 치고 nextDueOn 을 거듭 적용한다.
+   */
+  occurrencesBetween(first: IsoDate, rule: CadenceRule, from: IsoDate, to: IsoDate): IsoDate[] {
+    const dates: IsoDate[] = [];
+    let date: IsoDate | null = first;
+    while (date && date <= to) {
+      if (date >= from) dates.push(date);
+      const next = this.nextDueOn(date, rule);
+      // 주기가 0 이하로 잘못 들어와도 같은 날에 멈춰 돌지 않게 한다.
+      if (!next || next <= date) break;
+      date = next;
+    }
+    return dates;
+  }
+
   daysUntil(dueOn: IsoDate | null, today: Date): number | null {
     return dueOn ? differenceInCalendarDays(parseISO(dueOn), today) : null;
   }

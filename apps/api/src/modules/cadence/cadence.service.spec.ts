@@ -30,6 +30,22 @@ describe('CadenceService', () => {
     expect(service.nextDueOn('2026-09-06', rule({ weekdays: [6] }))).toBe('2026-09-26');
   });
 
+  it('예정일을 주기대로 이어서 달 범위 안의 것만 낸다', () => {
+    expect(
+      service.occurrencesBetween('2026-09-20', rule({ unit: 'week', interval: 1 }), '2026-10-01', '2026-10-31'),
+    ).toEqual(['2026-10-04', '2026-10-11', '2026-10-18', '2026-10-25']);
+  });
+
+  it('첫 예정일이 범위 뒤면 아무것도 내지 않는다', () => {
+    expect(service.occurrencesBetween('2026-11-02', rule(), '2026-10-01', '2026-10-31')).toEqual([]);
+  });
+
+  it('주기가 0 이어도 멈춘다', () => {
+    expect(
+      service.occurrencesBetween('2026-10-05', rule({ unit: 'day', interval: 0 }), '2026-10-01', '2026-10-31'),
+    ).toEqual(['2026-10-05']);
+  });
+
   it('기록이 없으면 예정일도 없다', () => {
     expect(service.nextDueOn(null, rule())).toBeNull();
   });
