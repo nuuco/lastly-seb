@@ -98,8 +98,10 @@ export default function SettingsPage() {
             <p className="mt-[3px] text-12.5 text-ink-3">이 시간에 하루 한 번만 모아서</p>
           </div>
           <span className="flex items-center gap-2 text-15 font-semibold text-ink">
+            {/* 배치가 5분마다 돌아 그보다 잘게 고를 수 없다. 보이는 시각과 실제 발송을 맞춘다. */}
             <input
               type="time"
+              step={300}
               value={settings.data?.digestTimeLocal ?? '09:00'}
               onChange={(e) => update.mutate({ digestTimeLocal: e.target.value })}
               aria-label="알림 받을 시간"
