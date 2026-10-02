@@ -40,18 +40,49 @@ export function isPermissionError(code: string): boolean {
 
 export type MicPermission = 'granted' | 'denied' | 'prompt' | 'unknown';
 
+function queryMicPermission(): Promise<PermissionStatus | null> {
+  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+    return Promise.resolve(null);
+  }
+  return navigator.permissions
+    .query({ name: 'microphone' as PermissionName })
+    .catch(() => null);
+}
+
 /**
  * 마이크 권한 상태. 팝업을 띄우지 않고 읽기만 한다.
  * Permissions API 가 없거나 microphone 을 모르는 브라우저는 'unknown' — 부르는 쪽은 기존처럼 시도한다.
  */
 export async function getMicPermission(): Promise<MicPermission> {
-  if (typeof navigator === 'undefined' || !navigator.permissions?.query) return 'unknown';
-  try {
-    const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-    return status.state;
-  } catch {
-    return 'unknown';
-  }
+  return (await queryMicPermission())?.state ?? 'unknown';
+}
+
+/**
+ * 마이크 권한을 지켜본다. 처음 한 번 알리고, 브라우저가 바뀌었다고 알려 오면 다시 알린다.
+ * 주소창 사이트 설정에서 바로 바꾸면 화면 전환이 없어서 이 신호로만 알 수 있다.
+ */
+export function watchMicPermission(onChange: (state: MicPermission) => void): () => void {
+  let status: PermissionStatus | null = null;
+  let stopped = false;
+  const notify = () => {
+    if (status) onChange(status.state);
+  };
+
+  void queryMicPermission().then((s) => {
+    if (stopped) return;
+    if (!s) {
+      onChange('unknown');
+      return;
+    }
+    status = s;
+    notify();
+    s.addEventListener('change', notify);
+  });
+
+  return () => {
+    stopped = true;
+    status?.removeEventListener('change', notify);
+  };
 }
 
 export type MicSettingsPlatform = 'ios' | 'mac-safari' | 'android' | 'other';
@@ -62,7 +93,8 @@ export function getMicSettingsPlatform(): MicSettingsPlatform {
   const ua = navigator.userAgent;
   // iPadOS 는 데스크톱 Safari 처럼 자신을 Mac 으로 알린다. 터치 지점 수로 가른다.
   if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
-    return 'ios';
+    // iPhone 의 Chrome·Firefox·Edge 는 설정 위치가 Safari 와 다르다.
+    return /CriOS|FxiOS|EdgiOS/.test(ua) ? 'other' : 'ios';
   }
   if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua)) {
     return 'mac-safari';

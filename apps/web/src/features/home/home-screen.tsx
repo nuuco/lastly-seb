@@ -40,7 +40,7 @@ import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { stopSpeaking } from '@/features/on-device/voice-guidance';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
-import { getMicPermission, type MicPermission } from '@/lib/speech';
+import { getMicPermission, watchMicPermission, type MicPermission } from '@/lib/speech';
 import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { loadFeed, loadFeedAt, saveFeed } from '@/lib/offline/feed-cache';
@@ -180,23 +180,30 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
 
   /**
    * 마이크 권한을 미리 읽어 둔다. 마이크 탭과 같은 틱에서 start 해야 브라우저가 허용하므로
-   * 누를 때 기다리지 않고 이 값으로만 가른다. 설정에서 켜고 돌아오면 다시 읽는다.
+   * 누를 때 기다리지 않고 이 값으로만 가른다.
+   * 브라우저가 바꿨다고 알려 오면 바로 따르고, 앱으로 돌아올 때도 다시 읽는다 —
+   * iPhone·Mac 설정 앱에서 켠 것은 알림 없이 바뀌는 브라우저가 있다.
    */
   const micPermissionRef = useRef<MicPermission>('unknown');
   const [micHelpOpen, setMicHelpOpen] = useState(false);
 
   useEffect(() => {
-    const read = () => {
+    const unwatch = watchMicPermission((state) => {
+      micPermissionRef.current = state;
+    });
+    const reread = () => {
+      if (document.visibilityState !== 'visible') return;
       void getMicPermission().then((state) => {
         micPermissionRef.current = state;
       });
     };
-    const readIfVisible = () => {
-      if (document.visibilityState === 'visible') read();
+    document.addEventListener('visibilitychange', reread);
+    window.addEventListener('focus', reread);
+    return () => {
+      unwatch();
+      document.removeEventListener('visibilitychange', reread);
+      window.removeEventListener('focus', reread);
     };
-    read();
-    document.addEventListener('visibilitychange', readIfVisible);
-    return () => document.removeEventListener('visibilitychange', readIfVisible);
   }, []);
 
   /** 거부된 걸 알면 듣지 않고 켜는 곳을 알려준다. 그 밖에는 기존처럼 바로 듣는다. */
