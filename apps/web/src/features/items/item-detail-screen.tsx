@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { CadenceSheet } from '@/features/capture/components/cadence-sheet';
 
 import { DeleteSheet } from './components/delete-sheet';
+import { RenameSheet } from './components/rename-sheet';
 import { SnoozeSheet } from './components/snooze-sheet';
 import { putDeletedNotice } from './deleted-notice';
 import { itemsApi } from '@/lib/api/items';
@@ -40,6 +41,7 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
 
   const item = useQuery({
     queryKey: queryKeys.item(itemId),
@@ -109,7 +111,13 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
           {fromNotification ? (
             <span className="text-12 text-ink-3">알림에서 열림</span>
           ) : (
-            <span className="text-14 text-ink-3">편집</span>
+            <button
+              type="button"
+              onClick={() => setRenameOpen(true)}
+              className="py-1 text-14 text-ink-3 active:text-ink"
+            >
+              편집
+            </button>
           )}
         </div>
 
@@ -298,6 +306,18 @@ export function ItemDetailScreen({ itemId, initialItem, initialLogs }: ItemDetai
           deleting={remove.isPending}
           onConfirm={() => remove.mutate()}
           onCancel={() => setDeleteOpen(false)}
+        />
+      ) : null}
+
+      {renameOpen ? (
+        <RenameSheet
+          itemId={itemId}
+          name={data.name}
+          onClose={() => setRenameOpen(false)}
+          onSaved={async () => {
+            await invalidate();
+            setRenameOpen(false);
+          }}
         />
       ) : null}
 

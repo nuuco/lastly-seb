@@ -14,8 +14,7 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 /**
  * 달력 뷰 — 설계 05-C.
  *
- * 예정일은 각 항목의 다음 한 번만 찍는다. 주기로 앞날을 계속 그려내면
- * 아직 일어나지 않은 일이 사실처럼 보이는데, 주기는 기록이 쌓이면 바뀐다.
+ * 예정일은 다음 한 번에 그치지 않고 주기대로 이어서 찍는다(API 가 계산).
  */
 export function CalendarView({
   today,
@@ -34,6 +33,8 @@ export function CalendarView({
   const data = useQuery({
     queryKey: ['calendar', month],
     queryFn: () => itemsApi.calendar(month),
+    // 기록·이름·주기는 홈·상세 여러 곳에서 바뀐다. 무효화를 곳곳에 두는 대신 달력을 열 때마다 새로 받는다.
+    staleTime: 0,
   });
 
   const days = data.data?.days ?? {};
@@ -98,7 +99,7 @@ export function CalendarView({
       </div>
 
       <div className="mt-3 flex items-center gap-3.5 px-1.5 text-12 text-ink-3">
-        <Legend className="bg-action" label="예정일" />
+        <Legend className="bg-dot-due" label="예정일" />
         <Legend className="bg-dot-mute" label="완료 이력" />
         <Legend className="bg-danger" label="밀린 항목" />
       </div>
@@ -189,11 +190,12 @@ function Legend({ className, label }: { className: string; label: string }) {
   );
 }
 
+// 예정은 더스티 블루, 밀림은 빨강. 테라코타(action)는 danger 와 붙어 보여 쓰지 않는다.
 const kindDot = (kind: CalendarMark['kind']) =>
-  kind === 'due' ? 'bg-action' : kind === 'overdue' ? 'bg-danger' : 'bg-dot-mute';
+  kind === 'due' ? 'bg-dot-due' : kind === 'overdue' ? 'bg-danger' : 'bg-dot-mute';
 
 const kindTone = (kind: CalendarMark['kind']) =>
-  kind === 'due' ? 'text-action' : kind === 'overdue' ? 'text-danger' : 'text-ink-3';
+  kind === 'due' ? 'text-due-ink' : kind === 'overdue' ? 'text-danger' : 'text-ink-3';
 
 function kindLabel(mark: CalendarMark): string {
   if (mark.kind === 'done') return '했어요';

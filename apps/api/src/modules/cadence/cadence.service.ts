@@ -16,21 +16,45 @@ export class CadenceService {
     if (!lastDoneOn) return null;
 
     const from = parseISO(lastDoneOn);
-    const base =
-      rule.unit === 'day'
-        ? addDays(from, rule.interval)
-        : rule.unit === 'week'
-          ? addWeeks(from, rule.interval)
-          : addMonths(from, rule.interval);
 
     if (rule.unit !== 'week' || rule.weekdays.length === 0) {
+      const base =
+        rule.unit === 'day'
+          ? addDays(from, rule.interval)
+          : rule.unit === 'week'
+            ? addWeeks(from, rule.interval)
+            : addMonths(from, rule.interval);
       return format(base, 'yyyy-MM-dd');
     }
 
-    // 지정 요일 중 base 이후(당일 포함) 가장 이른 날로 스냅한다.
-    const baseDow = getDay(base);
-    const bestDelta = Math.min(...rule.weekdays.map((d) => (d - baseDow + 7) % 7));
-    return format(addDays(base, bestDelta), 'yyyy-MM-dd');
+    // 요일 지정은 "N주마다 그 요일들" 이다. 한 주는 월요일에 시작한다.
+    // 한 날은 가장 가까운 지정 요일의 차례로 본다(거리가 같으면 앞쪽). 늦게 하든 일찍 하든 그 차례를 채운 것이다.
+    // 그 차례의 주에 남은 지정 요일이 있으면 그날, 없으면 N주 뒤 주의 첫 지정 요일.
+    const slot = [0, -1, 1, -2, 2, -3, 3]
+      .map((k) => addDays(from, k))
+      .find((d) => rule.weekdays.includes(getDay(d)))!;
+    const weekStart = addDays(slot, -((getDay(slot) + 6) % 7));
+    const offsets = rule.weekdays.map((d) => (d + 6) % 7).sort((a, b) => a - b);
+    const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > slot);
+    const next = later ?? addDays(addWeeks(weekStart, rule.interval), offsets[0]!);
+    return format(next, 'yyyy-MM-dd');
+  }
+
+  /**
+   * first 부터 주기를 이어 붙여 [from, to] 안에 드는 예정일을 모두 낸다.
+   * 매번 제때 했다고 치고 nextDueOn 을 거듭 적용한다.
+   */
+  occurrencesBetween(first: IsoDate, rule: CadenceRule, from: IsoDate, to: IsoDate): IsoDate[] {
+    const dates: IsoDate[] = [];
+    let date: IsoDate | null = first;
+    while (date && date <= to) {
+      if (date >= from) dates.push(date);
+      const next = this.nextDueOn(date, rule);
+      // 주기가 0 이하로 잘못 들어와도 같은 날에 멈춰 돌지 않게 한다.
+      if (!next || next <= date) break;
+      date = next;
+    }
+    return dates;
   }
 
   daysUntil(dueOn: IsoDate | null, today: Date): number | null {
