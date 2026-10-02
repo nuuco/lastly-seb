@@ -70,6 +70,15 @@ describe('날짜 읽기', () => {
     expect(readName(text)).toBe(name);
   });
 
+  it.each([
+    ['지난 금욜 이불 빨았어', '이불 빨래'],
+    ['지난 금요일 이불 빨았어', '이불 빨래'],
+    ['저번 일욜날 청소기 돌렸어', '청소기 돌리기'],
+  ])('"주" 없는 %s 도 날짜 표현을 이름에서 뺀다', (text, name) => {
+    expect(readName(text)).toBe(name);
+    expect(readDaysAgo(text, MON).saw).toBe(true);
+  });
+
   it('지난주 요일은 기준일에서 거슬러 센다', () => {
     // 기준일이 일요일이므로 "지난주 일요일" 은 딱 7일 전이다.
     expect(readDaysAgo('지난주 일요일에 욕실 배수구 청소했어', SUN).daysAgo).toBe(7);
