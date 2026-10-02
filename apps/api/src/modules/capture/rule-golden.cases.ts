@@ -76,6 +76,49 @@ export const RULE_GOLDEN_CASES: readonly RuleGoldenCase[] = [
     expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 7, normalizedName: '욕실 배수구 청소' },
   },
   {
+    id: 'completed-weekday-plain',
+    category: 'completed',
+    text: '금요일에 빨래했어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 2, normalizedName: '빨래' },
+  },
+  {
+    // "지난" 만 붙어도 지난주(08-31~09-06) 안의 금요일이다.
+    id: 'completed-last-weekday-without-week',
+    category: 'completed',
+    text: '지난 금요일에 빨래했어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 9, normalizedName: '빨래' },
+  },
+  {
+    id: 'completed-last-sunday',
+    category: 'completed',
+    text: '지난 일요일에 책을 읽었어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 7, normalizedName: '책 읽기' },
+  },
+  {
+    id: 'completed-weekday-abbrev',
+    category: 'completed',
+    text: '일욜 청소기 돌렸어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 0, normalizedName: '청소기 돌리기' },
+  },
+  {
+    id: 'completed-weekday-abbrev-nal',
+    category: 'completed',
+    text: '일욜날 화분 물 줬어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 0, normalizedName: '화분 물 주기' },
+  },
+  {
+    id: 'completed-last-weekday-abbrev',
+    category: 'completed',
+    text: '저번 금욜에 이불 빨았어',
+    expected: { intent: 'COMPLETED', recordCandidate: true, daysAgo: 9, normalizedName: '이불 빨래' },
+  },
+  {
+    id: 'completed-noun-ending',
+    category: 'completed',
+    text: '책읽음',
+    expected: { intent: 'COMPLETED', recordCandidate: true, normalizedName: '책 읽기' },
+  },
+  {
     id: 'completed-omitted-date',
     category: 'completed',
     text: '화분 물 줬어',

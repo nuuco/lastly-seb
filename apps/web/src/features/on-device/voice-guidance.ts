@@ -23,12 +23,18 @@ export function speak(text: string, onend?: () => void): void {
     if (started) return;
     started = true;
 
+    const voices = window.speechSynthesis.getVoices();
+    const ko = voices.find((voice) => voice.lang.toLowerCase().startsWith('ko'));
+    // 한국어 목소리가 없으면 다른 언어 목소리가 엉뚱하게 읽거나 소리가 나지 않는다. 읽지 않는다.
+    // 목록이 비어 있으면 모르는 것이다 — 일부 Android Chrome 은 빈 목록이어도 기기 한국어 음성으로 읽는다.
+    if (voices.length > 0 && !ko) {
+      onend?.();
+      return;
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';
     utterance.rate = 1.05;
-    const ko = window.speechSynthesis
-      .getVoices()
-      .find((voice) => voice.lang.toLowerCase().startsWith('ko'));
     if (ko) utterance.voice = ko;
     utterance.onend = () => onend?.();
     utterance.onerror = () => onend?.();

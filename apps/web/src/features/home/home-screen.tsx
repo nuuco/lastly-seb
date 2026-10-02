@@ -11,6 +11,7 @@ import { AnswerCard } from '@/features/capture/components/answer-card';
 import { CaptureBar } from '@/features/capture/components/capture-bar';
 import { ConfirmSheet } from '@/features/capture/components/confirm-sheet';
 import { DisambiguateSheet } from '@/features/capture/components/disambiguate-sheet';
+import { MicPermissionSheet } from '@/features/capture/components/mic-permission-sheet';
 import { useCapture } from '@/features/capture/use-capture';
 import { useSpeechRecognition } from '@/features/capture/use-speech-recognition';
 import { SignupPromptSheet } from '@/features/auth/signup-prompt-sheet';
@@ -39,6 +40,7 @@ import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { stopSpeaking } from '@/features/on-device/voice-guidance';
 import { takeDeletedNotice, type DeletedNotice } from '@/features/items/deleted-notice';
 import { itemsApi } from '@/lib/api/items';
+import { getMicPermission, watchMicPermission, type MicPermission } from '@/lib/speech';
 import { profileApi } from '@/lib/api/profile';
 import { queryKeys } from '@/lib/api/query-keys';
 import { loadFeed, loadFeedAt, saveFeed } from '@/lib/offline/feed-cache';
@@ -175,6 +177,50 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
   const interpretVoiceRef = useRef(capture.interpret);
   interpretVoiceRef.current = capture.interpret;
   const { listening, transcript, reset: resetSpeech, stop: stopSpeech } = speech;
+
+  /**
+   * 마이크 권한을 미리 읽어 둔다. 마이크 탭과 같은 틱에서 start 해야 브라우저가 허용하므로
+   * 누를 때 기다리지 않고 이 값으로만 가른다.
+   * 브라우저가 바꿨다고 알려 오면 바로 따르고, 앱으로 돌아올 때도 다시 읽는다 —
+   * iPhone·Mac 설정 앱에서 켠 것은 알림 없이 바뀌는 브라우저가 있다.
+   */
+  const micPermissionRef = useRef<MicPermission>('unknown');
+  const [micHelpOpen, setMicHelpOpen] = useState(false);
+
+  useEffect(() => {
+    const unwatch = watchMicPermission((state) => {
+      micPermissionRef.current = state;
+    });
+    const reread = () => {
+      if (document.visibilityState !== 'visible') return;
+      void getMicPermission().then((state) => {
+        micPermissionRef.current = state;
+      });
+    };
+    document.addEventListener('visibilitychange', reread);
+    window.addEventListener('focus', reread);
+    return () => {
+      unwatch();
+      document.removeEventListener('visibilitychange', reread);
+      window.removeEventListener('focus', reread);
+    };
+  }, []);
+
+  /** 거부된 걸 알면 듣지 않고 켜는 곳을 알려준다. 그 밖에는 기존처럼 바로 듣는다. */
+  const startListening = () => {
+    if (micPermissionRef.current === 'denied') {
+      setMicHelpOpen(true);
+      return;
+    }
+    speech.start();
+  };
+
+  // 미리 몰랐어도 듣다가 거부로 막히면 그때 알려준다.
+  useEffect(() => {
+    if (!speech.permissionDenied) return;
+    micPermissionRef.current = 'denied';
+    setMicHelpOpen(true);
+  }, [speech.permissionDenied]);
   const downloadingModel = modelProgress?.status === 'downloading';
 
   const dropListenWithoutInterpret = useCallback(() => {
@@ -202,8 +248,9 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
         mode: 'voice',
         knownItems: knownFrom(shownRef.current),
       });
+      // 들은 말이 없으면 비우지 않는다. 함께 온 안내(미지원·홈 화면 앱)가 지워진다.
+      resetSpeech();
     }
-    resetSpeech();
   }, [listening, transcript, resetSpeech]);
 
   /** 해석이 시작되면 메인 마이크를 놓는다. */
@@ -316,8 +363,11 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
     // 시트가 읽던 안내를 먼저 끊는다. 말하는 중에는 마이크를 못 잡는 브라우저가 있다(iOS Safari).
     stopSpeaking();
     if (downloadingModel) inputRef.current?.focus();
-    else if (speech.supported) speech.start();
-    else inputRef.current?.focus();
+    else if (speech.supported) startListening();
+    else {
+      speech.explainUnavailable();
+      inputRef.current?.focus();
+    }
   };
 
   const submitDraft = (mode: 'voice' | 'text') => {
@@ -460,8 +510,11 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           if (downloadingModel) return;
           if (capture.step !== 'idle') capture.cancel();
           if (speech.listening) speech.stop();
-          else if (speech.supported) speech.start();
-          else inputRef.current?.focus();
+          else if (speech.supported) startListening();
+          else {
+            speech.explainUnavailable();
+            inputRef.current?.focus();
+          }
         }}
         micDisabled={downloadingModel}
         listening={speech.listening}
@@ -488,6 +541,8 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           ) : null
         }
       />
+
+      {micHelpOpen ? <MicPermissionSheet onClose={() => setMicHelpOpen(false)} /> : null}
 
       {shown?.signupPrompt && !promptDismissed && capture.step === 'idle' ? (
         <SignupPromptSheet

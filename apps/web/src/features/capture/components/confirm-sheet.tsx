@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { Sheet, SheetActions, SheetHeader, SheetRow } from '@/components/ui/sheet';
-import { isVoiceGuidanceOn } from '@/features/on-device/consent';
 import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
@@ -107,7 +106,6 @@ export function ConfirmSheet({
   const rationaleText = edited
     ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
     : (shown?.rationale ?? '');
-  const showVoiceHint = mode === 'voice' && isVoiceGuidanceOn();
 
   const stopListening = useSpokenConfirm({
     enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
@@ -211,10 +209,9 @@ export function ConfirmSheet({
           </div>
         </div>
 
-        {rationaleText || showVoiceHint ? (
+        {rationaleText ? (
           <div className="mt-1 space-y-1 text-[13.5px] leading-[1.7] text-ink-3">
-            {rationaleText ? <p>{rationaleText}</p> : null}
-            {showVoiceHint ? <p>응이나 아니로 답해도 돼요</p> : null}
+            <p>{rationaleText}</p>
           </div>
         ) : null}
 

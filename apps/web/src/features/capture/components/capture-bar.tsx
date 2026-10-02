@@ -159,7 +159,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, CaptureBarProps>(function
       </form>
 
       {listenError ? (
-        <p className="mt-2.5 text-center text-12.5 text-accent-ink" role="alert">
+        <p className="mt-2.5 break-keep text-center text-12.5 text-accent-ink" role="alert">
           {listenError}
         </p>
       ) : null}
