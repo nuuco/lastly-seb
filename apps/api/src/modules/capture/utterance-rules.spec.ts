@@ -79,6 +79,18 @@ describe('날짜 읽기', () => {
     expect(readDaysAgo(text, MON).saw).toBe(true);
   });
 
+  it.each([
+    // 2026-09-14(월) 기준 지난주는 09-07(월)~09-13(일)
+    ['지난주 금요일에 빨래했어', MON, 3],
+    ['지난 금요일에 빨래했어', MON, 3],
+    ['지난 일요일에 책을 읽었어', MON, 1],
+    ['지난주 월요일에 빨래했어', MON, 7],
+    // 2026-09-19(토) 기준 지난주는 09-07~09-13
+    ['지난 금요일에 빨래했어', new Date(2026, 8, 19), 8],
+  ] as const)('%s 는 지난주(월~일) 안의 그 요일이다', (text, ref, days) => {
+    expect(readDaysAgo(text, ref).daysAgo).toBe(days);
+  });
+
   it('지난주 요일은 기준일에서 거슬러 센다', () => {
     // 기준일이 일요일이므로 "지난주 일요일" 은 딱 7일 전이다.
     expect(readDaysAgo('지난주 일요일에 욕실 배수구 청소했어', SUN).daysAgo).toBe(7);

@@ -238,8 +238,9 @@ function resolveDate(text: string, reference: Date): ResolvedDate {
   }
 
   /**
-   * "지난주 일요일" — 기준일에서 거슬러 올라가 가장 가까운 그 요일을 찾고,
-   * 그게 이번 주 안이면 한 주 더 뺀다. "지난" 이 붙었으니 최소 7일 전이다.
+   * "지난주 금요일" · "지난 금요일" — 지난주(월~일) 안의 그 요일이다.
+   * 이번 주 월요일에서 한 주를 빼고 그 요일만큼 간다. 월요일에 말한 "지난 금요일" 은
+   * 사흘 전이지 열흘 전이 아니다.
    */
   const lastWeekday = t.match(
     /(?:지난|저번|작)\s*(?:주\s*)?([월화수목금토일])\s*(?:요일|욜)(?:날)?/,
@@ -247,9 +248,7 @@ function resolveDate(text: string, reference: Date): ResolvedDate {
   if (lastWeekday) {
     const target = WEEKDAYS.indexOf(lastWeekday[1]!);
     const diff = (reference.getDay() + 6) % 7; // 월=0 으로 맞춘다
-    let back = (diff - target + 7) % 7;
-    if (back < 7) back += 7;
-    return { daysAgo: back, saw: true, future: false };
+    return { daysAgo: diff + 7 - target, saw: true, future: false };
   }
 
   // 요일만 말한 경우 — "일요일에 했어". 이번 주 안에서 거슬러 올라간다.
