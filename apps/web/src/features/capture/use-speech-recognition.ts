@@ -26,6 +26,8 @@ export interface SpeechState {
   transcript: string;
   confidence: number;
   error: string | null;
+  /** 이번 시도가 권한 거부로 막혔는지. 홈이 설정 안내를 띄운다. */
+  permissionDenied: boolean;
 }
 
 export function useSpeechRecognition() {
@@ -41,6 +43,7 @@ export function useSpeechRecognition() {
     transcript: '',
     confidence: 0,
     error: null,
+    permissionDenied: false,
   });
 
   useEffect(() => {
@@ -163,8 +166,10 @@ export function useSpeechRecognition() {
         return;
       }
       const message = describeError(event.error);
+      const permissionDenied =
+        event.error === 'not-allowed' || event.error === 'service-not-allowed';
       release();
-      setState((prev) => ({ ...prev, listening: false, error: message }));
+      setState((prev) => ({ ...prev, listening: false, error: message, permissionDenied }));
     };
 
     recognition.onend = () => {
@@ -178,7 +183,14 @@ export function useSpeechRecognition() {
     recognitionRef.current = recognition;
     maxTimerRef.current = setTimeout(() => requestStopRef.current(), MAX_LISTEN_MS);
 
-    setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null, listening: true }));
+    setState((prev) => ({
+      ...prev,
+      transcript: '',
+      confidence: 0,
+      error: null,
+      permissionDenied: false,
+      listening: true,
+    }));
 
     try {
       recognition.start();
@@ -189,7 +201,14 @@ export function useSpeechRecognition() {
   }, [clearTimers, release]);
 
   const reset = useCallback(
-    () => setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null })),
+    () =>
+      setState((prev) => ({
+        ...prev,
+        transcript: '',
+        confidence: 0,
+        error: null,
+        permissionDenied: false,
+      })),
     [],
   );
 
