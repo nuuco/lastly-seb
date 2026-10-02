@@ -71,6 +71,16 @@ const UNIT_DAYS: Record<string, number> = {
 
 const WEEKDAYS = '월화수목금토일';
 
+/**
+ * 요일 표현. 날짜를 읽는 규칙(resolveDate)과 이름에서 빼는 규칙(TIME_EXPR)이 같이 쓴다.
+ * 따로 적어 두면 한쪽만 고쳐져 "지난 이불 빨래" 처럼 날짜가 이름에 남는다.
+ */
+const WEEKDAY_SUFFIX = String.raw`\s*(?:요일|욜)(?:날)?`;
+/** "지난주 금요일" · "지난 금요일" 의 앞부분. */
+const LAST_WEEK_PREFIX = String.raw`(?:지난|저번|작)\s*(?:주\s*)?`;
+const LAST_WEEKDAY = new RegExp(`${LAST_WEEK_PREFIX}([${WEEKDAYS}])${WEEKDAY_SUFFIX}`);
+const WEEKDAY_ONLY = new RegExp(`([${WEEKDAYS}])${WEEKDAY_SUFFIX}`);
+
 /** 주기를 1일~2년으로 묶는다. 이 밖이면 잘못 읽은 것으로 본다. */
 const MIN_CADENCE_DAYS = 1;
 const MAX_CADENCE_DAYS = 730;
@@ -238,20 +248,19 @@ function resolveDate(text: string, reference: Date): ResolvedDate {
   }
 
   /**
-   * "지난주 일요일" — 기준일에서 거슬러 올라가 가장 가까운 그 요일을 찾고,
-   * 그게 이번 주 안이면 한 주 더 뺀다. "지난" 이 붙었으니 최소 7일 전이다.
+   * "지난주 금요일" · "지난 금요일" — 지난주(월~일) 안의 그 요일이다.
+   * 이번 주 월요일에서 한 주를 빼고 그 요일만큼 간다. 월요일에 말한 "지난 금요일" 은
+   * 사흘 전이지 열흘 전이 아니다.
    */
-  const lastWeekday = t.match(/(?:지난|저번|작)\s*주\s*([월화수목금토일])\s*요일/);
+  const lastWeekday = t.match(LAST_WEEKDAY);
   if (lastWeekday) {
     const target = WEEKDAYS.indexOf(lastWeekday[1]!);
     const diff = (reference.getDay() + 6) % 7; // 월=0 으로 맞춘다
-    let back = (diff - target + 7) % 7;
-    if (back < 7) back += 7;
-    return { daysAgo: back, saw: true, future: false };
+    return { daysAgo: diff + 7 - target, saw: true, future: false };
   }
 
   // 요일만 말한 경우 — "일요일에 했어". 이번 주 안에서 거슬러 올라간다.
-  const weekdayOnly = t.match(/([월화수목금토일])\s*요일/);
+  const weekdayOnly = t.match(WEEKDAY_ONLY);
   if (weekdayOnly) {
     const target = WEEKDAYS.indexOf(weekdayOnly[1]!);
     const diff = (reference.getDay() + 6) % 7;
@@ -332,6 +341,7 @@ const UNCERTAIN = [
 
 const COMPLETED = [
   /했고/, /했어/, /했다/, /했어요/, /했습니다/, /했음/, /해놨어/,
+  /읽음/,
   /끝냈어/, /갈았어/, /빨았어/, /빨아놨어/, /버렸어/, /돌렸어/, /시켰어/, /닦았어/,
   /함(?:\s|[.,!?~…]|$)/,
 ];
@@ -421,7 +431,7 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
   // 좁은 것부터 본다. "빨래 널었어" 의 "빨래" 가 동사로 먹히면 안 된다.
   [/널(?:었|어|을|기)[가-힣]*/, '널기'],
   [/깎(?:았|아|을|기)[가-힣]*/, '깎기'],
-  [/읽(?:었|어|을|기)[가-힣]*/, '읽기'],
+  [/읽(?:었|어|을|기|음)[가-힣]*/, '읽기'],
   // "이불 갰어" 는 개어 두는 일이므로 정리로 묶는다. 사전의 "이불 정리" 와 만난다.
   [/갰[가-힣]*|개(?:어|었)[가-힣]*/, '정리'],
   // "워셔액 넣었어", "세제 채웠어" — 다 떨어져 다시 채우는 일이다.
@@ -458,8 +468,10 @@ const ACTION_NOUNS: Array<[RegExp, string]> = [
 const DONE_MARKERS = /(?:끝냈|끝내|마쳤|마무리했|해치웠|완료했)[가-힣]*/g;
 
 /** 이름에 들어가면 안 되는 시간 표현. */
-const TIME_EXPR =
-  /(\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일|\b\d{4}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{1,2}\b|\b\d{1,2}\s*월\s*\d{1,2}\s*일|아침|점심|저녁|밤|새벽|오전|오후|오늘|내일|모레|주말(?:에)?|어제|어저께|그저께|그제|그끄저께|그그제|방금|아까|막|마지막으로|(?:지난|저번|작)\s*주\s*[월화수목금토일]\s*요일|(?:지난|저번|작)\s*주|(?:다음|이번)\s*주(?:부터)?|(?:지난|저번)\s*달|작년|[월화수목금토일]\s*요일|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)/g;
+const TIME_EXPR = new RegExp(
+  String.raw`(\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일|\b\d{4}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{1,2}\b|\b\d{1,2}\s*월\s*\d{1,2}\s*일|아침|점심|저녁|밤|새벽|오전|오후|오늘|내일|모레|주말(?:에)?|어제|어저께|그저께|그제|그끄저께|그그제|방금|아까|막|마지막으로|${LAST_WEEK_PREFIX}[${WEEKDAYS}]${WEEKDAY_SUFFIX}|(?:지난|저번|작)\s*주|(?:다음|이번)\s*주(?:부터)?|(?:지난|저번)\s*달|작년|[${WEEKDAYS}]${WEEKDAY_SUFFIX}|\d+\s*(?:일|주일|주|개월|달|년)\s*전|하루\s*전|이틀\s*전|사흘\s*전|나흘\s*전|열흘\s*전)`,
+  'g',
+);
 
 /**
  * 말버릇으로 붙는 1인칭 주어. 항목 이름에 들어갈 자리가 아니다.

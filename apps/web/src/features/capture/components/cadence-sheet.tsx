@@ -2,7 +2,7 @@
 
 import type { CadenceRule } from '@lastly/contracts';
 import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Chevron, Sheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
@@ -204,9 +204,12 @@ function CustomEditor({
           >
             −
           </StepButton>
-          <span className="min-w-6 text-center text-19 font-bold tracking-[-.03em] tabular-nums text-ink">
-            {draft.interval}
-          </span>
+          <IntervalInput
+            value={draft.interval}
+            max={MAX_INTERVAL[draft.unit]}
+            label={`몇 ${unitLabel}마다`}
+            onChange={(interval) => onUpdate({ interval })}
+          />
           <StepButton
             label="늘리기"
             onClick={() =>
@@ -254,6 +257,50 @@ function CustomEditor({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="mt-[18px] text-12.5 tracking-wide4 text-ink-3">{children}</p>;
+}
+
+/**
+ * 주기 숫자 칸. 키보드로 바로 적을 수 있고 숫자 말고는 받지 않는다.
+ *
+ * 지우는 중에는 빈 칸을 허용하고, 1 이상일 때만 반영한다.
+ * 상한을 넘기면 상한으로 맞추고, 비우거나 0 인 채로 떠나면 직전 값으로 되돌린다.
+ */
+function IntervalInput({
+  value,
+  max,
+  label,
+  onChange,
+}: {
+  value: number;
+  max: number;
+  label: string;
+  onChange: (value: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+
+  // −/+ 나 단위 전환으로 값이 바뀌면 칸도 따라간다.
+  useEffect(() => setText(String(value)), [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label={label}
+      value={text}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => {
+        const digits = e.target.value.replace(/\D/g, '').slice(0, String(max).length);
+        const n = Number(digits);
+        setText(n > max ? String(max) : digits);
+        if (n >= 1) onChange(Math.min(max, n));
+      }}
+      onBlur={() => setText(String(value))}
+      // 겉모습은 예전 숫자 그대로. 칸 테두리 없이 글자 폭만큼만 차지한다.
+      style={{ width: `${Math.max(1, text.length) + 0.5}ch` }}
+      className="min-w-6 bg-transparent p-0 text-center text-19 font-bold tracking-[-.03em] tabular-nums text-ink caret-action outline-none"
+    />
+  );
 }
 
 function StepButton({

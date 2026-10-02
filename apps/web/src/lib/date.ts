@@ -97,18 +97,25 @@ export function ruleToDays(rule: CadenceRule): number {
 export function nextDueAfter(doneOn: string, rule: CadenceRule): string {
 
   const from = parseISO(doneOn);
-  const base =
-    rule.unit === 'day'
-      ? addDays(from, rule.interval)
-      : rule.unit === 'week'
-        ? addWeeks(from, rule.interval)
-        : addMonths(from, rule.interval);
 
   if (rule.unit !== 'week' || rule.weekdays.length === 0) {
+    const base =
+      rule.unit === 'day'
+        ? addDays(from, rule.interval)
+        : rule.unit === 'week'
+          ? addWeeks(from, rule.interval)
+          : addMonths(from, rule.interval);
     return format(base, 'yyyy-MM-dd');
   }
 
-  const baseDow = base.getDay();
-  const delta = Math.min(...rule.weekdays.map((d) => (d - baseDow + 7) % 7));
-  return format(addDays(base, delta), 'yyyy-MM-dd');
+  // N주마다 그 요일들. 한 날은 가장 가까운 지정 요일의 차례로 보고(같으면 앞쪽),
+  // 그 차례의 주(월요일 시작)에 남은 요일, 없으면 N주 뒤 주의 첫 요일.
+  const slot = [0, -1, 1, -2, 2, -3, 3]
+    .map((k) => addDays(from, k))
+    .find((d) => rule.weekdays.includes(d.getDay()))!;
+  const weekStart = addDays(slot, -((slot.getDay() + 6) % 7));
+  const offsets = rule.weekdays.map((d) => (d + 6) % 7).sort((a, b) => a - b);
+  const later = offsets.map((o) => addDays(weekStart, o)).find((d) => d > slot);
+  const next = later ?? addDays(addWeeks(weekStart, rule.interval), offsets[0]!);
+  return format(next, 'yyyy-MM-dd');
 }

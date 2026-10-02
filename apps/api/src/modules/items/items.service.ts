@@ -125,9 +125,7 @@ export class ItemsService {
   }
 
   async create(userId: string, input: CreateItemInput, today = appToday()): Promise<Item> {
-    if (await this.items.findByName(userId, input.name)) {
-      throw new ConflictException('같은 이름의 항목이 이미 있어요.');
-    }
+    await this.assertNameFree(userId, input.name);
 
     // 임베딩은 있으면 좋고 없어도 되는 값이다. 실패해도 항목 생성은 진행한다.
     const embedding = (await this.ai.embed(input.name))?.embedding ?? null;
@@ -150,7 +148,16 @@ export class ItemsService {
   async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
     const patch: Record<string, unknown> = {};
 
-    if (input.name !== undefined) patch.name = input.name;
+    const name = input.name?.trim();
+    if (name) {
+      patch.name = name;
+      const current = await this.items.findById(userId, itemId);
+      if (name !== current.name) {
+        await this.assertNameFree(userId, name, itemId);
+        // 말로 찾을 때 쓰는 임베딩도 새 이름으로. 실패하면 비워 두고 이름 일치로 찾게 한다.
+        patch.name_embedding = (await this.ai.embed(name))?.embedding ?? null;
+      }
+    }
     if (input.status !== undefined) patch.status = input.status;
     if (input.cadenceSource !== undefined) patch.cadence_source = input.cadenceSource;
     if (input.cadence) {
@@ -175,6 +182,14 @@ export class ItemsService {
 
     return toItem(await this.items.update(userId, itemId, patch), this.cadence, today);
   }
+  /** 같은 사람에게 같은 이름의 항목은 하나뿐이다(DB items_name_unique_per_user). */
+  private async assertNameFree(userId: string, name: string, exceptId?: string): Promise<void> {
+    const taken = await this.items.findByName(userId, name);
+    if (taken && taken.id !== exceptId) {
+      throw new ConflictException('같은 이름의 항목이 이미 있어요.');
+    }
+  }
+
   async remove(userId: string, itemId: string): Promise<void> {
     await this.items.archive(userId, itemId);
   }
@@ -209,8 +224,8 @@ export class ItemsService {
   /**
    * 한 달치 달력 — 설계 05-C.
    *
-   * 예정일은 각 항목의 다음 한 번만 찍는다. 주기로 앞날을 계속 그려내면
-   * 아직 일어나지 않은 일이 사실처럼 보이는데, 주기는 기록이 쌓이면 바뀐다.
+   * 예정일은 다음 한 번에 그치지 않고 주기대로 이어서 찍는다.
+   * 밀린 항목은 밀린 날에 한 번 찍고, 그 뒤는 오늘 했다고 치고 이어 간다.
    */
   async calendar(userId: string, month: string, today = appToday()): Promise<CalendarMonth> {
     const from = `${month}-01`;
@@ -238,15 +253,27 @@ export class ItemsService {
 
     for (const row of rows) {
       const due = row.next_due_on;
-      if (!due || due < from || due > to) continue;
+      if (!due) continue;
 
-      const overdue = due < todayIso;
-      push(due, {
-        itemId: row.id,
-        name: row.name,
-        kind: overdue ? 'overdue' : 'due',
-        overdueDays: overdue ? differenceInCalendarDays(parseISO(todayIso), parseISO(due)) : null,
-      });
+      const rule = toCadenceRule(row);
+      let upcoming: string | null = due;
+
+      if (due < todayIso) {
+        if (due >= from && due <= to) {
+          push(due, {
+            itemId: row.id,
+            name: row.name,
+            kind: 'overdue',
+            overdueDays: differenceInCalendarDays(parseISO(todayIso), parseISO(due)),
+          });
+        }
+        upcoming = this.cadence.nextDueOn(todayIso, rule);
+      }
+
+      if (!upcoming) continue;
+      for (const date of this.cadence.occurrencesBetween(upcoming, rule, from, to)) {
+        push(date, { itemId: row.id, name: row.name, kind: 'due', overdueDays: null });
+      }
     }
 
     return { month, days };

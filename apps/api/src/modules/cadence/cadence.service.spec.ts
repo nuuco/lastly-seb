@@ -25,9 +25,67 @@ describe('CadenceService', () => {
     expect(service.nextDueOn('2026-09-06', rule({ unit: 'month', interval: 3 }))).toBe('2026-12-06');
   });
 
-  it('요일이 지정되면 그 요일로 스냅한다', () => {
-    // 2026-09-06(일) + 2주 = 09-20(일) → 다음 토요일인 09-26
-    expect(service.nextDueOn('2026-09-06', rule({ weekdays: [6] }))).toBe('2026-09-26');
+  it('요일이 지정되면 N주 뒤 주의 그 요일로 간다', () => {
+    // 2026-09-06(일) 이 속한 주(08-31 월~)에 남은 토요일 없음 → 2주 뒤 주의 토요일 09-19
+    expect(service.nextDueOn('2026-09-06', rule({ weekdays: [6] }))).toBe('2026-09-19');
+  });
+
+  it('여러 요일이 지정되면 같은 주의 다음 요일부터 돈다', () => {
+    const wedFri = rule({ interval: 1, weekdays: [3, 5] });
+    // 09-30(수) → 10-02(금) → 10-07(수)
+    expect(service.nextDueOn('2026-09-30', wedFri)).toBe('2026-10-02');
+    expect(service.nextDueOn('2026-10-02', wedFri)).toBe('2026-10-07');
+    // 늦게 한 목요일도 그 주 금요일로
+    expect(service.nextDueOn('2026-10-01', wedFri)).toBe('2026-10-02');
+  });
+
+  it('격주 여러 요일은 한 주를 건너뛰고 돈다', () => {
+    const biweekly = rule({ interval: 2, weekdays: [3, 5] });
+    expect(service.nextDueOn('2026-09-30', biweekly)).toBe('2026-10-02');
+    expect(service.nextDueOn('2026-10-02', biweekly)).toBe('2026-10-14');
+  });
+
+  it('달력에 수·금이 매주 찍힌다', () => {
+    expect(
+      service.occurrencesBetween('2026-10-02', rule({ interval: 1, weekdays: [3, 5] }), '2026-10-01', '2026-10-17'),
+    ).toEqual(['2026-10-02', '2026-10-07', '2026-10-09', '2026-10-14', '2026-10-16']);
+  });
+
+  it('일찍 하면 다가오던 차례를 채운 것으로 본다', () => {
+    // 매주 토요일인데 09-17(목)에 함 → 09-19(토) 가 아니라 09-26(토)
+    expect(service.nextDueOn('2026-09-17', rule({ interval: 1, weekdays: [6] }))).toBe('2026-09-26');
+    // 격주 토요일을 09-17(목)에 함 → 10-03(토)
+    expect(service.nextDueOn('2026-09-17', rule({ interval: 2, weekdays: [6] }))).toBe('2026-10-03');
+  });
+
+  it('늦게 하면 지나간 차례를 채운 것으로 본다', () => {
+    // 격주 토요일을 09-07(월)에 함 → 09-05(토) 차례 → 09-19(토)
+    expect(service.nextDueOn('2026-09-07', rule({ interval: 2, weekdays: [6] }))).toBe('2026-09-19');
+    // 수·금인데 10-03(토)에 함 → 10-02(금) 차례 → 10-07(수)
+    expect(service.nextDueOn('2026-10-03', rule({ interval: 1, weekdays: [3, 5] }))).toBe('2026-10-07');
+  });
+
+  it('일요일 지정은 그 주의 마지막 날이다', () => {
+    // 10-05(월) → 같은 주 일요일 10-11
+    expect(service.nextDueOn('2026-10-05', rule({ interval: 1, weekdays: [0] }))).toBe('2026-10-11');
+    // 10-11(일) → 다음 주 일요일 10-18
+    expect(service.nextDueOn('2026-10-11', rule({ interval: 1, weekdays: [0] }))).toBe('2026-10-18');
+  });
+
+  it('예정일을 주기대로 이어서 달 범위 안의 것만 낸다', () => {
+    expect(
+      service.occurrencesBetween('2026-09-20', rule({ unit: 'week', interval: 1 }), '2026-10-01', '2026-10-31'),
+    ).toEqual(['2026-10-04', '2026-10-11', '2026-10-18', '2026-10-25']);
+  });
+
+  it('첫 예정일이 범위 뒤면 아무것도 내지 않는다', () => {
+    expect(service.occurrencesBetween('2026-11-02', rule(), '2026-10-01', '2026-10-31')).toEqual([]);
+  });
+
+  it('주기가 0 이어도 멈춘다', () => {
+    expect(
+      service.occurrencesBetween('2026-10-05', rule({ unit: 'day', interval: 0 }), '2026-10-01', '2026-10-31'),
+    ).toEqual(['2026-10-05']);
   });
 
   it('기록이 없으면 예정일도 없다', () => {

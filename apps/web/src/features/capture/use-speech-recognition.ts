@@ -4,7 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   detachRecognition,
+  getMicPermission,
   getSpeechRecognitionCtor,
+  isIosStandalone,
+  isPermissionError,
+  isStandaloneSpeechBlocked,
+  recordStandaloneFailure,
+  recordStandaloneSuccess,
+  speechUnavailableMessage,
   type SpeechRecognitionLike,
 } from '@/lib/speech';
 
@@ -15,10 +22,16 @@ import {
  * 클릭과 같은 틱에서 start 한다. isFinal 이 없어도 침묵이면 stop 한다.
  * getUserMedia 로 마이크를 따로 열지 않는다. 음성 인식과 동시에 잡으면
  * 인식 쪽에 소리가 들어가지 않는다(Chrome·Safari). 권한은 인식이 직접 묻는다.
+ *
+ * iOS 홈 화면 앱은 시작해도 마이크가 열리지 않고 끝나는 경우가 많다.
+ * 거기서는 마이크가 열렸는지(audiostart) 보고, 안 열리면 키보드로 안내한다.
+ * 권한 거부는 여기에 넣지 않는다 — 홈이 설정 안내를 띄운다.
  */
 
 const MAX_LISTEN_MS = 15_000;
 const SILENCE_MS = 1_500;
+/** iOS 홈 화면 앱에서 이 시간 안에 마이크가 안 열리면 실패로 본다. */
+const MIC_OPEN_MS = 2_500;
 
 export interface SpeechState {
   supported: boolean;
@@ -26,12 +39,15 @@ export interface SpeechState {
   transcript: string;
   confidence: number;
   error: string | null;
+  /** 이번 시도가 권한 거부로 막혔는지. 홈이 설정 안내를 띄운다. */
+  permissionDenied: boolean;
 }
 
 export function useSpeechRecognition() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const micOpenRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listeningIntentRef = useRef(false);
   const requestStopRef = useRef<() => void>(() => undefined);
 
@@ -41,10 +57,13 @@ export function useSpeechRecognition() {
     transcript: '',
     confidence: 0,
     error: null,
+    permissionDenied: false,
   });
 
   useEffect(() => {
-    if (getSpeechRecognitionCtor()) setState((prev) => ({ ...prev, supported: true }));
+    if (getSpeechRecognitionCtor() && !isStandaloneSpeechBlocked()) {
+      setState((prev) => ({ ...prev, supported: true }));
+    }
   }, []);
 
   const clearTimers = useCallback(() => {
@@ -55,6 +74,10 @@ export function useSpeechRecognition() {
     if (silenceRef.current) {
       clearTimeout(silenceRef.current);
       silenceRef.current = null;
+    }
+    if (micOpenRef.current) {
+      clearTimeout(micOpenRef.current);
+      micOpenRef.current = null;
     }
   }, []);
 
@@ -112,21 +135,45 @@ export function useSpeechRecognition() {
     };
   }, [release]);
 
+  /** iOS 홈 화면 앱에서 마이크가 안 열렸다. 연달아 실패하면 이후로는 시도하지 않는다. */
+  const failStandalone = useCallback(() => {
+    recordStandaloneFailure();
+    release();
+    setState((prev) => ({
+      ...prev,
+      supported: !isStandaloneSpeechBlocked(),
+      listening: false,
+      error: speechUnavailableMessage(),
+    }));
+  }, [release]);
+
   const start = useCallback(() => {
     const Ctor = getSpeechRecognitionCtor();
-    if (!Ctor) {
-      setState((prev) => ({ ...prev, error: '이 브라우저에서는 음성 입력을 쓸 수 없어요.' }));
+    if (!Ctor || isStandaloneSpeechBlocked()) {
+      setState((prev) => ({ ...prev, supported: false, error: speechUnavailableMessage() }));
       return;
     }
 
     release();
     listeningIntentRef.current = true;
 
+    const watchMic = isIosStandalone();
+    let micOpened = false;
+
     const recognition = new Ctor();
     recognition.lang = 'ko-KR';
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+
+    recognition.onaudiostart = () => {
+      micOpened = true;
+      if (micOpenRef.current) {
+        clearTimeout(micOpenRef.current);
+        micOpenRef.current = null;
+      }
+      if (watchMic) recordStandaloneSuccess();
+    };
 
     recognition.onresult = (event) => {
       let text = '';
@@ -158,16 +205,25 @@ export function useSpeechRecognition() {
 
     recognition.onerror = (event) => {
       if (event.error === 'aborted') return;
+      if (watchMic && !micOpened && !isPermissionError(event.error)) {
+        failStandalone();
+        return;
+      }
       if (event.error === 'no-speech') {
         requestStopRef.current();
         return;
       }
       const message = describeError(event.error);
+      const permissionDenied = isPermissionError(event.error);
       release();
-      setState((prev) => ({ ...prev, listening: false, error: message }));
+      setState((prev) => ({ ...prev, listening: false, error: message, permissionDenied }));
     };
 
     recognition.onend = () => {
+      if (watchMic && !micOpened && listeningIntentRef.current) {
+        failStandalone();
+        return;
+      }
       if (recognitionRef.current === recognition) recognitionRef.current = null;
       detachRecognition(recognition);
       listeningIntentRef.current = false;
@@ -177,8 +233,23 @@ export function useSpeechRecognition() {
 
     recognitionRef.current = recognition;
     maxTimerRef.current = setTimeout(() => requestStopRef.current(), MAX_LISTEN_MS);
+    // 허용 팝업이 떠 있는 동안은 마이크가 안 열린다. 팝업을 읽는 사이 실패로 치지 않도록
+    // 권한이 이미 허용된 경우에만 시간을 잰다.
+    if (watchMic) {
+      void getMicPermission().then((permission) => {
+        if (permission !== 'granted' || micOpened || recognitionRef.current !== recognition) return;
+        micOpenRef.current = setTimeout(failStandalone, MIC_OPEN_MS);
+      });
+    }
 
-    setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null, listening: true }));
+    setState((prev) => ({
+      ...prev,
+      transcript: '',
+      confidence: 0,
+      error: null,
+      permissionDenied: false,
+      listening: true,
+    }));
 
     try {
       recognition.start();
@@ -186,14 +257,27 @@ export function useSpeechRecognition() {
       release();
       setState((prev) => ({ ...prev, listening: false }));
     }
-  }, [clearTimers, release]);
+  }, [clearTimers, failStandalone, release]);
 
   const reset = useCallback(
-    () => setState((prev) => ({ ...prev, transcript: '', confidence: 0, error: null })),
+    () =>
+      setState((prev) => ({
+        ...prev,
+        transcript: '',
+        confidence: 0,
+        error: null,
+        permissionDenied: false,
+      })),
     [],
   );
 
-  return { ...state, start, stop: requestStop, reset };
+  /** 음성 입력을 못 쓰는 환경에서 마이크를 눌렀을 때 이유를 보인다. */
+  const explainUnavailable = useCallback(
+    () => setState((prev) => ({ ...prev, error: speechUnavailableMessage() })),
+    [],
+  );
+
+  return { ...state, start, stop: requestStop, reset, explainUnavailable };
 }
 
 function describeError(code: string): string {

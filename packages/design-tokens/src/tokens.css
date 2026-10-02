@@ -69,6 +69,10 @@
   --lastly-dot-on: #a85f44;
   --lastly-dot-off: #ddd5c6;
   --lastly-dot-mute: #cbc2b2;
+  /* 달력 예정일. 밀린 항목(danger)과 갈리도록 팔레트 밖의 차가운 색을 쓴다.
+     글자에는 카드 위 대비 4.5:1 을 맞춘 짙은 쪽을 쓴다. */
+  --lastly-dot-due: #7d93a8;
+  --lastly-due-ink: #5b7086;
 
   /* 음성 인식 중 입력 바가 숨쉬는 테두리 (glow 키프레임이 이 사이를 오간다) */
   --lastly-listen-edge: #e0bfa6;
