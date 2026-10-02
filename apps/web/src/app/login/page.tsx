@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
 import { DevSignIn } from '@/features/auth/dev-sign-in';
@@ -25,9 +25,11 @@ export default function LoginPage() {
 
 function LoginScreen() {
   const params = useSearchParams();
+  const router = useRouter();
   // 막혀서 돌아온 자리. 로그인 뒤 그리로 데려간다.
   const next = params.get('next') ?? '/';
-  const failed = params.get('error') === 'auth';
+  const failed = params.get('error');
+  const failedDetail = params.get('detail');
   /**
    * 카카오는 아직 없다.
    *
@@ -60,7 +62,14 @@ function LoginScreen() {
       ? await supabase.auth.linkIdentity({ provider, options })
       : await supabase.auth.signInWithOAuth({ provider, options });
 
-    if (error) setPending(null);
+    // 조용히 멈추면 사용자는 버튼이 안 눌린 줄 안다. 사유를 띄운다.
+    if (error) {
+      setPending(null);
+      const url = new URL(window.location.href);
+      url.searchParams.set('error', error.code ?? 'link_failed');
+      url.searchParams.set('detail', error.message.slice(0, 200));
+      router.replace(`${url.pathname}${url.search}`);
+    }
   };
 
   return (
@@ -79,7 +88,14 @@ function LoginScreen() {
 
       {failed ? (
         <p className="mt-4 rounded-md border border-line bg-accent-soft px-4 py-3 text-[13.5px] leading-[1.7] text-accent-ink">
-          로그인이 끝까지 되지 않았어요. 한 번만 다시 해주세요.
+          {failed === 'email_exists' || failed === 'identity_already_exists'
+            ? '이 구글 계정은 이미 다른 기록에 연결돼 있어요. 그 계정으로 로그인해 주세요.'
+            : '로그인이 끝까지 되지 않았어요. 한 번만 다시 해주세요.'}
+          {/* 원인을 숨기면 어디를 봐야 할지 알 수 없다. 작게라도 남긴다. */}
+          <span className="mt-1.5 block text-[11.5px] text-ink-3">
+            {failed}
+            {failedDetail ? ` · ${failedDetail}` : ''}
+          </span>
         </p>
       ) : null}
 
