@@ -33,6 +33,11 @@ export function detachRecognition(recognition: SpeechRecognitionLike) {
   recognition.onend = null;
 }
 
+/** 인식 오류 중 권한 때문에 막힌 것. 마이크 거부와 음성 인식(Siri) 거부 둘 다다. */
+export function isPermissionError(code: string): boolean {
+  return code === 'not-allowed' || code === 'service-not-allowed';
+}
+
 export type MicPermission = 'granted' | 'denied' | 'prompt' | 'unknown';
 
 /**

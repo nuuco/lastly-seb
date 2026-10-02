@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import {
   getMicPermission,
   getSpeechRecognitionCtor,
+  isPermissionError,
   type MicPermission,
   type SpeechRecognitionLike,
 } from '@/lib/speech';
@@ -114,7 +115,7 @@ export function useSpokenConfirm({
         }
       };
       rec.onerror = (event) => {
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        if (isPermissionError(event.error)) {
           decided = true;
           clearTimers();
         }

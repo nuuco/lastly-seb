@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   detachRecognition,
   getSpeechRecognitionCtor,
+  isPermissionError,
   type SpeechRecognitionLike,
 } from '@/lib/speech';
 
@@ -166,8 +167,7 @@ export function useSpeechRecognition() {
         return;
       }
       const message = describeError(event.error);
-      const permissionDenied =
-        event.error === 'not-allowed' || event.error === 'service-not-allowed';
+      const permissionDenied = isPermissionError(event.error);
       release();
       setState((prev) => ({ ...prev, listening: false, error: message, permissionDenied }));
     };
