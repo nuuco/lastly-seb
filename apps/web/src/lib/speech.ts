@@ -12,6 +12,8 @@ export interface SpeechRecognitionLike extends EventTarget {
 }
 
 export interface SpeechRecognitionEventLike {
+  /** 이번 이벤트에서 새로 바뀐 첫 결과의 위치. continuous 에서 의미가 있다. */
+  resultIndex?: number;
   results: ArrayLike<
     ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
   >;
