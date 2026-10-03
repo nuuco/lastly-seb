@@ -62,6 +62,7 @@ export class ItemsRepository {
       .select(COLUMNS)
       .eq('user_id', userId)
       .eq('name', name)
+      .eq('status', 'active')
       .maybeSingle();
 
     if (error) throw error;

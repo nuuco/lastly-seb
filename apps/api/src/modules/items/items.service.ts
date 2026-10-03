@@ -182,7 +182,7 @@ export class ItemsService {
 
     return toItem(await this.items.update(userId, itemId, patch), this.cadence, today);
   }
-  /** 같은 사람에게 같은 이름의 항목은 하나뿐이다(DB items_name_unique_per_user). */
+  /** 같은 사람이 쓰고 있는 항목 중 같은 이름은 하나뿐이다(DB items_name_unique_active). 지운 항목은 따지지 않는다. */
   private async assertNameFree(userId: string, name: string, exceptId?: string): Promise<void> {
     const taken = await this.items.findByName(userId, name);
     if (taken && taken.id !== exceptId) {
@@ -280,6 +280,9 @@ export class ItemsService {
   }
 
   async restore(userId: string, itemId: string): Promise<void> {
+    // 지운 뒤 같은 이름으로 새로 만들었으면 되살릴 수 없다.
+    const item = await this.items.findById(userId, itemId);
+    await this.assertNameFree(userId, item.name, itemId);
     await this.items.restore(userId, itemId);
   }
 
