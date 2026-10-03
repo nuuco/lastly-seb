@@ -150,13 +150,12 @@ export class ItemsService {
 
   async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
     // 지운 항목은 고치지 않는다. 되살리기는 restore 로만.
-    await this.items.findActiveById(userId, itemId);
+    const current = await this.items.findActiveById(userId, itemId);
     const patch: Record<string, unknown> = {};
 
     const name = input.name?.trim();
     if (name) {
       patch.name = name;
-      const current = await this.items.findById(userId, itemId);
       if (name !== current.name) {
         await this.assertNameFree(userId, name, itemId);
         // 말로 찾을 때 쓰는 임베딩도 새 이름으로. 실패하면 비워 두고 이름 일치로 찾게 한다.
@@ -179,7 +178,6 @@ export class ItemsService {
 
       // 쉬어가기는 주기를 건드리지 않는다. 다음 차례만 그 날짜로 옮긴다.
       // 해제하면 원래 주기가 만들어내는 날짜로 되돌린다.
-      const current = await this.items.findById(userId, itemId);
       patch.next_due_on =
         input.snoozedUntil ??
         this.cadence.nextDueOn(current.last_done_on, input.cadence ?? toCadenceRule(current));
