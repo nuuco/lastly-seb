@@ -45,7 +45,7 @@ export class ItemsService {
    * 주기를 들여다보는 자리는 상세 하나뿐이므로 거기서만 센다.
    */
   async findOne(userId: string, itemId: string, today = appToday()): Promise<Item> {
-    const row = await this.items.findById(userId, itemId);
+    const row = await this.items.findActiveById(userId, itemId);
     const item = toItem(row, this.cadence, today);
 
     const logs = await this.logs.listByItem(userId, itemId, DRIFT_LOG_WINDOW).catch(() => []);
@@ -149,6 +149,8 @@ export class ItemsService {
   }
 
   async update(userId: string, itemId: string, input: UpdateItemInput, today = appToday()): Promise<Item> {
+    // 지운 항목은 고치지 않는다. 되살리기는 restore 로만.
+    await this.items.findActiveById(userId, itemId);
     const patch: Record<string, unknown> = {};
 
     const name = input.name?.trim();

@@ -45,6 +45,23 @@ export class ItemsRepository {
     return (data ?? []) as ItemRow[];
   }
 
+  /**
+   * 쓰고 있는 항목만. 지운 항목은 없는 것으로 본다.
+   * 지운 항목도 남아 있으므로(되돌리기) 삭제 전에 받은 알림 등으로 id 가 들어올 수 있다.
+   */
+  async findActiveById(userId: string, itemId: string): Promise<ItemRow> {
+    const { data, error } = await this.table
+      .select(COLUMNS)
+      .eq('user_id', userId)
+      .eq('id', itemId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new NotFoundException('항목을 찾을 수 없습니다.');
+    return data as ItemRow;
+  }
+
   async findById(userId: string, itemId: string): Promise<ItemRow> {
     const { data, error } = await this.table
       .select(COLUMNS)

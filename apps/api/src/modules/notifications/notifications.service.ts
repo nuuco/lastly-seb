@@ -70,6 +70,8 @@ export class NotificationsService {
       return this.logs.completeToday(userId, itemId, today);
     }
 
+    // 지운 항목의 남은 알림이면 미루지 않는다. complete 는 completeToday 가 막는다.
+    await this.items.findActiveById(userId, itemId);
     const nextDue =
       action === 'snooze_3d' ? addDays(today, 3) : nextSaturday(today);
 

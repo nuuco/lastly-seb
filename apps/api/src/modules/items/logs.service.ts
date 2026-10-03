@@ -28,6 +28,7 @@ export class LogsService {
    * 목록이 최신순이므로 다음 원소가 직전 기록이다.
    */
   async listByItem(userId: string, itemId: string): Promise<LogEntry[]> {
+    await this.items.findActiveById(userId, itemId);
     const rows = await this.logs.listByItem(userId, itemId);
     return rows.map((row, index) => this.toEntry(row, rows[index + 1] ?? null));
   }
@@ -40,6 +41,8 @@ export class LogsService {
     rawInput: string | null = null,
   ): Promise<LogEntry> {
     assertNotFuture(input.doneOn);
+    // 지운 항목에는 기록을 더하지 않는다.
+    await this.items.findActiveById(userId, itemId);
     const row = await this.logs.insert(userId, itemId, input, source, rawInput);
     return this.toEntry(row, null);
   }
@@ -47,6 +50,7 @@ export class LogsService {
   /** "오늘 했어요" — 화면 05/11/14의 주 액션. */
   async completeToday(userId: string, itemId: string, today = appToday()): Promise<CompleteItemResult> {
     const doneOn = format(today, 'yyyy-MM-dd');
+    await this.items.findActiveById(userId, itemId);
     const row = await this.logs.insert(userId, itemId, { doneOn, note: null }, 'manual');
 
     // 트리거가 next_due_on을 다시 계산한 뒤의 값을 읽어야 한다.

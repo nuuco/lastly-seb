@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import type { AiClient } from '../../infra/ai/ai.client';
 import { CadenceService } from '../cadence/cadence.service';
@@ -88,5 +88,34 @@ describe('ItemsService.create', () => {
       ),
     ).rejects.toThrow('오늘 이후 날짜로는 기록할 수 없어요.');
     expect(items.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe('ItemsService — 지운 항목', () => {
+  const gone = () => {
+    const items = {
+      findActiveById: jest.fn().mockRejectedValue(new NotFoundException('항목을 찾을 수 없습니다.')),
+      update: jest.fn(),
+    };
+    const service = new ItemsService(
+      items as unknown as ItemsRepository,
+      {} as LogsRepository,
+      new CadenceService(),
+      {} as AiClient,
+    );
+    return { service, items };
+  };
+
+  it('상세를 열지 않는다', async () => {
+    const { service } = gone();
+    await expect(service.findOne('user-1', 'item-old')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('이름·주기·쉬어가기를 고치지 않는다', async () => {
+    const { service, items } = gone();
+    await expect(service.update('user-1', 'item-old', { snoozedUntil: null })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(items.update).not.toHaveBeenCalled();
   });
 });
