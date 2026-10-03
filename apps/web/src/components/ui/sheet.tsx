@@ -137,16 +137,23 @@ export function SheetHeader({
   );
 }
 
-/** 시트 안의 항목 행 — 라벨과 값, 누를 수 있으면 화살표가 붙는다. */
+/**
+ * 시트 안의 항목 행 — 라벨과 값, 누를 수 있으면 화살표가 붙는다.
+ *
+ * control 은 행 전체를 덮는 투명한 입력(날짜 등)이다. 행을 누르면 그 입력의
+ * 기기 기본 선택기가 열린다.
+ */
 export function SheetRow({
   label,
   value,
   onClick,
+  control,
   divider,
 }: {
   label: string;
   value: string;
   onClick?: () => void;
+  control?: React.ReactNode;
   divider?: boolean;
 }) {
   const body = (
@@ -154,7 +161,7 @@ export function SheetRow({
       <span className="text-[13.5px] text-ink-3">{label}</span>
       <span className="flex items-center gap-2.5 text-[16.5px] font-semibold tracking-[-.02em] text-ink">
         {value}
-        {onClick ? <Chevron /> : null}
+        {onClick || control ? <Chevron /> : null}
       </span>
     </>
   );
@@ -163,6 +170,15 @@ export function SheetRow({
     'flex w-full items-center justify-between py-4 text-left',
     divider && 'border-b border-line',
   );
+
+  if (control) {
+    return (
+      <label className={cn(cls, 'relative')}>
+        {body}
+        {control}
+      </label>
+    );
+  }
 
   return onClick ? (
     <button type="button" onClick={onClick} className={cls}>

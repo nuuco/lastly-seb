@@ -4,12 +4,19 @@ import type { CadenceRule, HomeFeed, InterpretResult } from '@lastly/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { Chevron, Sheet, SheetActions, SheetError, SheetHeader, SheetRow } from '@/components/ui/sheet';
+import { Sheet, SheetActions, SheetError, SheetHeader, SheetRow } from '@/components/ui/sheet';
 import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { queryKeys } from '@/lib/api/query-keys';
 import { cn } from '@/lib/cn';
-import { describeCadence, formatShortDate, nextDueAfter, ruleToDays, todayIso } from '@/lib/date';
+import {
+  describeCadence,
+  formatShortDate,
+  laterDate,
+  nextDueAfter,
+  ruleToDays,
+  todayIso,
+} from '@/lib/date';
 
 import { CadenceSheet } from './cadence-sheet';
 
@@ -118,9 +125,9 @@ export function ConfirmSheet({
    * DB 는 가장 최근 기록에서 다음 날을 센다. 기존 항목에 더 최근 기록이 있으면
    * 지난 날짜를 더해도 예정일은 그대로다.
    */
-  const lastDoneOn = isNew ? null : findLastDoneOn(feed, matchedId);
-  const keepsSchedule = lastDoneOn !== null && lastDoneOn > doneOn;
-  const nextDueOn = shownRule ? nextDueAfter(keepsSchedule ? lastDoneOn : doneOn, shownRule) : null;
+  const baseDate = laterDate(isNew ? null : findLastDoneOn(feed, matchedId), doneOn);
+  const keepsSchedule = baseDate !== doneOn;
+  const nextDueOn = shownRule ? nextDueAfter(baseDate, shownRule) : null;
 
   const confirmPayload = {
     ...(isNew
@@ -190,30 +197,29 @@ export function ConfirmSheet({
         </div>
 
         <div className="mt-3 border-t border-line">
-          {/* 줄 전체를 덮은 투명한 날짜 입력. 누르면 기기 달력이 열린다. */}
-          <label className="relative flex w-full items-center justify-between border-b border-line py-4">
-            <span className="text-[13.5px] text-ink-3">한 날짜</span>
-            <span className="flex items-center gap-2.5 text-[16.5px] font-semibold tracking-[-.02em] text-ink">
-              {`${dayLabel(doneOn)} · ${formatShortDate(doneOn)}`}
-              <Chevron />
-            </span>
-            <input
-              type="date"
-              value={doneOn}
-              max={today}
-              aria-label="한 날짜"
-              disabled={committing}
-              // 화면을 만지면 응/아니 듣기를 끝낸다. 고른 뒤 "응" 이 바뀌기 전 질문에 답이 되지 않게.
-              onPointerDown={stopListening}
-              onFocus={stopListening}
-              onChange={(e) => {
-                const next = e.target.value;
-                // 지우기 버튼으로 빈 값이 오거나, max 를 무시하는 브라우저에서 미래가 올 수 있다.
-                if (next && next <= today) setDoneOn(next);
-              }}
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            />
-          </label>
+          <SheetRow
+            label="한 날짜"
+            value={`${dayLabel(doneOn)} · ${formatShortDate(doneOn)}`}
+            divider
+            control={
+              <input
+                type="date"
+                value={doneOn}
+                max={today}
+                aria-label="한 날짜"
+                disabled={committing}
+                // 화면을 만지면 응/아니 듣기를 끝낸다. 고른 뒤 "응" 이 바뀌기 전 질문에 답이 되지 않게.
+                onPointerDown={stopListening}
+                onFocus={stopListening}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  // 지우기 버튼으로 빈 값이 오거나, max 를 무시하는 브라우저에서 미래가 올 수 있다.
+                  if (next && next <= today) setDoneOn(next);
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            }
+          />
           {checking ? (
             <div className="flex items-center justify-between py-4">
               <span className="text-12.5 font-bold tracking-wide2 text-ink-3">관리 주기</span>

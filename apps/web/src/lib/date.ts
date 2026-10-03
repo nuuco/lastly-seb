@@ -89,6 +89,14 @@ export function ruleToDays(rule: CadenceRule): number {
 }
 
 /**
+ * 두 날짜(yyyy-MM-dd) 중 늦은 쪽. 없는 쪽은 무시한다.
+ * DB 가 마지막 기록일을 max(done_on) 으로 잡으므로, 지난 날짜를 더할 때 이것으로 맞춘다.
+ */
+export function laterDate(a: string | null, b: string): string {
+  return a && a > b ? a : b;
+}
+
+/**
  * 다음 예정일. 서버·DB와 같은 규칙이어야 한다.
  *
  * 화면이 미리 보여줄 때와, 연결이 끊긴 자리에서 기록을 반영할 때 쓴다.

@@ -89,11 +89,10 @@ export function usePending(signedIn: boolean, step: string) {
         syncing = false;
       }
 
-      if (dropped > 0 && sent === 0) refresh();
+      if (sent + dropped > 0) refresh();
       if (sent === 0) return;
 
       setJustSynced(sent);
-      refresh();
       await queryClient.invalidateQueries({ queryKey: queryKeys.home });
     })();
   }, [online, signedIn, queryClient, refresh]);

@@ -3,7 +3,7 @@
 import type { HomeFeed, Item } from '@lastly/contracts';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 
-import { nextDueAfter } from '@/lib/date';
+import { laterDate, nextDueAfter } from '@/lib/date';
 
 /** 서버의 UPCOMING_WINDOW_DAYS 와 같은 값이어야 한다. */
 const UPCOMING_WINDOW_DAYS = 14;
@@ -65,8 +65,7 @@ export function applyLocalLog(itemId: string, doneOn: string, today: string): Ho
   if (!target) return null;
 
   // DB 처럼 가장 최근 기록에서 센다. 더 이전 날짜를 더해도 마지막 기록일은 그대로다.
-  const lastDoneOn =
-    target.lastDoneOn && target.lastDoneOn > doneOn ? target.lastDoneOn : doneOn;
+  const lastDoneOn = laterDate(target.lastDoneOn, doneOn);
   const nextDueOn = nextDueAfter(lastDoneOn, target.cadence);
   const daysUntilDue = differenceInCalendarDays(parseISO(nextDueOn), parseISO(today));
 
