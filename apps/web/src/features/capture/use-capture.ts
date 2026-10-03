@@ -14,6 +14,7 @@ import {
 import type { OnDeviceKnownItem } from '@/features/on-device/types';
 import { speak } from '@/features/on-device/voice-guidance';
 import { captureApi } from '@/lib/api/capture';
+import { ApiError } from '@/lib/api/client';
 import { itemsApi } from '@/lib/api/items';
 import { queryKeys } from '@/lib/api/query-keys';
 import { todayIso } from '@/lib/date';
@@ -60,6 +61,8 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   const [pendingSaved, setPendingSaved] = useState<string | null>(null);
   /** 예정·못 함처럼 저장하지 않는 말. */
   const [deferredMessage, setDeferredMessage] = useState<string | null>(null);
+  /** 저장이 거절된 이유. 확인 시트에 그대로 보인다. */
+  const [commitError, setCommitError] = useState<string | null>(null);
 
   const interpret = useMutation({
     /**
@@ -95,6 +98,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     },
     onMutate: (input) => {
       abandoned.current = false;
+      setCommitError(null);
       setLastMode(input.mode);
       setStep('interpreting');
     },
@@ -218,6 +222,10 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
         note: input.note ?? null,
       });
     },
+    onMutate: () => setCommitError(null),
+    onError: (error) => {
+      setCommitError(error instanceof ApiError ? error.message : '저장하지 못했어요. 다시 눌러주세요.');
+    },
     onSuccess: async (data) => {
       setCommitted(data);
       setStep('idle');
@@ -313,6 +321,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
   });
 
   const cancel = useCallback(() => {
+    setCommitError(null);
     setStep('idle');
     setResult(null);
     setCadenceOverride(null);
@@ -344,6 +353,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
     interpreting: interpret.isPending,
     commit: commit.mutate,
     committing: commit.isPending || answerCandidate.isPending,
+    commitError,
     chooseCandidate,
     createAsNew,
     saveRaw: saveRaw.mutate,

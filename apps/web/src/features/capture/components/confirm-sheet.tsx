@@ -29,6 +29,8 @@ interface ConfirmSheetProps {
   /** 취소 버튼·음성 "아니" — 저장하지 않고 시트만 닫는다. */
   onCancel?: () => void;
   committing: boolean;
+  /** 저장이 거절된 이유. 있으면 응/아니 듣기를 다시 켜지 않는다. */
+  error?: string | null;
   mode?: 'voice' | 'text';
 }
 
@@ -48,6 +50,7 @@ export function ConfirmSheet({
   onRetry,
   onCancel,
   committing,
+  error = null,
   mode = 'text',
 }: ConfirmSheetProps) {
   const [cadenceOpen, setCadenceOpen] = useState(false);
@@ -108,7 +111,9 @@ export function ConfirmSheet({
     : (shown?.rationale ?? '');
 
   const stopListening = useSpokenConfirm({
-    enabled: open && mode === 'voice' && !committing && !cadenceOpen && Boolean(name.trim()),
+    // 저장이 거절된 뒤 다시 켜면 같은 질문을 또 읽고, 응 하면 같은 거절이 되풀이된다.
+    enabled:
+      open && mode === 'voice' && !committing && !error && !cadenceOpen && Boolean(name.trim()),
     prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
     onYes: () => onConfirm(confirmPayload),
     onNo: () => (onCancel ?? onRetry)(),
@@ -215,11 +220,21 @@ export function ConfirmSheet({
           </div>
         ) : null}
 
+        {error ? (
+          <p role="alert" className="mt-3 break-keep text-[13.5px] leading-[1.6] text-danger">
+            {error}
+          </p>
+        ) : null}
+
         <SheetActions
           primary={{
             label: committing ? '저장하는 중…' : '이대로 저장하기',
             disabled: committing || !name.trim(),
-            onClick: () => onConfirm(confirmPayload),
+            // 누른 순간 응/아니 듣기를 끝낸다. 남아 있으면 같은 저장이 한 번 더 나간다.
+            onClick: () => {
+              stopListening();
+              onConfirm(confirmPayload);
+            },
           }}
           secondary={{
             label: '다시 말하기',
