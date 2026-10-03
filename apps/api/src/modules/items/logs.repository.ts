@@ -79,10 +79,15 @@ export class LogsRepository {
   }
 
   /** 한 달치 기록 — 설계 05-C 의 "완료 이력" 점. */
+  /**
+   * 지운 항목(archived)은 되돌리기를 위해 기록을 남겨 둔다. 아래 세 쿼리는 그 기록을
+   * 사용자에게 보이는 자리(달력·메모 검색·주간 완료 수)에서 읽으므로 살아 있는 항목만 본다.
+   */
   async listBetween(userId: string, from: string, to: string) {
     const { data, error } = await this.table
       .select('id, item_id, done_on, items!inner(name)')
       .eq('user_id', userId)
+      .eq('items.status', 'active')
       .gte('done_on', from)
       .lte('done_on', to)
       .order('done_on');
@@ -101,6 +106,7 @@ export class LogsRepository {
     const { data, error } = await this.table
       .select('id, item_id, done_on, note, items!inner(name)')
       .eq('user_id', userId)
+      .eq('items.status', 'active')
       .ilike('note', `%${query}%`)
       .order('done_on', { ascending: false })
       .limit(limit);
@@ -117,8 +123,9 @@ export class LogsRepository {
 
   async countSince(userId: string, since: Date): Promise<number> {
     const { count, error } = await this.table
-      .select('id', { count: 'exact', head: true })
+      .select('id, items!inner(status)', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .eq('items.status', 'active')
       .gte('done_on', format(since, 'yyyy-MM-dd'));
 
     if (error) throw error;
