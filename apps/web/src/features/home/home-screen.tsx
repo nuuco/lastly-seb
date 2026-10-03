@@ -566,6 +566,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           onRetry={retryWithVoice}
           onCancel={capture.cancel}
           committing={capture.committing}
+          error={capture.commitError}
           mode={capture.lastMode}
         />
       ) : null}
@@ -579,6 +580,7 @@ export function HomeScreen({ initialFeed, signedIn: initiallySignedIn }: HomeScr
           onRetry={retryWithVoice}
           onDismiss={capture.cancel}
           committing={capture.committing}
+          error={capture.commitError}
           mode={capture.lastMode}
         />
       ) : null}

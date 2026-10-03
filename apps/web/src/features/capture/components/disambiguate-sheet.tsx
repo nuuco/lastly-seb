@@ -4,7 +4,7 @@ import type { InterpretResult } from '@lastly/contracts';
 import { useEffect, useState } from 'react';
 
 import { speak, stopSpeaking } from '@/features/on-device/voice-guidance';
-import { Sheet, SheetHeader } from '@/components/ui/sheet';
+import { Sheet, SheetError, SheetHeader } from '@/components/ui/sheet';
 import { cn } from '@/lib/cn';
 
 interface DisambiguateSheetProps {
@@ -17,6 +17,8 @@ interface DisambiguateSheetProps {
   /** 배경 탭·취소로 그냥 물러날 때. */
   onDismiss: () => void;
   committing: boolean;
+  /** 저장이 거절된 이유. */
+  error?: string | null;
   /** 사용자가 말했는지 적었는지. 안내 문구와 버튼이 달라진다. */
   mode: 'voice' | 'text';
 }
@@ -42,6 +44,7 @@ export function DisambiguateSheet({
   onRetry,
   onDismiss,
   committing,
+  error = null,
   mode,
 }: DisambiguateSheetProps) {
   const candidates = result.candidates;
@@ -118,6 +121,8 @@ export function DisambiguateSheet({
             placeholder="예: 이불 빨래"
             className="mt-2.5 w-full rounded-row border-[1.5px] border-line bg-card px-[18px] py-4 text-17 font-bold tracking-t3 text-ink outline-none focus:border-action placeholder:font-normal placeholder:text-ink-3"
           />
+
+          <SheetError message={error} className="mt-3" />
 
           <button
             type="button"
