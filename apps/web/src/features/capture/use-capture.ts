@@ -172,8 +172,11 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       cadence?: CadenceRule;
       /** 말로 "응" 해서 저장했는지. 화면을 안 보고 있으니 결과를 소리로 알린다. */
       announce?: boolean;
+      /** 확인 시트에서 고친 한 날짜. 없으면 말에서 읽은 날짜. */
+      doneOn?: string;
     }) => {
       if (!result) throw new Error('해석 결과가 없습니다.');
+      const doneOn = input.doneOn ?? result.doneOn;
 
       /**
        * 새 항목에는 화면에 보여준 주기를 그대로 실어 보낸다.
@@ -199,10 +202,10 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
         const name = input.newItemName ?? result.normalizedName ?? '';
 
         if (input.itemId) {
-          addResolved(input.itemId, name, result.doneOn);
-          applyLocalLog(input.itemId, result.doneOn, todayIso());
+          addResolved(input.itemId, name, doneOn);
+          applyLocalLog(input.itemId, doneOn, todayIso());
         } else {
-          addNewItem(name, cadence ?? FALLBACK_RULE, result.doneOn);
+          addNewItem(name, cadence ?? FALLBACK_RULE, doneOn);
         }
 
         return {
@@ -219,7 +222,7 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
         draftToken: result.draftToken,
         itemId: input.itemId,
         newItemName: input.newItemName,
-        doneOn: result.doneOn,
+        doneOn,
         cadence: cadence ?? undefined,
         note: input.note ?? null,
       });

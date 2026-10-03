@@ -1,14 +1,15 @@
 'use client';
 
-import type { CadenceRule, InterpretResult } from '@lastly/contracts';
-import { useQuery } from '@tanstack/react-query';
+import type { CadenceRule, HomeFeed, InterpretResult } from '@lastly/contracts';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { Sheet, SheetActions, SheetError, SheetHeader, SheetRow } from '@/components/ui/sheet';
+import { Chevron, Sheet, SheetActions, SheetError, SheetHeader, SheetRow } from '@/components/ui/sheet';
 import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
+import { queryKeys } from '@/lib/api/query-keys';
 import { cn } from '@/lib/cn';
-import { describeCadence, formatShortDate, ruleToDays, todayIso } from '@/lib/date';
+import { describeCadence, formatShortDate, nextDueAfter, ruleToDays, todayIso } from '@/lib/date';
 
 import { CadenceSheet } from './cadence-sheet';
 
@@ -24,6 +25,7 @@ interface ConfirmSheetProps {
     newItemName?: string;
     note?: string | null;
     cadence?: CadenceRule;
+    doneOn?: string;
     announce?: boolean;
   }) => void;
   onRetry: () => void;
@@ -57,6 +59,15 @@ export function ConfirmSheet({
   const [cadenceOpen, setCadenceOpen] = useState(false);
   const [name, setName] = useState(result.normalizedName ?? '');
   const [note, setNote] = useState('');
+  /** 한 날짜 — 설계 08/09 의 꺾쇠 줄. 말로 들은 날짜에서 시작해 기기 달력으로 고친다. */
+  const [doneOn, setDoneOn] = useState(result.doneOn);
+
+  /**
+   * 오늘은 서버가 본 날짜를 쓴다. 서버가 미래 날짜를 거절하므로 기기 시계와 어긋나면
+   * 화면에서는 고를 수 있는데 저장이 막히는 날이 생긴다.
+   */
+  const feed = useQueryClient().getQueryData<HomeFeed>(queryKeys.home);
+  const today = feed?.today ?? todayIso();
 
   /**
    * 이름을 고치면 주기를 다시 맞춘다 — 설계 08-B.
@@ -84,11 +95,11 @@ export function ConfirmSheet({
   const fixedDays = cadenceFixed && cadence ? ruleToDays(cadence) : null;
 
   const preview = useQuery({
-    queryKey: ['cadence-preview', edited, result.doneOn, fixedDays],
+    queryKey: ['cadence-preview', edited, doneOn, fixedDays],
     queryFn: () =>
       captureApi.previewCadence({
         name: edited!,
-        doneOn: result.doneOn,
+        doneOn,
         statedCadenceDays: fixedDays,
       }),
     enabled: Boolean(edited),
@@ -101,15 +112,28 @@ export function ConfirmSheet({
   const isNew = matchedId === null;
   // 사용자가 주기 시트에서 직접 고른 값이 언제나 우선한다.
   const shownRule = edited ? (shown?.rule ?? null) : cadence;
+
+  /**
+   * 다음 예정일은 저장 뒤 실제로 잡힐 날을 보인다.
+   * DB 는 가장 최근 기록에서 다음 날을 센다. 기존 항목에 더 최근 기록이 있으면
+   * 지난 날짜를 더해도 예정일은 그대로다.
+   */
+  const lastDoneOn = isNew ? null : findLastDoneOn(feed, matchedId);
+  const keepsSchedule = lastDoneOn !== null && lastDoneOn > doneOn;
+  const nextDueOn = shownRule ? nextDueAfter(keepsSchedule ? lastDoneOn : doneOn, shownRule) : null;
+
   const confirmPayload = {
     ...(isNew
       ? { newItemName: name.trim(), cadence: shownRule ?? undefined }
       : { itemId: matchedId ?? undefined }),
     note: note.trim() || null,
+    doneOn,
   };
-  const rationaleText = edited
-    ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
-    : (shown?.rationale ?? '');
+  const rationaleText = keepsSchedule
+    ? '더 최근 기록이 있어 다음 알림은 그대로예요.'
+    : edited
+      ? '이름을 고치면 주기를 다시 맞춰드려요. 이미 쓰던 항목이면 원래 주기로 돌아와요.'
+      : (shown?.rationale ?? '');
 
   const stopListening = useSpokenConfirm({
     // 저장이 거절된 뒤 다시 켜면 같은 질문을 또 읽고, 응 하면 같은 거절이 되풀이된다.
@@ -166,11 +190,30 @@ export function ConfirmSheet({
         </div>
 
         <div className="mt-3 border-t border-line">
-          <SheetRow
-            label="한 날짜"
-            value={`${dayLabel(result.doneOn)} · ${formatShortDate(result.doneOn)}`}
-            divider
-          />
+          {/* 줄 전체를 덮은 투명한 날짜 입력. 누르면 기기 달력이 열린다. */}
+          <label className="relative flex w-full items-center justify-between border-b border-line py-4">
+            <span className="text-[13.5px] text-ink-3">한 날짜</span>
+            <span className="flex items-center gap-2.5 text-[16.5px] font-semibold tracking-[-.02em] text-ink">
+              {`${dayLabel(doneOn)} · ${formatShortDate(doneOn)}`}
+              <Chevron />
+            </span>
+            <input
+              type="date"
+              value={doneOn}
+              max={today}
+              aria-label="한 날짜"
+              disabled={committing}
+              // 화면을 만지면 응/아니 듣기를 끝낸다. 고른 뒤 "응" 이 바뀌기 전 질문에 답이 되지 않게.
+              onPointerDown={stopListening}
+              onFocus={stopListening}
+              onChange={(e) => {
+                const next = e.target.value;
+                // 지우기 버튼으로 빈 값이 오거나, max 를 무시하는 브라우저에서 미래가 올 수 있다.
+                if (next && next <= today) setDoneOn(next);
+              }}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </label>
           {checking ? (
             <div className="flex items-center justify-between py-4">
               <span className="text-12.5 font-bold tracking-wide2 text-ink-3">관리 주기</span>
@@ -186,8 +229,8 @@ export function ConfirmSheet({
             <SheetRow
               label="관리 주기"
               value={
-                shownRule
-                  ? `${describeCadence(shownRule)} · 다음 ${shown ? formatShortDate(shown.nextDueOn) : '—'}`
+                shownRule && nextDueOn
+                  ? `${describeCadence(shownRule)} · 다음 ${formatShortDate(nextDueOn)}`
                   : '설정 안 됨'
               }
               onClick={() => setCadenceOpen(true)}
@@ -251,7 +294,7 @@ export function ConfirmSheet({
           open
           itemName={name}
           transcript={result.transcript}
-          doneOn={result.doneOn}
+          doneOn={doneOn}
           value={cadence}
           onChange={(rule) => {
             onCadenceChange(rule);
@@ -262,6 +305,13 @@ export function ConfirmSheet({
       ) : null}
     </>
   );
+}
+
+/** 홈 피드에서 그 항목의 마지막 기록일. 피드가 없거나 항목이 없으면 null. */
+function findLastDoneOn(feed: HomeFeed | undefined, itemId: string | null): string | null {
+  if (!feed || !itemId) return null;
+  const item = [...feed.due, ...feed.upcoming, ...feed.later].find((i) => i.id === itemId);
+  return item?.lastDoneOn ?? null;
 }
 
 /**
