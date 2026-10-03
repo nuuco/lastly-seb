@@ -115,7 +115,8 @@ export function ConfirmSheet({
     // 저장이 거절된 뒤 다시 켜면 같은 질문을 또 읽고, 응 하면 같은 거절이 되풀이된다.
     enabled:
       open && mode === 'voice' && !committing && !error && !cadenceOpen && Boolean(name.trim()),
-    prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
+    // 입력 중인 이름을 따라가지 않는다. 바뀔 때마다 처음부터 다시 읽는다.
+    prompt: `${result.normalizedName || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
     onYes: () => onConfirm({ ...confirmPayload, announce: true }),
     onNo: () => (onCancel ?? onRetry)(),
   });

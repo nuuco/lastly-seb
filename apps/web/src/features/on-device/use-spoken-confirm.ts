@@ -32,6 +32,7 @@ function expectedSpeakMs(text: string): number {
 /**
  * 확인 시트에서 화면을 안 보고 응/아니로 답하게 한다.
  * 말로 들어온 기록이고 음성 안내가 켜져 있을 때만 듣는다.
+ * 시트 하나에서 한 번만 묻는다. enabled 가 꺼졌다 다시 켜져도 되묻지 않는다.
  *
  * 돌려주는 stop 은 응/아니 듣기를 바로 끝낸다. 시트를 닫는 버튼이 먼저 부른다 —
  * 시트가 닫히며 정리되길 기다리면 그 사이 "다시 말하기" 의 새 음성 인식이
@@ -53,9 +54,18 @@ export function useSpokenConfirm({
   yesRef.current = onYes;
   noRef.current = onNo;
   const stopRef = useRef<() => void>(() => undefined);
+  const startedRef = useRef(false);
+  const finishedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || !isVoiceGuidanceOn()) return;
+    // 한 번 켜졌다 꺼지면(주기 시트를 열거나 이름을 비우면) 이 시트에서는 다시 묻지 않는다.
+    // 꺼짐을 보고 판단한다 — StrictMode 의 cleanup 뒤 재실행에서는 그대로 다시 묻는다.
+    if (!enabled || !isVoiceGuidanceOn()) {
+      if (startedRef.current) finishedRef.current = true;
+      return;
+    }
+    if (finishedRef.current) return;
+    startedRef.current = true;
 
     let recognition: SpeechRecognitionLike | null = null;
     let decided = false;
