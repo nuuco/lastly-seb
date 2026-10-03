@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: '개인정보처리방침 · Lastly',
-  description: 'Lastly 가 어떤 정보를 받고, 어디에 보내고, 언제 지우는지.',
+  description: 'Lastly가 어떤 정보를 받고, 어디에 보내고, 언제 지우는지.',
 };
 
 /** 최종 수정일. 내용을 고치면 이 날짜도 함께 고친다. */

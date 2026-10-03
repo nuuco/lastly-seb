@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: '이용약관 · Lastly',
-  description: 'Lastly 를 쓰실 때의 약속.',
+  description: 'Lastly를 쓰실 때의 약속.',
 };
 
 const UPDATED = '2026년 9월 21일';
