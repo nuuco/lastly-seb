@@ -15,6 +15,7 @@ import { CadenceService } from '../cadence/cadence.service';
 import { LogsRepository } from './logs.repository';
 import { toCadenceRule, toItem } from './items.mapper';
 import { ItemsRepository } from './items.repository';
+import { assertNotFuture } from './logs.service';
 import { appToday } from '../../common/clock';
 
 /** 리듬을 볼 때 거슬러 올라가는 기록 수. 오래된 습관까지 끌고 오지 않는다. */
@@ -126,6 +127,8 @@ export class ItemsService {
 
   async create(userId: string, input: CreateItemInput, today = appToday()): Promise<Item> {
     await this.assertNameFree(userId, input.name);
+    // 항목을 만들기 전에 막는다. 기록에서 거절되면 빈 항목만 남는다.
+    if (input.firstDoneOn) assertNotFuture(input.firstDoneOn, today);
 
     // 임베딩은 있으면 좋고 없어도 되는 값이다. 실패해도 항목 생성은 진행한다.
     const embedding = (await this.ai.embed(input.name))?.embedding ?? null;

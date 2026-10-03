@@ -63,3 +63,30 @@ describe('ItemsService.restore', () => {
     expect(items.restore).not.toHaveBeenCalled();
   });
 });
+
+describe('ItemsService.create', () => {
+  it('첫 기록이 오늘 이후 날짜면 항목을 만들기 전에 거절한다', async () => {
+    const items = { findByName: jest.fn().mockResolvedValue(null), insert: jest.fn() };
+    const ai = { embed: jest.fn() };
+    const service = new ItemsService(
+      items as unknown as ItemsRepository,
+      {} as LogsRepository,
+      new CadenceService(),
+      ai as unknown as AiClient,
+    );
+
+    await expect(
+      service.create(
+        'user-1',
+        {
+          name: '화분 물주기',
+          cadence: { unit: 'week', interval: 1, weekdays: [], notifyTimeLocal: null },
+          cadenceSource: 'user',
+          firstDoneOn: '2026-09-07',
+        },
+        new Date('2026-09-06T12:00:00'),
+      ),
+    ).rejects.toThrow('오늘 이후 날짜로는 기록할 수 없어요.');
+    expect(items.insert).not.toHaveBeenCalled();
+  });
+});
