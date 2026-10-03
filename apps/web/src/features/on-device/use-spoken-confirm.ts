@@ -90,10 +90,14 @@ export function useSpokenConfirm({
       decided = true;
       clearTimers();
       abortRecognition();
+      // 저장 결과는 저장이 끝난 뒤 알린다. 여기서 "기록했어요" 라고 하면 실패해도 그렇게 들린다.
+      if (yes) {
+        yesRef.current();
+        return;
+      }
       // 시트가 닫혀도 cleanup이 이 안내를 끊지 않는다.
-      speak(yes ? '기록했어요' : '취소했어요');
-      if (yes) yesRef.current();
-      else noRef.current();
+      speak('취소했어요');
+      noRef.current();
     };
 
     const listen = () => {

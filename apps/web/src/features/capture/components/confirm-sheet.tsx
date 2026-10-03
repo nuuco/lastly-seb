@@ -4,7 +4,7 @@ import type { CadenceRule, InterpretResult } from '@lastly/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { Sheet, SheetActions, SheetHeader, SheetRow } from '@/components/ui/sheet';
+import { Sheet, SheetActions, SheetError, SheetHeader, SheetRow } from '@/components/ui/sheet';
 import { useSpokenConfirm } from '@/features/on-device/use-spoken-confirm';
 import { captureApi } from '@/lib/api/capture';
 import { cn } from '@/lib/cn';
@@ -24,6 +24,7 @@ interface ConfirmSheetProps {
     newItemName?: string;
     note?: string | null;
     cadence?: CadenceRule;
+    announce?: boolean;
   }) => void;
   onRetry: () => void;
   /** 취소 버튼·음성 "아니" — 저장하지 않고 시트만 닫는다. */
@@ -115,7 +116,7 @@ export function ConfirmSheet({
     enabled:
       open && mode === 'voice' && !committing && !error && !cadenceOpen && Boolean(name.trim()),
     prompt: `${(result.normalizedName ?? name.trim()) || '이 일'}, ${dayLabel(result.doneOn)}로 기록할까요?`,
-    onYes: () => onConfirm(confirmPayload),
+    onYes: () => onConfirm({ ...confirmPayload, announce: true }),
     onNo: () => (onCancel ?? onRetry)(),
   });
 
@@ -220,11 +221,7 @@ export function ConfirmSheet({
           </div>
         ) : null}
 
-        {error ? (
-          <p role="alert" className="mt-3 break-keep text-[13.5px] leading-[1.6] text-danger">
-            {error}
-          </p>
-        ) : null}
+        <SheetError message={error} className="mt-3" />
 
         <SheetActions
           primary={{

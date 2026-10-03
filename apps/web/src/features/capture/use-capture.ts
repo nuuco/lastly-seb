@@ -170,6 +170,8 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       note?: string | null;
       /** 확인 시트가 실제로 보여준 주기. 보이는 것과 저장되는 것이 갈리지 않게 한다. */
       cadence?: CadenceRule;
+      /** 말로 "응" 해서 저장했는지. 화면을 안 보고 있으니 결과를 소리로 알린다. */
+      announce?: boolean;
     }) => {
       if (!result) throw new Error('해석 결과가 없습니다.');
 
@@ -223,10 +225,12 @@ export function useCapture({ onInterpreted }: { onInterpreted?: () => void } = {
       });
     },
     onMutate: () => setCommitError(null),
-    onError: (error) => {
+    onError: (error, input) => {
       setCommitError(error instanceof ApiError ? error.message : '저장하지 못했어요. 다시 눌러주세요.');
+      if (input.announce) speak('저장하지 못했어요');
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, input) => {
+      if (input.announce) speak('기록했어요');
       setCommitted(data);
       setStep('idle');
       setResult(null);

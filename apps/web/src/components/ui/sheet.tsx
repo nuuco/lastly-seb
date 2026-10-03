@@ -173,6 +173,19 @@ export function SheetRow({
   );
 }
 
+/** 시트 안에서 요청이 거절된 이유. 버튼 바로 위에 둔다. */
+export function SheetError({ message, className }: { message: string | null; className?: string }) {
+  if (!message) return null;
+  return (
+    <p
+      role="alert"
+      className={cn('break-keep text-[13.5px] leading-[1.6] text-danger', className)}
+    >
+      {message}
+    </p>
+  );
+}
+
 /** 시트 하단의 주/보조 버튼 한 쌍. */
 export function SheetActions({
   primary,
