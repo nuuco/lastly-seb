@@ -1,10 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { CompleteItemResult, CreateLogInput, LogEntry, UpdateLogInput } from '@lastly/contracts';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 
 import { ItemsRepository } from './items.repository';
 import { LogsRepository, type LogRow } from './logs.repository';
 import { appToday } from '../../common/clock';
+
+/**
+ * 오늘 이후 날짜의 기록을 막는다. 화면은 달력에서 막지만 요청은 그대로 들어올 수 있다.
+ * 미래 기록이 들어가면 트리거가 그 날을 마지막 기록일로 잡아 예정일이 통째로 밀린다.
+ */
+export function assertNotFuture(doneOn: string, today: Date = appToday()): void {
+  if (doneOn > format(today, 'yyyy-MM-dd')) {
+    throw new BadRequestException('오늘 이후 날짜로는 기록할 수 없어요.');
+  }
+}
 
 @Injectable()
 export class LogsService {
@@ -29,6 +39,7 @@ export class LogsService {
     source: LogRow['source'] = 'manual',
     rawInput: string | null = null,
   ): Promise<LogEntry> {
+    assertNotFuture(input.doneOn);
     const row = await this.logs.insert(userId, itemId, input, source, rawInput);
     return this.toEntry(row, null);
   }
@@ -57,7 +68,10 @@ export class LogsService {
 
   async update(userId: string, logId: string, input: UpdateLogInput): Promise<LogEntry> {
     const patch: Record<string, unknown> = {};
-    if (input.doneOn !== undefined) patch.done_on = input.doneOn;
+    if (input.doneOn !== undefined) {
+      assertNotFuture(input.doneOn);
+      patch.done_on = input.doneOn;
+    }
     if (input.note !== undefined) patch.note = input.note;
 
     return this.toEntry(await this.logs.update(userId, logId, patch), null);

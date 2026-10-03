@@ -1042,3 +1042,20 @@ describe('CaptureService.interpret — 브라우저 슬롯', () => {
     expect(ai.parseUtterance).not.toHaveBeenCalled();
   });
 });
+
+describe('CaptureService.commit', () => {
+  it('오늘 이후 날짜면 항목을 만들기 전에 거절한다', async () => {
+    const { service, itemsService } = buildService({});
+    const create = jest.fn();
+    Object.assign(itemsService, { create });
+
+    await expect(
+      service.commit(
+        'user-1',
+        { draftToken: 'signed-token', newItemName: '화분 물주기', doneOn: '2026-09-07', note: null },
+        TODAY,
+      ),
+    ).rejects.toThrow('오늘 이후 날짜로는 기록할 수 없어요.');
+    expect(create).not.toHaveBeenCalled();
+  });
+});
