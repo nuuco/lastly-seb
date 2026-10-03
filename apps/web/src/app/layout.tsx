@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: 'Lastly — 마지막으로 언제 했는지',
   description: '말 한마디면 기록 끝. 마지막으로 언제 했는지 대신 기억해요.',
   manifest: '/manifest.webmanifest',
+  // 아이폰은 홈 화면 아이콘을 직접 둥글게 자른다. 꽉 찬 정사각형(투명·모서리 없음)을 준다.
+  icons: { apple: '/icons/apple-touch-icon.png' },
   appleWebApp: {
     capable: true,
     title: 'Lastly',
